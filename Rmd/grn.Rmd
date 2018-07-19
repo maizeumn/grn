@@ -56,4 +56,25 @@ kable(tt, format = 'latex', booktabs = T,
 \pagebreak
 ![Figure 1]($grn/analysis/04_y1h/01.pdf){width=100%}
 
+\pagebreak
+![Figure 2a]($grn/analysis/06_rna_de/01.huang_leaf.pdf){width=100%}
+
+\pagebreak
+![Figure 2b]($grn/analysis/06_rna_de/01.huang_root.pdf){width=100%}
+
+\pagebreak
+![Figure 2c]($grn/analysis/06_rna_de/01.huang_sam.pdf){width=100%}
+
+\pagebreak
+![Figure 2d]($grn/analysis/06_rna_de/01.huang_seed.pdf){width=100%}
+
+\pagebreak
+![Figure 2e]($grn/analysis/06_rna_de/01.walley_rna.pdf){width=100%}
+
+\pagebreak
+![Figure 2f]($grn/analysis/06_rna_de/01.walley_protein.pdf){width=100%}
+
+\pagebreak
+![Figure 2g]($grn/analysis/06_rna_de/01.walley_all.pdf){width=100%}
+
 
