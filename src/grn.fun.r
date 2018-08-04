@@ -18,6 +18,7 @@ require(ggsci)
 require(ggrepel)
 require(scales)
 require(pheatmap)
+require(GENIE3)
 options(stringsAsFactors = FALSE)
 #}}}
 
