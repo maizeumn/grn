@@ -18,7 +18,6 @@ require(ggsci)
 require(ggrepel)
 require(scales)
 require(pheatmap)
-require(GENIE3)
 options(stringsAsFactors = FALSE)
 #}}}
 
@@ -26,7 +25,6 @@ options(stringsAsFactors = FALSE)
 dirg = file.path(Sys.getenv("genome"), "Zmays_v4/TF")
 dirp = '~/projects/maize.grn'
 dird = file.path(dirp, 'data')
-dira = file.path(dirp, 'analysis')
 dirr = file.path(dirp, 'Rmd')
 
 
