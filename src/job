@@ -1,12 +1,13 @@
 ##PBS -l nodes=1:ppn=4,mem=30gb,walltime=5:00:00
 ##PBS -l nodes=1:ppn=24,mem=62gb,walltime=2:00:00
-#PBS -l nodes=1:ppn=12,mem=200gb,walltime=50:00:00
+#PBS -l nodes=1:ppn=6,mem=60gb,walltime=20:00:00
 #PBS -m ae
 #PBS -M zhoux379@umn.edu
-#PBS -q ram256g
-##PBS -q small
+##PBS -q ram256g
+#PBS -q small
 
 cd $proj/maize.grn/data
-#genie3.R -p 8 in_briggs.rda briggs.rda
-genie3.R -p 12 10_genie3_input/kremling2018.rda 11_genie3/kremling2018.rda
+
+genie3.R -p 12 11_input/n81.rda 12_output/n81.rda
+genie3.R -p 12 11_input/n82.rda 12_output/n82.rda
 

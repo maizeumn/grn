@@ -8,7 +8,7 @@ parser$add_argument("-q", "--quietly", action="store_false",
                      dest="verbose", help="Print little output")
 parser$add_argument("fi", nargs=1, help="Input (expression matrix) file")
 parser$add_argument("fo", nargs=1, help="Output file")
-parser$add_argument("--tf", default="~/data/genome/Zmays_v4/TF/11.tsv",
+parser$add_argument("--tf", default="~/data/genome/Zmays_v4/TF/10.tsv",
                     help = "TF IDs file [default %(default)s]")
 parser$add_argument("-p", "--thread", type="integer", default=1,
                     help="Num. threads to use [default %(default)s]")
@@ -36,7 +36,17 @@ tf_ids = tf$gid
 
 x = load(fi)
 
-et_b = t_exp %>% spread(condition, CPM)
+n_cond = length(unique(t_exp$condition))
+gids = t_exp %>% group_by(gid) %>%
+    summarise(n_cond_exp = sum(CPM >= 1)) %>%
+    filter(n_cond_exp >= n_cond * .1) %>%
+    pull(gid)
+t_flt = t_exp %>% filter(gid %in% gids)
+
+et_b = t_flt %>% 
+    mutate(CPM = asinh(FPKM)) %>%
+    select(condition, gid, CPM) %>%
+    spread(condition, CPM)
 em_b = as.matrix(et_b[,-1])
 rownames(em_b) = et_b$gid
 
@@ -44,6 +54,7 @@ gids = rownames(em_b)
 rids = tf_ids[tf_ids %in% gids]
 length(rids)
 tids = gids
+cat(sprintf("%d rids, %d tids\n", length(rids), length(tids)))
 
 weightMat <- GENIE3(em_b, 
                     regulators = rids,
@@ -53,12 +64,13 @@ weightMat <- GENIE3(em_b,
                     nCores = thread,
                     verbose = T)
 dim(weightMat)
-links <- getLinkList(weightMat, reportMax=1000000)
-dim(links)
-tn = as_tibble(links) %>% 
-    transmute(reg.gid = regulatoryGene,
-              tgt.gid = targetGene,
-              weight = weight)
+#links <- getLinkList(weightMat, reportMax=10000000)
+#dim(links)
+tn = as_tibble(weightMat) %>%
+    mutate(reg.gid = rownames(weightMat)) %>%
+    gather(tgt.gid, weight, -reg.gid) %>%
+    filter(weight > 0) %>%
+    arrange(desc(weight))
 
 save(rids, tids, tn, file = fo)
 
