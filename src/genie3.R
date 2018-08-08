@@ -10,6 +10,8 @@ parser$add_argument("fi", nargs=1, help="Input (expression matrix) file")
 parser$add_argument("fo", nargs=1, help="Output file")
 parser$add_argument("--tf", default="~/data/genome/Zmays_v4/TF/10.tsv",
                     help = "TF IDs file [default %(default)s]")
+parser$add_argument("--cpm", action = 'store_true', default = F,
+                    help = "use CPM [default %(default)s (i.e., use FPKM)]")
 parser$add_argument("-p", "--thread", type="integer", default=1,
                     help="Num. threads to use [default %(default)s]")
 args <- parser$parse_args()
@@ -22,6 +24,7 @@ fi = args$fi
 fo = args$fo
 ff = args$tf
 thread = args$thread
+use_cpm = args$cpm
 if( file.access(fi) == -1 ) {
     stop(sprintf("Input file ( %s ) cannot be accessed", fi))
 }
@@ -43,10 +46,14 @@ gids = t_exp %>% group_by(gid) %>%
     pull(gid)
 t_flt = t_exp %>% filter(gid %in% gids)
 
+if(use_cpm)
+    t_flt = t_flt %>% mutate(exp.val = asinh(CPM))
+else
+    t_flt = t_flt %>% mutate(exp.val = asinh(FPKM))
+
 et_b = t_flt %>% 
-    mutate(CPM = asinh(FPKM)) %>%
-    select(condition, gid, CPM) %>%
-    spread(condition, CPM)
+    select(condition, gid, exp.val)
+    spread(condition, exp.val)
 em_b = as.matrix(et_b[,-1])
 rownames(em_b) = et_b$gid
 

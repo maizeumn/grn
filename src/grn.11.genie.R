@@ -134,6 +134,10 @@ if(study == 'li2013') {
         transmute(tag = tag,
                   condition = Genotype,
                   gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
+    t_exp2 = t_exp %>% 
+        mutate(condition = sprintf("%s_%s", tag, condition),
+               tag = '5_tissues')
+    t_exp = t_exp %>% bind_rows(t_exp2)
     #}}}
 } else if(study == 'kremling2018') {
     #{{{
@@ -146,6 +150,10 @@ if(study == 'li2013') {
         transmute(tag = tag,
                   condition = Genotype,
                   gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
+    t_exp2 = t_exp %>% 
+        mutate(condition = sprintf("%s_%s", tag, condition),
+               tag = '7_tissues')
+    t_exp = t_exp %>% bind_rows(t_exp2)
     #}}}
 } else if(study == 'briggs') {
     #{{{
