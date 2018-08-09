@@ -1,6 +1,4 @@
-# maize.grn
-
-This repo hosts code and data related to maize gene regulatory network study.
+# Maize gene regulatory network (GRN) code and data
 
 This repo provides a collection of published maize transcription factor functional studies, with focus on Chip-Seq and knockout mutant RNA-Seq datasets.
 
