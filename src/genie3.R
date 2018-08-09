@@ -46,13 +46,14 @@ gids = t_exp %>% group_by(gid) %>%
     pull(gid)
 t_flt = t_exp %>% filter(gid %in% gids)
 
-if(use_cpm)
+if(use_cpm) {
     t_flt = t_flt %>% mutate(exp.val = asinh(CPM))
-else
+} else {
     t_flt = t_flt %>% mutate(exp.val = asinh(FPKM))
+}
 
 et_b = t_flt %>% 
-    select(condition, gid, exp.val)
+    select(condition, gid, exp.val) %>%
     spread(condition, exp.val)
 em_b = as.matrix(et_b[,-1])
 rownames(em_b) = et_b$gid

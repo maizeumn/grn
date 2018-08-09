@@ -251,15 +251,17 @@ ctag = ctags[1]
 #for (ctag in ctags) {
 #tp = t_roc %>% filter(ctag == !!ctag) %>% select(-ctag)
 tps = t_auroc %>% filter(ctag == !!ctag) %>% select(-ctag) %>%
-    inner_join(th, by = 'nid') %>%
+    inner_join(t_cfg, by = 'nid') %>%
     mutate(lab = sprintf("[AUC=%.03f] %s_%s", auroc, study, tag)) %>%
     #mutate(col = rep(pal_npg()(6), each = 4)[1:nrow(th)],
     #       lty = rep(c('solid','dotted','dashed','dotdash'), 6)[1:nrow(th)])
     mutate(lcol = pal_d3()(5))
 
-tp = t_roc
+tp = t_roc %>% filter(nid %in% c("n41","n42","n71","n81","n82")) %>%
+    inner_join(t_cfg, by = 'nid') %>%
+    mutate(lab = sprintf("%s %s", study, tag))
 p1 = ggplot(tp) +
-    geom_line(mapping = aes(x = FPR, y = TPR, color = nid)) +
+    geom_line(mapping = aes(x = FPR, y = TPR, color = lab)) +
     geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
     scale_x_continuous(name = 'FPR: FP/(FP+TN)', breaks = c(.25,.5,.75), expand = c(0,0)) +
     scale_y_continuous(name = 'TPR: TP/(TP+FN)', breaks = c(.25,.5,.75), expand = c(0,0)) +
@@ -269,17 +271,42 @@ p1 = ggplot(tp) +
     facet_wrap(~ctag, ncol = 3, strip.position = 'top') +
     theme_bw() +
     theme(strip.background = element_blank(), strip.text = element_text(size = 9, margin = margin(0,0,.2,0,'lines'))) + 
-    theme(legend.position = 'right', legend.justification = c(.5,.5)) +
+    theme(legend.position = c(.2,.1), legend.justification = c(0,0), legend.background = element_blank()) +
     guides(direction = 'vertical', color = guide_legend(ncol = 1, byrow = F)) +
-    theme(legend.title = element_text(size = 9), legend.key.size = unit(1, 'lines'), legend.text = element_text(size = 8)) +
+    theme(legend.title = element_blank(), legend.key.size = unit(1, 'lines'), legend.text = element_text(size = 8)) +
     theme(axis.ticks.length = unit(0, 'lines')) +
     theme(plot.margin = unit(c(.2,.2,.2,.2), "lines")) +
     theme(panel.grid.minor = element_blank()) +
     theme(axis.title = element_text(size = 9)) +
-    theme(axis.text = element_text(size=8))
+    theme(axis.text = element_text(size = 8))
 fp = sprintf("%s/13_auroc/10.dev.atlas.pdf", dirw, ctag)
-ggsave(p1, filename = fp, width = 9, height = 6)
+ggsave(p1, filename = fp, width = 8, height = 6)
 
+nids = t_auroc %>% filter(ctag == 'KN1_ear') %>% arrange(auroc) %>% pull(nid)
+tp = t_auroc %>%
+    inner_join(t_cfg, by = 'nid') %>%
+    mutate(lab = sprintf("%.03f", auroc)) %>%
+    mutate(nid = factor(nid, levels = nids))
+tps = t_cfg %>% mutate(lab = sprintf("%s_%s", study, tag)) 
+p1 = ggplot(tp) +
+    geom_hline(yintercept = .5, size = .3, alpha = .5) +
+    geom_bar(mapping = aes(x = nid, y = auroc, fill = ctag), stat = 'identity', width = .75, alpha = .7) +
+    geom_text(mapping = aes(x = nid, y = auroc - .01 , label = lab), hjust = 1, size = 2) +
+    scale_x_discrete(breaks = tps$nid, labels = tps$lab) +
+    scale_y_continuous(name = 'AUROC', breaks = c(.25,.5,.75), limits = c(0, 1), expand = c(0,0)) +
+    scale_fill_npg() +
+    coord_flip() +
+    facet_grid(.~ctag) +
+    theme_bw() +
+    #theme(strip.background = element_blank(), strip.text = element_text(size = 9, margin = margin(0,0,.2,0,'lines'))) + 
+    theme(legend.position = 'none') +
+    theme(axis.ticks.y = element_blank()) +
+    theme(plot.margin = unit(c(.2,.2,.2,.2), "lines")) +
+    theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
+    theme(axis.title.x = element_text(size = 9), axis.title.y = element_blank()) +
+    theme(axis.text.y = element_text(size=8), axis.text.x = element_blank())
+fp = sprintf("%s/13_auroc/05.auroc.pdf", dirw, ctag)
+ggsave(p1, filename = fp, width = 8, height = 6)
 #}}}
 
 #{{{ compare GRNs
