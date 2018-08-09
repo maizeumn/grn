@@ -205,7 +205,7 @@ th = t_cfg %>%
     select(-done)
 #th = th %>% filter(nid %in% c('n41', 'n42', 'n71', 'n81', 'n82'))
 
-#{{{ AUROC
+#{{{ compute AUROC using known TF data
 t_roc = tibble()
 t_auroc = tibble()
 for (i in 1:nrow(th)) {
@@ -246,6 +246,14 @@ for (i in 1:nrow(th)) {
         cat(sprintf("%s %s auroc: %f\n", nid, ctag, z))
     }
 }
+
+fo = file.path(dirw, '13_auroc/03.rda')
+save(t_roc, t_auroc, file = fo)
+#}}}
+
+#{{{ plot AUROC
+fi = file.path(dirw, '13_auroc/03.rda')
+x = load(fi)
 
 ctag = ctags[1]
 #for (ctag in ctags) {
@@ -307,6 +315,88 @@ p1 = ggplot(tp) +
     theme(axis.text.y = element_text(size=8), axis.text.x = element_blank())
 fp = sprintf("%s/13_auroc/05.auroc.pdf", dirw, ctag)
 ggsave(p1, filename = fp, width = 8, height = 6)
+#}}}
+
+
+#{{{ evluate using Briggs B73 & Mo17 data
+#{{{ read Briggs DE data
+diri = file.path("~/projects/briggs/data", "49.coop")
+fi = file.path(diri, "01.master.RData")
+x = load(fi)
+fd = file.path(diri, "03.sharing.RData")
+x = load(fd)
+tissues = unique(tm$Tissue)
+t_de = tm %>% filter(silent == 0) %>% 
+    transmute(Tissue = Tissue, gid = gid, DE = pDE) 
+t_de %>% count(Tissue, DE)
+#}}}
+
+net_sizes = c(10000, 100000, 1000000)
+max_net_size = max(net_sizes)
+t_bv = tibble()
+for (i in 1:nrow(th)) {
+#for (i in 1:3) {
+    nid = th$nid[i]
+    fgn = th$fgn[i]
+    cat(nid, "\n")
+    x = load(fgn)
+    x
+    for (tissue in tissues) {
+        t_de1 = t_de %>% filter(Tissue == tissue, gid %in% tids) %>% select(-Tissue)
+        gids = t_de1$gid
+        rids1 = rids[rids %in% gids]
+        tids1 = tids[tids %in% gids]
+        tn1 = tn %>% filter(reg.gid %in% rids1, tgt.gid %in% tids1) %>%
+            filter(row_number() <= max_net_size) %>%
+            inner_join(t_de1, by = c('reg.gid' = 'gid')) %>%
+            rename(reg.DE = DE) %>%
+            inner_join(t_de1, by = c('tgt.gid' = 'gid')) %>%
+            rename(tgt.DE = DE)
+        for (net_size in net_sizes) {
+            tn2 = tn1 %>% filter(row_number() <= net_size) %>%
+                count(reg.DE, tgt.DE) %>%
+                mutate(nid = nid, tissue = tissue, net_size = net_size) %>%
+                select(nid, tissue, net_size, everything())
+            t_bv = rbind(t_bv, tn2)
+        }
+    }
+}
+
+net_size = 100000
+for (net_size in net_sizes) {
+tp = t_bv %>% filter(net_size == net_size) %>%
+    mutate(reg.DE = ifelse(reg.DE == 'non_DE', 'non_DE', 'DE'),
+           tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE')) %>%
+    group_by(nid, tissue, net_size, reg.DE, tgt.DE) %>%
+    summarise(n = sum(n)) %>% ungroup() %>%
+    spread(tgt.DE, n) %>%
+    mutate(prop.de = DE/(DE+non_DE)) %>% select(-DE,-non_DE) %>%
+    mutate(nid = factor(nid, levels = rev(t_cfg$nid)),
+           lab = sprintf("%.02f", prop.de))
+    #spread(reg.DE, prop.de) %>%
+    #mutate(fc = DE/non_DE)
+tps = t_cfg %>% mutate(lab = sprintf("%s_%s", study, tag)) 
+p1 = ggplot(tp) +
+    geom_bar(mapping = aes(x = nid, y = prop.de, fill = reg.DE), stat = 'identity', position = 'dodge', width = .9, alpha = .7) +
+    geom_text(mapping = aes(x = nid, y = prop.de + .01, group = reg.DE, label = lab), hjust = 0, position = position_dodge(width = 1), size = 2) +
+    scale_x_discrete(breaks = tps$nid, labels = tps$lab, expand = c(.01,0)) +
+    scale_y_continuous(name = 'Prop. DE Targets', limits = c(0, 1), expand = c(0,0)) +
+    scale_fill_npg() +
+    coord_flip() +
+    facet_wrap(~tissue, nrow = 3) +
+    theme_bw() +
+    #theme(strip.background = element_blank(), strip.text = element_text(size = 9, margin = margin(0,0,.2,0,'lines'))) + 
+    theme(legend.position = c(.5,1), legend.justification = c(.5,-.6), legend.background = element_blank()) +
+    guides(direction = 'horizontal', fill = guide_legend(nrow = 1, byrow = F)) +
+    theme(legend.title = element_blank(), legend.key.size = unit(1, 'lines'), legend.text = element_text(size = 8)) +
+    theme(axis.ticks = element_blank()) +
+    theme(plot.margin = unit(c(1.5,.2,.2,.2), "lines")) +
+    theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
+    theme(axis.title.x = element_text(size = 9), axis.title.y = element_blank()) +
+    theme(axis.text.y = element_text(size=8), axis.text.x = element_blank())
+fp = sprintf("%s/15_bv_%dk.pdf", dirw, net_size/1000)
+ggsave(p1, filename = fp, width = 12, height = 8)
+}
 #}}}
 
 #{{{ compare GRNs
