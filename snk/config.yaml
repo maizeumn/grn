@@ -1,7 +1,1 @@
-config_default: /home/springer/zhoux379/git/snk/config.yaml
-dirw: /home/springer/zhoux379/projects/maize.grn/data
-genie3:
-    cfg: 10.genie3.tsv
-    idir: 11_input
-    odir: 12_output
-    threads: 12
+snk/configs/grn

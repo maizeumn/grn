@@ -46,6 +46,13 @@ for (tag in tags) {
     fo = sprintf("%s/05.%s.tsv", dirw, tag)
     write_tsv(to, fo)
 }
+
+to = ti4 %>% 
+    distinct(gid) %>%
+    transmute(reg.gid = tfid, tgt.gid = gid)
+tag = 'KN1'
+fo = sprintf("%s/05.%s.tsv", dirw, tag)
+write_tsv(to, fo)
 #}}}
 
 #{{{ FEA4
@@ -90,22 +97,41 @@ write_tsv(to, fo)
 #{{{ RA1
 tag = 'RA1'
 fi = sprintf("%s/raw/%s.tsv", dirw, tag)
-ti = read_tsv(fi)
-ti2 = ti %>% filter(!is.na(DEb)) %>% transmute(ogid = maize.gene.id)
+ti = read_tsv(fi, col_names = F)
+ti2 = ti %>% transmute(ogid = X2, de1 = X5 ,de2 = X7) %>% 
+    filter(de1 == 'yes' | de2 == 'yes')
 nrow(ti2)
 ti3 = ti2 %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
 ti4 = ti3 %>% filter(type == '1-to-1') 
 sum(ti4$gid %in% tg$gid)
 
-tfid = 'Zm00001d037317'
+tfid = 'Zm00001d020430'
 to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
 fo = sprintf("%s/05.%s.tsv", dirw, tag)
 write_tsv(to, fo)
 #}}}
 
-ctags = c('KN1_ear', 'KN1_tassel', 'KN1_leaf',
-          'FEA4', 'O2', 'RA1')
+#{{{ HDA101
+tag = 'HDA101'
+fi = sprintf("%s/raw/%s.tsv", dirw, tag)
+ti = read_tsv(fi, col_names = F)
+ti2 = ti %>% transmute(ogid = X1)
+nrow(ti2)
+ti3 = ti2 %>% inner_join(tm, by = 'ogid')
+ti3 %>% count(type)
+ti4 = ti3 %>% filter(type == '1-to-1') 
+sum(ti4$gid %in% tg$gid)
+
+tfid = 'Zm00001d053595'
+to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
+fo = sprintf("%s/05.%s.tsv", dirw, tag)
+write_tsv(to, fo)
+#}}}
+
+
+#c('KN1_ear', 'KN1_tassel', 'KN1_leaf')
+ctags = c('KN1', 'FEA4', 'O2', 'RA1', 'HDA101')
 to = tibble()
 for (ctag in ctags) {
     fi = sprintf("%s/05.%s.tsv", dirw, ctag)

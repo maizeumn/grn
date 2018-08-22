@@ -1,6 +1,6 @@
 #{{{ head
 source("grn.fun.r")
-require(pROC)
+require(PRROC)
 #source("enrich.R")
 diri = '~/projects/maize.expression'
 dirw = '~/projects/maize.grn/data'
@@ -206,8 +206,8 @@ th = t_cfg %>%
 #th = th %>% filter(nid %in% c('n41', 'n42', 'n71', 'n81', 'n82'))
 
 #{{{ compute AUROC using known TF data
-t_roc = tibble()
-t_auroc = tibble()
+t_pr = tibble(); t_roc = tibble()
+t_aupr = tibble(); t_auroc = tibble()
 for (i in 1:nrow(th)) {
     nid = th$nid[i]
     fgn = th$fgn[i]
@@ -215,7 +215,7 @@ for (i in 1:nrow(th)) {
     #fgn = th$fgn[th$nid==nid]
     x = load(fgn)
     x
-    #
+    # 
     sum(rids %in% t_gs$reg.gid)
     tz = expand.grid(ctag = ctags, tgt.gid = tids, stringsAsFactors = F) %>%
         as_tibble() %>%
@@ -225,61 +225,89 @@ for (i in 1:nrow(th)) {
         replace_na(list(binding = 0, weight = 0)) %>%
         mutate(categ = factor(binding))
     tz %>% count(ctag, categ)
-    #
+    # 
     for (ctag in ctags) {
         ty = tz %>% filter(ctag == !!ctag)
-        roc_obj <- roc(ty$categ, ty$weight)
-        sensi = roc_obj$sensitivities
-        speci = roc_obj$specificities
-        #sensi = c(sensi, rep(0, nrow(ty)-length(sensi)))
-        #speci = c(speci, rep(1, nrow(ty)-length(speci)))
-        t_roc1 = tibble(nid = nid,
-                        ctag = ctag,
-                        TPR = rev(sensi), 
-                        FPR = rev(1 - speci))
-            #lab = roc_obj$response, 
-            #score = roc_obj$predictor)
+        categ = as.integer(as.character(ty$categ))
+        score = as.numeric(ty$weight)
+        if(max(score) == 0) score[1] = 0.1
+        pr = pr.curve(scores.class0 = score, weights.class0 = categ, curve = T)
+        roc = roc.curve(scores.class0 = score, weights.class0 = categ, curve = T)
+        t_pr1 = pr$curve %>% as_tibble() %>%
+            transmute(nid = nid,
+                      ctag = ctag,
+                      recall = V1,
+                      precision = V2,
+                      score = V3)
+        t_roc1 = roc$curve %>% as_tibble() %>%
+            transmute(nid = nid,
+                      ctag = ctag,
+                      TPR = V1,
+                      FPR = V2,
+                      score = V3)
+        t_pr = rbind(t_pr, t_pr1)
         t_roc = rbind(t_roc, t_roc1)
-        z = auc(roc_obj)
-        t_auroc1 = tibble(nid = nid, ctag = ctag, auroc = z)
+        aupr = pr$auc.integral
+        auroc = roc$auc
+        t_aupr1 = tibble(nid = nid, ctag = ctag, aupr = aupr)
+        t_auroc1 = tibble(nid = nid, ctag = ctag, auroc = auroc)
+        t_aupr = rbind(t_aupr, t_aupr1)
         t_auroc = rbind(t_auroc, t_auroc1)
-        cat(sprintf("%s %s auroc: %f\n", nid, ctag, z))
+        cat(sprintf("%s %10s aupr [%.04f] auroc [%.04f]\n", nid, ctag, aupr, auroc))
     }
 }
 
 fo = file.path(dirw, '13_auroc/03.rda')
-save(t_roc, t_auroc, file = fo)
+save(t_pr, t_roc, t_aupr, t_auroc, file = fo)
 #}}}
 
 #{{{ plot AUROC
 fi = file.path(dirw, '13_auroc/03.rda')
 x = load(fi)
 
-ctag = ctags[1]
-#for (ctag in ctags) {
-#tp = t_roc %>% filter(ctag == !!ctag) %>% select(-ctag)
-tps = t_auroc %>% filter(ctag == !!ctag) %>% select(-ctag) %>%
-    inner_join(t_cfg, by = 'nid') %>%
-    mutate(lab = sprintf("[AUC=%.03f] %s_%s", auroc, study, tag)) %>%
-    #mutate(col = rep(pal_npg()(6), each = 4)[1:nrow(th)],
-    #       lty = rep(c('solid','dotted','dashed','dotdash'), 6)[1:nrow(th)])
-    mutate(lcol = pal_d3()(5))
 
-tp = t_roc %>% filter(nid %in% c("n41","n42","n71","n81","n82")) %>%
-    inner_join(t_cfg, by = 'nid') %>%
-    mutate(lab = sprintf("%s %s", study, tag))
-p1 = ggplot(tp) +
-    geom_line(mapping = aes(x = FPR, y = TPR, color = lab)) +
+#{{{ selected roc/pr plot
+nids = c("n41","n42","n71","n81","n82")
+cols.dev = c(pal_npg()(4)[2:4], brewer.pal(6,"Paired")[5:6])
+tps = t_cfg %>% mutate(lab = sprintf("%s %s", study, tag)) %>%
+    filter(nid %in% nids)
+labs = tps %>% mutate(nid = factor(nid, levels = nids)) %>%
+    arrange(nid) %>% pull(lab)
+
+tp1 = t_roc %>% filter(nid %in% nids) %>%
+    inner_join(tps, by = 'nid') %>%
+    mutate(ctag = sprintf("%s AUROC", ctag),
+           lab = factor(lab, levels = labs))
+p1 = ggplot(tp1) +
+    geom_line(mapping = aes(x = TPR, y = FPR, color = lab)) +
     geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
-    scale_x_continuous(name = 'FPR: FP/(FP+TN)', breaks = c(.25,.5,.75), expand = c(0,0)) +
-    scale_y_continuous(name = 'TPR: TP/(TP+FN)', breaks = c(.25,.5,.75), expand = c(0,0)) +
-    scale_color_d3() +
-    #scale_color_manual(name = toupper(ctag), values = tps$col, labels = tps$lab) +
-    #scale_linetype_manual(name = toupper(ctag), values = tps$lty, labels = tps$lab) +
-    facet_wrap(~ctag, ncol = 3, strip.position = 'top') +
+    scale_x_continuous(name = 'FPR: FP/(FP+TN)', breaks=c(.25,.5,.75), limits=c(0,1), expand = c(0,0)) +
+    scale_y_continuous(name = 'TPR: TP/(TP+FN)', breaks=c(.25,.5,.75), limits=c(0,1), expand = c(0,0)) +
+    scale_color_manual(values = cols.dev) +
+    facet_wrap(~ctag, nrow = 1, strip.position = 'top') +
     theme_bw() +
     theme(strip.background = element_blank(), strip.text = element_text(size = 9, margin = margin(0,0,.2,0,'lines'))) + 
-    theme(legend.position = c(.2,.1), legend.justification = c(0,0), legend.background = element_blank()) +
+    theme(legend.position = 'none') +
+    theme(axis.ticks.length = unit(0, 'lines')) +
+    theme(plot.margin = unit(c(.2,.2,.2,.2), "lines")) +
+    theme(panel.grid.minor = element_blank()) +
+    theme(axis.title = element_text(size = 9)) +
+    theme(axis.text = element_text(size = 8))
+
+tp2 = t_pr %>% filter(nid %in% nids) %>%
+    inner_join(tps, by = 'nid') %>%
+    mutate(lab = factor(lab, levels = labs),
+           ctag = sprintf("%s AUPR", ctag))
+p2 = ggplot(tp2) +
+    geom_line(mapping = aes(x = recall, y = precission, color = lab)) +
+    #geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
+    scale_x_continuous(name = 'Recall: TP/(TP+FN)', breaks=c(.25,.5,.75), limits=c(0,1), expand = c(0,0)) +
+    scale_y_continuous(name = 'Precision: TP/(TP+FP)', breaks=c(.25,.5,.75), limits=c(0,1), expand=c(0,0)) +
+    scale_color_manual(values = cols.dev) +
+    facet_wrap(~ctag, nrow = 1, strip.position = 'top') +
+    theme_bw() +
+    theme(strip.background = element_blank(), strip.text = element_text(size = 9, margin = margin(0,0,.2,0,'lines'))) + 
+    theme(legend.position = c(.85,.25), legend.justification = c(0,0), legend.background = element_blank()) +
     guides(direction = 'vertical', color = guide_legend(ncol = 1, byrow = F)) +
     theme(legend.title = element_blank(), legend.key.size = unit(1, 'lines'), legend.text = element_text(size = 8)) +
     theme(axis.ticks.length = unit(0, 'lines')) +
@@ -287,34 +315,44 @@ p1 = ggplot(tp) +
     theme(panel.grid.minor = element_blank()) +
     theme(axis.title = element_text(size = 9)) +
     theme(axis.text = element_text(size = 8))
-fp = sprintf("%s/13_auroc/10.dev.atlas.pdf", dirw, ctag)
-ggsave(p1, filename = fp, width = 8, height = 6)
 
-nids = t_auroc %>% filter(ctag == 'KN1_ear') %>% arrange(auroc) %>% pull(nid)
-tp = t_auroc %>%
+fo = sprintf("%s/13_auroc/10.dev.atlas.pdf", dirw, ctag)
+ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>% 
+    ggexport(filename = fo, width = 10, height = 5)
+#}}}
+
+#{{{ aupr/auroc bar-plot
+#nids = t_auroc %>% filter(ctag == 'KN1_ear') %>% arrange(auroc) %>% pull(nid)
+nids = t_auroc %>% arrange(nid) %>% distinct(nid) %>% pull(nid)
+tp = t_aupr %>% left_join(t_auroc, by = c('nid','ctag')) %>%
+    mutate(AUPR = aupr, AUROC = auroc) %>% select(-aupr, -auroc) %>%
+    gather(type, auc, -nid, -ctag) %>%
+    mutate(ctag = sprintf("%s %s", ctag, type)) %>%
     inner_join(t_cfg, by = 'nid') %>%
-    mutate(lab = sprintf("%.03f", auroc)) %>%
-    mutate(nid = factor(nid, levels = nids))
+    mutate(lab = str_remove(sprintf("%.03f", auc), '^0+')) %>%
+    mutate(nid = factor(nid, levels = rev(nids)))
 tps = t_cfg %>% mutate(lab = sprintf("%s_%s", study, tag)) 
+
 p1 = ggplot(tp) +
-    geom_hline(yintercept = .5, size = .3, alpha = .5) +
-    geom_bar(mapping = aes(x = nid, y = auroc, fill = ctag), stat = 'identity', width = .75, alpha = .7) +
-    geom_text(mapping = aes(x = nid, y = auroc - .01 , label = lab), hjust = 1, size = 2) +
+    #geom_hline(yintercept = .5, size = .3, alpha = .5) +
+    geom_bar(mapping = aes(x = nid, y = auc, fill = type), stat = 'identity', width = .75, alpha = .7) +
+    geom_text(mapping = aes(x = nid, y = auc , label = lab), hjust = 1, size = 2) +
     scale_x_discrete(breaks = tps$nid, labels = tps$lab) +
-    scale_y_continuous(name = 'AUROC', breaks = c(.25,.5,.75), limits = c(0, 1), expand = c(0,0)) +
+    scale_y_continuous(expand = expand_scale(mult=c(0,.05))) +
     scale_fill_npg() +
     coord_flip() +
-    facet_grid(.~ctag) +
+    facet_grid(.~ctag, scale = 'free') +
     theme_bw() +
-    #theme(strip.background = element_blank(), strip.text = element_text(size = 9, margin = margin(0,0,.2,0,'lines'))) + 
+    theme(strip.background = element_blank(), strip.text = element_text(size = 7, margin = margin(0,0,.2,0,'lines'))) + 
     theme(legend.position = 'none') +
-    theme(axis.ticks.y = element_blank()) +
+    theme(axis.ticks = element_blank()) +
     theme(plot.margin = unit(c(.2,.2,.2,.2), "lines")) +
     theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
-    theme(axis.title.x = element_text(size = 9), axis.title.y = element_blank()) +
+    theme(axis.title = element_blank()) +
     theme(axis.text.y = element_text(size=8), axis.text.x = element_blank())
-fp = sprintf("%s/13_auroc/05.auroc.pdf", dirw, ctag)
-ggsave(p1, filename = fp, width = 8, height = 6)
+fp = sprintf("%s/13_auroc/05.auc.pdf", dirw)
+ggsave(p1, filename = fp, width = 12, height = 6)
+#}}}
 #}}}
 
 
@@ -364,7 +402,7 @@ for (i in 1:nrow(th)) {
 
 net_size = 100000
 for (net_size in net_sizes) {
-tp = t_bv %>% filter(net_size == net_size) %>%
+tp = t_bv %>% filter(net_size == !!net_size) %>%
     mutate(reg.DE = ifelse(reg.DE == 'non_DE', 'non_DE', 'DE'),
            tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE')) %>%
     group_by(nid, tissue, net_size, reg.DE, tgt.DE) %>%
@@ -395,7 +433,7 @@ p1 = ggplot(tp) +
     theme(axis.title.x = element_text(size = 9), axis.title.y = element_blank()) +
     theme(axis.text.y = element_text(size=8), axis.text.x = element_blank())
 fp = sprintf("%s/15_bv_%dk.pdf", dirw, net_size/1000)
-ggsave(p1, filename = fp, width = 12, height = 8)
+ggsave(p1, filename = fp, width = 10, height = 15)
 }
 #}}}
 
