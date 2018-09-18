@@ -6,10 +6,18 @@ diri = '~/projects/maize.expression'
 dirw = '~/projects/maize.grn/data'
 f_cfg = file.path(dirw, '10.genie3.tsv')
 t_cfg = read_tsv(f_cfg)
+th = t_cfg %>% mutate(fgn = sprintf("%s/12_output/%s.rda", dirw, nid)) 
 studies = t_cfg %>% distinct(study) %>% pull(study)
+#
+eval1 = 'lin2017'
+nids1 = th %>% filter(study == !!eval1) %>% pull(nid)
+eval2 = 'kremling2018'
+nids2 = th %>% filter(study == !!eval2) %>% pull(nid)
+eval3 = 'all'
+nids3 = th %>% filter(!study %in% c("lin2017", "kremling2018")) %>% pull(nid)
+lst_eval = list()
+lst_eval[[eval1]] = nids1; lst_eval[[eval2]] = nids2; lst_eval[[eval3]] = nids3;
 
-fi = file.path(dird, '05.previous.grns/10.RData')
-x = load(fi)
 # read RNA-Seq data
 dirw = file.path("~/projects/briggs/data", "49.coop")
 fi = file.path(dirw, "01.master.RData")
@@ -23,14 +31,19 @@ tf = read_tsv(ff)
 tf_ids = tf$gid
 #}}}
 
-#{{{ read known TF targets
-fi = file.path(dirw, '07_known_tf/10.rda')
+#{{{ read known TF targets / GGIs
+fi = file.path(dirw, '09.gs.rda')
 x = load(fi)
 x
+t_gs = t_gs %>% 
+    filter(! ctag %in% c("KN1_any","KN1_ear","KN1_tassel","KN1_leaf")) %>%
+    mutate(ctag = ifelse(ctag=='KN1_all', 'KN1', ctag)) %>% 
+    mutate(binding = 1)
+t_gs = t_gs %>% filter(! ctag %in% c("GO", "CornCyc", "PPIM"))
+t_gs %>% count(ctag)
 ctags = unique(t_gs$ctag)
 reg.gids = unique(t_gs$reg.gid)
 t_gss = t_gs %>% distinct(ctag, reg.gid)
-t_gs = t_gs %>% mutate(binding = 1)
 #}}}
 
 #{{{ prepare genie3 input
@@ -39,11 +52,11 @@ t_gs = t_gs %>% mutate(binding = 1)
 #study = 'leiboff2015'
 #study = 'jin2016'
 #study = 'stelpflug2016'
-#study = 'walley2016'
+study = 'walley2016'
 #study = 'lin2017'
 #study = 'kremling2018'
 #study = 'briggs'
-study = 'dev41'
+#study = 'dev41'
 #study = 'dev64'
 study
 diri1 = file.path(diri, study, 'data')
@@ -197,27 +210,178 @@ for (tag in tags) {
 }
 #}}}
 
-th = t_cfg %>%
-    mutate(fgn = sprintf("%s/12_output/%s.rda", dirw, nid),
-    #mutate(fgn = sprintf("%s/12_output_cpm/%s.rda", dirw, nid),
-           done = file.exists(fgn)) %>%
-    filter(done) %>%
-    select(-done)
+#th = th %>%
+#    mutate(done = file.exists(fgn)) %>%
+#    filter(done) %>%
+#    select(-done)
 #th = th %>% filter(nid %in% c('n41', 'n42', 'n71', 'n81', 'n82'))
+
+#{{{ manually merge tissue GRNs
+study = "lin2017"
+study = "kremling2018"
+ths = th %>% filter(study == !!study, nid != 'n50', nid != 'n60')
+
+tno = tibble()
+for (i in 1:nrow(ths)) {
+    nid = ths$nid[i]
+    fgn = ths$fgn[i]
+    x = load(fgn)
+    x
+    if( i == 1 ) {
+        tno = tn %>%
+            mutate(weight.a = weight, weight.m = weight) %>%
+            select(-weight)
+    } else {
+        tno = tno %>% full_join(tn, by = c('reg.gid', 'tgt.gid')) %>%
+            replace_na(list(weight = 0)) %>%
+            mutate(weight.a = weight.a + weight,
+                   weight.m = weight.m * weight) %>%
+            select(-weight)
+    }
+    cat(nid,"\n")
+}
+
+fo1 = file.path(dirw, "12_output/n58.rda")
+fo2 = file.path(dirw, "12_output/n59.rda")
+fo1 = file.path(dirw, "12_output/n68.rda")
+fo2 = file.path(dirw, "12_output/n69.rda")
+rids = tno %>% distinct(reg.gid) %>% pull(reg.gid)
+tids = tno %>% distinct(tgt.gid) %>% pull(tgt.gid)
+tn1 = tno %>% rename(weight = weight.a)
+tn2 = tno %>% rename(weight = weight.m)
+save(rids, tids, tn1, file = fo1)
+save(rids, tids, tn2, file = fo2)
+#}}}
+
+#{{{ use PCC to predict TF targets
+dirw = file.path(dird, '13_auroc')
+#{{{ old codes
+    pcc.matrix = cor(asinh(expr), method = 'pearson')
+    pcc = pcc.matrix[lower.tri(pcc.matrix)]
+
+    ii = which(lower.tri(pcc.matrix))
+    colidx = as.integer((ii - 1) / nrow(pcc.matrix)) + 1
+    rowidx = ii - (colidx - 1) * nrow(pcc.matrix)
+
+    pcc[pcc == 1] = 0.999999
+    pcc[pcc == -1] = -0.999999
+    #pcc2 = log((1+pcc) / (1-pcc)) / 2
+    pcc2 = atanh(pcc)
+    coexv = (pcc2 - mean(pcc2)) / sd(pcc2)
+
+    ord = order(-coexv)
+    idxs = ord[1:(1*1000000)]
+    dw = data.frame(g1 = gids[rowidx[idxs]], g2 = gids[colidx[idxs]], coex = coexv[idxs])
+#}}}
+
+#{{{ run
+th2 = th %>% mutate(fi = sprintf("%s/11_input/%s.rda", dird, nid)) %>%
+    filter(file.exists(fi))
+#th2 = th2 %>% filter(nid %in% c("n41", "n42", "n71", "n81", "n82")) 
+
+t_auc = tibble()
+for (i in 1:nrow(th2)) {
+    nid = th2$nid[i]; study = th2$study[i]; tag = th2$tag[i]; fi = th2$fi[i]
+    x = load(fi)
+    x
+    #
+    t2_tf = t_exp %>% filter(gid %in% t_gss$reg.gid) %>%
+        group_by(gid) %>%
+        summarise(ncond = sum(CPM>=1), pcond = ncond/n(), expressed = pcond >= .1,
+                  CPM.mean = mean(CPM), CPM.var = var(CPM),
+                  CPM.median = median(CPM), CPM.mad = mad(CPM)) %>%
+        ungroup() %>% inner_join(t_gss, by = c('gid'='reg.gid')) %>%
+        select(-ncond,-pcond)
+    #
+    n_cond = length(unique(t_exp$condition))
+    gids = t_exp %>% group_by(gid) %>%
+        summarise(n_cond_exp = sum(CPM >= 1)) %>%
+        filter(n_cond_exp >= n_cond * .1) %>%
+        pull(gid)
+    t_flt = t_exp %>% filter(gid %in% gids)
+    #
+    use_cpm = T
+    if(use_cpm) {
+        t_flt = t_flt %>% mutate(exp.val = asinh(CPM))
+    } else {
+        t_flt = t_flt %>% mutate(exp.val = asinh(FPKM))
+    }
+    #
+    et_b = t_flt %>% 
+        select(condition, gid, exp.val) %>%
+        spread(condition, exp.val)
+    em_b = as.matrix(et_b[,-1])
+    rownames(em_b) = et_b$gid
+    #
+    gids = rownames(em_b)
+    pcc.matrix = cor(t(em_b), method = 'pearson')
+    #
+    rids = t_gss$reg.gid
+    rids = rids[rids %in% gids]
+    t_pcc = pcc.matrix[,rids] %>% as_tibble() 
+    if(length(rids) == 1) colnames(t_pcc)[1] = rids[1]
+    t_pcc = t_pcc %>% mutate(tgt.gid = gids) %>%
+        gather(reg.gid, pcc, -tgt.gid) %>%
+        filter(reg.gid != tgt.gid) %>%
+        inner_join(t_gss, by = 'reg.gid') %>%
+        left_join(t_gs, by = c('ctag','reg.gid','tgt.gid')) %>%
+        replace_na(list(binding = 0)) %>%
+        mutate(categ = factor(binding))
+    #
+    ctagss = t_gss %>% filter(reg.gid %in% rids) %>% pull(ctag)
+    for (ctag in ctagss) {
+        ty = t_pcc %>% filter(ctag == !!ctag)
+        categ = as.integer(as.character(ty$categ))
+        score = as.numeric(ty$pcc)
+        score = as.numeric(abs(ty$pcc))
+        if(max(score) == 0) score[1] = 0.1
+        pr = pr.curve(scores.class0 = score, weights.class0 = categ, curve = T)
+        roc = roc.curve(scores.class0 = score, weights.class0 = categ, curve = T)
+        aupr = pr$auc.integral
+        auroc = roc$auc
+        t_auc1 = tibble(nid = nid, study = study, tag = tag, 
+                        ctag = ctag, aupr = aupr, auroc = auroc)
+        t_auc = rbind(t_auc, t_auc1)
+        cat(sprintf("%s %10s aupr [%.04f] auroc [%.04f]\n", nid, ctag, aupr, auroc))
+    } 
+}
+fo = file.path(dirw, '21.pcc.rda')
+save(t_auc, file = fo)
+#}}}
+
+#{{{ plot
+fi = file.path(dirw, '21.pcc.rda')
+x = load(fi)
+tpa = t_auc %>% 
+    mutate(tag = sprintf("%s %s", study, tag)) %>%
+    select(-study) 
+
+for (opt in names(lst_eval)) {
+    nids = lst_eval[[opt]]
+    tp = tpa %>% filter(nid %in% nids) %>% 
+        mutate(nid = factor(nid, levels = rev(nids)))
+    fp = sprintf("%s/06.pcc.%s.pdf", dirw, opt)
+    wd = 7; ht = 5
+    if (opt == 'all') ht = 7
+    auc_barplot(tp, fp, wd, ht)
+}
+#}}}
+#}}}
+
 
 #{{{ compute AUROC using known TF data
 t_pr = tibble(); t_roc = tibble()
 t_aupr = tibble(); t_auroc = tibble()
 for (i in 1:nrow(th)) {
-    nid = th$nid[i]
-    fgn = th$fgn[i]
+    nid = th$nid[i]; fgn = th$fgn[i]
     #nid = 'n71'
     #fgn = th$fgn[th$nid==nid]
     x = load(fgn)
     x
+    if('score' %in% colnames(tn)) tn = tn %>% rename(weight = score)
     # 
-    sum(rids %in% t_gs$reg.gid)
-    tz = expand.grid(ctag = ctags, tgt.gid = tids, stringsAsFactors = F) %>%
+    ctags_v = t_gss %>% filter(reg.gid %in% rids) %>% pull(ctag)
+    tz = expand.grid(ctag = ctags_v, tgt.gid = tids, stringsAsFactors = F) %>%
         as_tibble() %>%
         left_join(t_gss, by = 'ctag') %>%
         left_join(t_gs, by = c('ctag','reg.gid','tgt.gid')) %>%
@@ -226,7 +390,7 @@ for (i in 1:nrow(th)) {
         mutate(categ = factor(binding))
     tz %>% count(ctag, categ)
     # 
-    for (ctag in ctags) {
+    for (ctag in ctags_v) {
         ty = tz %>% filter(ctag == !!ctag)
         categ = as.integer(as.character(ty$categ))
         score = as.numeric(ty$weight)
@@ -234,17 +398,11 @@ for (i in 1:nrow(th)) {
         pr = pr.curve(scores.class0 = score, weights.class0 = categ, curve = T)
         roc = roc.curve(scores.class0 = score, weights.class0 = categ, curve = T)
         t_pr1 = pr$curve %>% as_tibble() %>%
-            transmute(nid = nid,
-                      ctag = ctag,
-                      recall = V1,
-                      precision = V2,
-                      score = V3)
+            transmute(nid = nid, ctag = ctag,
+                      recall = V1, precision = V2, score = V3)
         t_roc1 = roc$curve %>% as_tibble() %>%
-            transmute(nid = nid,
-                      ctag = ctag,
-                      TPR = V1,
-                      FPR = V2,
-                      score = V3)
+            transmute(nid = nid, ctag = ctag,
+                      TPR = V1, FPR = V2, score = V3)
         t_pr = rbind(t_pr, t_pr1)
         t_roc = rbind(t_roc, t_roc1)
         aupr = pr$auc.integral
@@ -256,15 +414,15 @@ for (i in 1:nrow(th)) {
         cat(sprintf("%s %10s aupr [%.04f] auroc [%.04f]\n", nid, ctag, aupr, auroc))
     }
 }
-
+#
 fo = file.path(dirw, '13_auroc/03.rda')
 save(t_pr, t_roc, t_aupr, t_auroc, file = fo)
 #}}}
 
 #{{{ plot AUROC
+dirw = file.path(dird, '13_auroc')
 fi = file.path(dirw, '13_auroc/03.rda')
 x = load(fi)
-
 
 #{{{ selected roc/pr plot
 nids = c("n41","n42","n71","n81","n82")
@@ -299,7 +457,7 @@ tp2 = t_pr %>% filter(nid %in% nids) %>%
     mutate(lab = factor(lab, levels = labs),
            ctag = sprintf("%s AUPR", ctag))
 p2 = ggplot(tp2) +
-    geom_line(mapping = aes(x = recall, y = precission, color = lab)) +
+    geom_line(mapping = aes(x = recall, y = precision, color = lab)) +
     #geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
     scale_x_continuous(name = 'Recall: TP/(TP+FN)', breaks=c(.25,.5,.75), limits=c(0,1), expand = c(0,0)) +
     scale_y_continuous(name = 'Precision: TP/(TP+FP)', breaks=c(.25,.5,.75), limits=c(0,1), expand=c(0,0)) +
@@ -322,41 +480,29 @@ ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>%
 #}}}
 
 #{{{ aupr/auroc bar-plot
-#nids = t_auroc %>% filter(ctag == 'KN1_ear') %>% arrange(auroc) %>% pull(nid)
-nids = t_auroc %>% arrange(nid) %>% distinct(nid) %>% pull(nid)
-tp = t_aupr %>% left_join(t_auroc, by = c('nid','ctag')) %>%
-    mutate(AUPR = aupr, AUROC = auroc) %>% select(-aupr, -auroc) %>%
-    gather(type, auc, -nid, -ctag) %>%
-    mutate(ctag = sprintf("%s %s", ctag, type)) %>%
+tpa = t_aupr %>% filter(ctag %in% ctags) %>%
+    left_join(t_auroc, by = c('nid','ctag')) %>%
     inner_join(t_cfg, by = 'nid') %>%
-    mutate(lab = str_remove(sprintf("%.03f", auc), '^0+')) %>%
-    mutate(nid = factor(nid, levels = rev(nids)))
-tps = t_cfg %>% mutate(lab = sprintf("%s_%s", study, tag)) 
+    mutate(tag = sprintf("%s %s", study, tag)) %>%
+    select(-study)
 
-p1 = ggplot(tp) +
-    #geom_hline(yintercept = .5, size = .3, alpha = .5) +
-    geom_bar(mapping = aes(x = nid, y = auc, fill = type), stat = 'identity', width = .75, alpha = .7) +
-    geom_text(mapping = aes(x = nid, y = auc , label = lab), hjust = 1, size = 2) +
-    scale_x_discrete(breaks = tps$nid, labels = tps$lab) +
-    scale_y_continuous(expand = expand_scale(mult=c(0,.05))) +
-    scale_fill_npg() +
-    coord_flip() +
-    facet_grid(.~ctag, scale = 'free') +
-    theme_bw() +
-    theme(strip.background = element_blank(), strip.text = element_text(size = 7, margin = margin(0,0,.2,0,'lines'))) + 
-    theme(legend.position = 'none') +
-    theme(axis.ticks = element_blank()) +
-    theme(plot.margin = unit(c(.2,.2,.2,.2), "lines")) +
-    theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
-    theme(axis.title = element_blank()) +
-    theme(axis.text.y = element_text(size=8), axis.text.x = element_blank())
-fp = sprintf("%s/13_auroc/05.auc.pdf", dirw)
-ggsave(p1, filename = fp, width = 12, height = 6)
+for (opt in names(lst_eval)) {
+    nids = lst_eval[[opt]]
+    tp = tpa %>% filter(nid %in% nids) %>% 
+        mutate(nid = factor(nid, levels = rev(nids)))
+    fp = sprintf("%s/06.pcc.%s.pdf", dirw, opt)
+    wd = 7; ht = 5
+    if (opt == 'all') ht = 7
+    auc_barplot(tp, fp, wd, ht)
+}
+#nids = t_auroc %>% filter(ctag == 'KN1_ear') %>% arrange(auroc) %>% pull(nid)
+#nids = t_auroc %>% arrange(nid) %>% distinct(nid) %>% pull(nid)
 #}}}
 #}}}
 
 
 #{{{ evluate using Briggs B73 & Mo17 data
+dirw = file.path(dird, '15_de_val')
 #{{{ read Briggs DE data
 diri = file.path("~/projects/briggs/data", "49.coop")
 fi = file.path(diri, "01.master.RData")
@@ -367,8 +513,11 @@ tissues = unique(tm$Tissue)
 t_de = tm %>% filter(silent == 0) %>% 
     transmute(Tissue = Tissue, gid = gid, DE = pDE) 
 t_de %>% count(Tissue, DE)
+t_des = t_de %>% group_by(Tissue) %>%
+    summarise(propDE = sum(DE!='non_DE') / n())
 #}}}
 
+#{{{ run the pipeline
 net_sizes = c(10000, 100000, 1000000)
 max_net_size = max(net_sizes)
 t_bv = tibble()
@@ -392,39 +541,66 @@ for (i in 1:nrow(th)) {
             rename(tgt.DE = DE)
         for (net_size in net_sizes) {
             tn2 = tn1 %>% filter(row_number() <= net_size) %>%
-                count(reg.DE, tgt.DE) %>%
+                group_by(reg.DE, tgt.DE) %>%
+                summarise(n = n(), nreg = length(unique(reg.gid)),
+                          ntgt = length(unique(tgt.gid))) %>%
+                ungroup() %>%
                 mutate(nid = nid, tissue = tissue, net_size = net_size) %>%
                 select(nid, tissue, net_size, everything())
             t_bv = rbind(t_bv, tn2)
         }
     }
 }
+fo = file.path(dirw, "01.rda")
+save(t_bv, file = fo)
+#}}}
 
-net_size = 100000
-for (net_size in net_sizes) {
-tp = t_bv %>% filter(net_size == !!net_size) %>%
+#{{{ plot
+fi = file.path(dirw, "01.rda")
+x = load(fi)
+tissues6 = c('auricle_v12', 'ear_v14', 'embryo_27DAP', 'kernel_14DAP', 'root_0DAP',
+            'seedlingmeristem_11DAS')
+
+opt = 'kremling2018'
+nids = lst_eval[[opt]]
+net_sizes = c("10k", "100k", "1m")
+net_size_map = c("10000"="10k", "1e+05"="100k", "1e+06"="1m")
+tp = t_bv %>% #filter(net_size == !!net_size) %>%
+    filter(tissue %in% tissues6, nid %in% nids) %>%
     mutate(reg.DE = ifelse(reg.DE == 'non_DE', 'non_DE', 'DE'),
            tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE')) %>%
     group_by(nid, tissue, net_size, reg.DE, tgt.DE) %>%
-    summarise(n = sum(n)) %>% ungroup() %>%
-    spread(tgt.DE, n) %>%
-    mutate(prop.de = DE/(DE+non_DE)) %>% select(-DE,-non_DE) %>%
-    mutate(nid = factor(nid, levels = rev(t_cfg$nid)),
-           lab = sprintf("%.02f", prop.de))
+    summarise(n = sum(n), nreg = sum(nreg), ntgt = sum(ntgt)) %>% ungroup() %>%
+    filter(reg.DE == 'DE') %>%
+    group_by(nid, tissue, net_size) %>%
+    summarise(prop.de = ntgt[tgt.DE == 'DE']/sum(ntgt), 
+              nreg = sum(nreg), ntgt = sum(ntgt)) %>% ungroup() %>%
+    mutate(txt = sprintf("%d", nreg)) %>% select(-nreg, -ntgt) %>%
+    mutate(lab = str_remove(sprintf("%.02f", prop.de), '^0+')) %>%
+    left_join(t_cfg, by = 'nid') %>%
+    mutate(tag = sprintf("%s_%s", study, tag)) %>% select(-study) %>%
+    mutate(nid = factor(nid, levels = rev(nids))) %>%
+    mutate(net_size = factor(net_size_map[as.character(net_size)], levels = net_sizes)) %>%
+    mutate(tissue = factor(tissue, levels = tissues6))
     #spread(reg.DE, prop.de) %>%
     #mutate(fc = DE/non_DE)
-tps = t_cfg %>% mutate(lab = sprintf("%s_%s", study, tag)) 
+tps = tp %>% distinct(nid, tag)
+tpl = t_des %>% transmute(tissue = Tissue, prop.de = propDE) %>%
+    filter(tissue %in% tissues6)
+#
 p1 = ggplot(tp) +
-    geom_bar(mapping = aes(x = nid, y = prop.de, fill = reg.DE), stat = 'identity', position = 'dodge', width = .9, alpha = .7) +
-    geom_text(mapping = aes(x = nid, y = prop.de + .01, group = reg.DE, label = lab), hjust = 0, position = position_dodge(width = 1), size = 2) +
-    scale_x_discrete(breaks = tps$nid, labels = tps$lab, expand = c(.01,0)) +
-    scale_y_continuous(name = 'Prop. DE Targets', limits = c(0, 1), expand = c(0,0)) +
-    scale_fill_npg() +
+    geom_bar(mapping = aes(x = nid, y = prop.de, fill = net_size), stat = 'identity', position = 'dodge', width = .9, alpha = .7) +
+    geom_text(mapping = aes(x = nid, y = prop.de + .01, group = net_size, label = lab), hjust = 0, position = position_dodge(width = 1), size = 2) +
+    geom_text(mapping = aes(x = nid, y = .005, group = net_size, label = txt), hjust = 0, position = position_dodge(width = 1), size = 2) +
+    geom_hline(data = tpl, aes(yintercept = prop.de), size = .3, alpha = .5) +
+    scale_x_discrete(breaks = tps$nid, labels = tps$tag, expand = c(.01,0)) +
+    scale_y_continuous(name = 'Prop. DE Targets', expand = expand_scale(mult=c(0,.1))) +
+    scale_fill_d3() +
     coord_flip() +
-    facet_wrap(~tissue, nrow = 3) +
+    facet_wrap(~tissue, nrow = 1, scale = 'free_x') +
     theme_bw() +
-    #theme(strip.background = element_blank(), strip.text = element_text(size = 9, margin = margin(0,0,.2,0,'lines'))) + 
-    theme(legend.position = c(.5,1), legend.justification = c(.5,-.6), legend.background = element_blank()) +
+    theme(strip.background = element_blank(), strip.text = element_text(size = 9, margin = margin(0,0,.2,0,'lines'))) + 
+    theme(legend.position = c(.5,1), legend.justification = c(.5,-.4), legend.background = element_blank()) +
     guides(direction = 'horizontal', fill = guide_legend(nrow = 1, byrow = F)) +
     theme(legend.title = element_blank(), legend.key.size = unit(1, 'lines'), legend.text = element_text(size = 8)) +
     theme(axis.ticks = element_blank()) +
@@ -432,9 +608,9 @@ p1 = ggplot(tp) +
     theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
     theme(axis.title.x = element_text(size = 9), axis.title.y = element_blank()) +
     theme(axis.text.y = element_text(size=8), axis.text.x = element_blank())
-fp = sprintf("%s/15_bv_%dk.pdf", dirw, net_size/1000)
-ggsave(p1, filename = fp, width = 10, height = 15)
-}
+fp = sprintf("%s/03.%s.pdf", dirw, opt)
+ggsave(p1, filename = fp, width = 8, height = 6)
+#}}}
 #}}}
 
 #{{{ compare GRNs

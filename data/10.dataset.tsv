@@ -1,0 +1,30 @@
+nid	mid	study	tag	note	timeseries
+n13a_1	me13a	li2013	1	SAM1	
+n13a_2	me13a	li2013	2	SAM2	
+n13b	me13b	liu2013		leaf_13t	T
+n14a	me14a	hirsch2014		seedling_503	
+n14b	me14b	li2014		endsperm_7t	T
+n15a	me15a	leiboff2015		SAM_380	
+n15b	me15b	yu2015		leaf_9t	T
+n16a	me16a	jin2016		kernel_368	
+n16b	me16b	stelpflug2016		B73_18	
+n16c	me16c	walley2016		B73_23	
+n17a	me17a	lin2017		5_tissues	
+n17a_1	me17a	lin2017	ear	ear	
+n17a_2	me17a	lin2017	root	root	
+n17a_3	me17a	lin2017	shoot	shoot	
+n17a_4	me17a	lin2017	tassel	tassel	
+n17a_5	me17a	lin2017	SAM	SAM	
+n18a	me18a	kremling2018		7_tissues	
+n18a_1	me18a	kremling2018	GRoot	GRoot	
+n18a_2	me18a	kremling2018	GShoot	GShoot	
+n18a_3	me18a	kremling2018	Kern	Kern	
+n18a_4	me18a	kremling2018	L3Base	L3Base	
+n18a_5	me18a	kremling2018	L3Tip	L3Tip	
+n18a_6	me18a	kremling2018	LMAD	LMAD	
+n18a_7	me18a	kremling2018	LMAN	LMAN	
+n99b_1	me99b	briggs	B73	B73	
+n99b_2	me99b	briggs	Mo17	Mo17	
+n99b_3	me99b	briggs	B73xMo17	B73xMo17	
+nc1	me16b+me16c	stelpflug2016+walley2016		B73_dev41	
+nt1	me13b+me15b	li2013+yu2015		leaf_22t	T

@@ -77,7 +77,7 @@ dim(weightMat)
 tn = as_tibble(weightMat) %>%
     mutate(reg.gid = rownames(weightMat)) %>%
     gather(tgt.gid, weight, -reg.gid) %>%
-    filter(weight > 0) %>%
+    filter(weight > 0, reg.gid != tgt.gid) %>%
     arrange(desc(weight))
 
 save(rids, tids, tn, file = fo)

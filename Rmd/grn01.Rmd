@@ -1,0 +1,80 @@
+---
+title: "maize GRN figures and tables"
+output: 
+  pdf_document:
+    citation_package: natbib
+    keep_tex: true
+    fig_caption: true
+    latex_engine: pdflatex
+    template: rmd-latex-ms.tex
+# author:
+# - name: Peng Zhou
+#  affiliation: University of Minnesota
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+geometry: margin=1in
+fontfamily: mathpazo
+fontsize: 11pt
+# spacing: double
+# biblio-style: apsr
+header-includes:
+- \usepackage{caption}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage[table]{xcolor}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{threeparttablex}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \captionsetup[figure]{labelformat=empty}
+- \captionsetup[table]{labelformat=empty}
+- \AtBeginDocument{\let\maketitle\relax}
+---
+\pagenumbering{gobble}
+
+```{r echo = FALSE}
+require(tidyverse)
+require(knitr)
+require(kableExtra)
+options(knitr.kable.NA = '')
+dirw = '~/projects/maize.grn/analysis' 
+ft = file.path(dirw, "02.net.stats.RData")
+load(ft)
+kable(tt, format = 'latex', booktabs = T,
+  format.args = list(big.mark = ","), 
+  caption = "Table X. Statistics for GRNs used in this study.") %>%
+  column_spec(1, bold=T) %>%
+  kable_styling("striped", "hold_position", full_width = F)
+```
+
+\pagebreak
+![Figure 1]($grn/analysis/04_y1h/01.pdf){width=100%}
+
+\pagebreak
+![Figure 2a]($grn/analysis/06_rna_de/01.huang_leaf.pdf){width=100%}
+
+\pagebreak
+![Figure 2b]($grn/analysis/06_rna_de/01.huang_root.pdf){width=100%}
+
+\pagebreak
+![Figure 2c]($grn/analysis/06_rna_de/01.huang_sam.pdf){width=100%}
+
+\pagebreak
+![Figure 2d]($grn/analysis/06_rna_de/01.huang_seed.pdf){width=100%}
+
+\pagebreak
+![Figure 2e]($grn/analysis/06_rna_de/01.walley_rna.pdf){width=100%}
+
+\pagebreak
+![Figure 2f]($grn/analysis/06_rna_de/01.walley_protein.pdf){width=100%}
+
+\pagebreak
+![Figure 2g]($grn/analysis/06_rna_de/01.walley_all.pdf){width=100%}
+
+

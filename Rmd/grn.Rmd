@@ -38,43 +38,71 @@ header-includes:
 ---
 \pagenumbering{gobble}
 
-```{r echo = FALSE}
+
+```{r, message=FALSE, echo=FALSE}
 require(tidyverse)
 require(knitr)
 require(kableExtra)
 options(knitr.kable.NA = '')
-dirw = '~/projects/maize.grn/analysis' 
-ft = file.path(dirw, "02.net.stats.RData")
-load(ft)
-kable(tt, format = 'latex', booktabs = T,
+dirw = '~/projects/maize.grn/data' 
+ft = file.path(dirw, "10.genie3.tsv")
+tt = read_tsv(ft)
+kable(tt, format = 'latex', longtable = T, booktabs = T,
   format.args = list(big.mark = ","), 
-  caption = "Table X. Statistics for GRNs used in this study.") %>%
-  column_spec(1, bold=T) %>%
-  kable_styling("striped", "hold_position", full_width = F)
+  caption = "Table X. GRNs built in this study.") %>%
+  column_spec(1, bold=F) %>%
+  kable_styling("striped", full_width = F)
 ```
 
-\pagebreak
-![Figure 1]($grn/analysis/04_y1h/01.pdf){width=100%}
 
 \pagebreak
-![Figure 2a]($grn/analysis/06_rna_de/01.huang_leaf.pdf){width=100%}
+![Fig 1]($grn/data/13_auroc/10.dev.atlas.pdf){width=100%}
+
+Area under receiver operating curves (AUROC) and area under precision-recall curve (AUPR) for GRNs built using different input datasets evaluated using experimentally (Chip-seq, mutant & wildtype RNA-Seq) determined transcription factor (TF) targets.
 
 \pagebreak
-![Figure 2b]($grn/analysis/06_rna_de/01.huang_root.pdf){width=100%}
+![Fig 2]($grn/data/13_auroc/05.auc.lin2017.pdf){width=100%}
+
+Barplot showing AUROC and AUPRs for lin2017 tissue-specific and pooled GRNs. 
 
 \pagebreak
-![Figure 2c]($grn/analysis/06_rna_de/01.huang_sam.pdf){width=100%}
+![Fig 3]($grn/data/13_auroc/05.auc.kremling2018.pdf){width=100%}
+
+Barplot showing AUROC and AUPRs for kremling2018 tissue-specific and pooled GRNs.
 
 \pagebreak
-![Figure 2d]($grn/analysis/06_rna_de/01.huang_seed.pdf){width=100%}
+![Fig 4]($grn/data/13_auroc/05.auc.all.pdf){width=100%}
+
+Barplot showing AUROC and AUPRs for all GRNs.
 
 \pagebreak
-![Figure 2e]($grn/analysis/06_rna_de/01.walley_rna.pdf){width=100%}
+![Fig 5]($grn/data/13_auroc/06.pcc.lin2017.pdf){width=100%}
+
+Barplots showing AUROC and AUPRs for PCC-based TF-target prediction (ranked by PCC). 
 
 \pagebreak
-![Figure 2f]($grn/analysis/06_rna_de/01.walley_protein.pdf){width=100%}
+![Fig 6]($grn/data/13_auroc/06.pcc.kremling2018.pdf){width=100%}
+
+Barplot showing AUROC and AUPRs for PCC-based TF-target prediction (ranked by PCC). 
 
 \pagebreak
-![Figure 2g]($grn/analysis/06_rna_de/01.walley_all.pdf){width=100%}
+![Fig 7]($grn/data/13_auroc/06.pcc.all.pdf){width=100%}
 
+Barplot showing AUROC and AUPRs for PCC-based TF-target prediction (ranked by PCC). 
+
+
+\pagebreak
+![Fig 8]($grn/data/15_de_val/03.lin2017.pdf){width=100%}
+
+Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs.
+
+\pagebreak
+![Fig 9]($grn/data/15_de_val/03.kremling2018.pdf){width=100%}
+
+Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs.
+
+\pagebreak
+![Fig 10]($grn/data/15_de_val/03.all.pdf){width=100%}
+
+Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs.
 

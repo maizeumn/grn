@@ -173,89 +173,168 @@
 
 \noindent  \pagenumbering{gobble}
 
-\begin{table}[!h]
-
-\caption{\label{tab:unnamed-chunk-1}Table X. Statistics for GRNs used in this study.}
-\centering
-\begin{tabular}[t]{>{\bfseries}lrrrlll}
+\begin{longtable}[t]{>{}lll}
+\caption{\label{tab:unnamed-chunk-1}Table X. GRNs built in this study.}\\
 \toprule
-GRN source & N\_Edge & N\_Regulator & N\_Target & min\_score & max\_score & median\_score\\
+nid & study & tag\\
 \midrule
-huang\_leaf & 636,940 & 1,327 & 22,216 & 5.34e-03 & 8.11e-02 & 8.37e-03\\
-huang\_root & 652,394 & 1,403 & 22,553 & 4.70e-03 & 5.36e-02 & 6.80e-03\\
-huang\_sam & 613,660 & 1,378 & 22,507 & 2.97e-03 & 1.79e-01 & 4.84e-03\\
-huang\_seed & 622,334 & 1,258 & 20,687 & 4.54e-03 & 4.85e-02 & 7.40e-03\\
-walley\_all & 384,890 & 124 & 24,451 & 2.46e-12 & 1.12e-06 & 1.24e-11\\
+n01 & li2013 & SAM1\\
+n02 & li2013 & SAM2\\
+n11 & hirsch2014 & seedling\_503\\
+n21 & leiboff2015 & SAM\_380\\
+n31 & jin2016 & kernel\_368\\
 \addlinespace
-walley\_protein & 371,945 & 361 & 24,531 & 7.76e-03 & 4.73e-02 & 1.16e-02\\
-walley\_rna & 417,986 & 1,654 & 24,110 & 4.61e-03 & 1.83e-02 & 5.88e-03\\
+n41 & stelpflug2016 & B73\_18\\
+n42 & walley2016 & B73\_23\\
+n50 & lin2017 & 5\_tissues\\
+n51 & lin2017 & ear\\
+n52 & lin2017 & root\\
+\addlinespace
+n53 & lin2017 & shoot\\
+n54 & lin2017 & tassel\\
+n55 & lin2017 & SAM\\
+n58 & lin2017 & merge\_addi\\
+n59 & lin2017 & merge\_multi\\
+\addlinespace
+n60 & kremling2018 & 7\_tissues\\
+n61 & kremling2018 & GRoot\\
+n62 & kremling2018 & GShoot\\
+n63 & kremling2018 & Kern\\
+n64 & kremling2018 & L3Base\\
+\addlinespace
+n65 & kremling2018 & L3Tip\\
+n66 & kremling2018 & LMAD\\
+n67 & kremling2018 & LMAN\\
+n68 & kremling2018 & merge\_addi\\
+n69 & kremling2018 & merge\_multi\\
+\addlinespace
+n71 & briggs & B73\\
+n72 & briggs & Mo17\\
+n73 & briggs & B73xMo17\\
+n81 & dev41 & B73\\
+n82 & dev64 & B73\\
+\addlinespace
+np1 & huang2018 & leaf\\
+np2 & huang2018 & root\\
+np3 & huang2018 & sam\\
+np4 & huang2018 & seed\\
+np5 & walley & rna\\
+\addlinespace
+np6 & walley & protein\\
+np7 & walley & all\\
 \bottomrule
-\end{tabular}
-\end{table}
+\end{longtable}
 
 \pagebreak
 
 \begin{figure}
 \centering
-\includegraphics[width=1\textwidth,height=\textheight]{$grn/analysis/04_y1h/01.pdf}
-\caption{Figure 1}
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/13_auroc/10.dev.atlas.pdf}
+\caption{Fig 1}
 \end{figure}
+
+Area under receiver operating curves (AUROC) and area under
+precision-recall curve (AUPR) for GRNs built using different input
+datasets evaluated using experimentally (Chip-seq, mutant \& wildtype
+RNA-Seq) determined transcription factor (TF) targets.
 
 \pagebreak
 
 \begin{figure}
 \centering
-\includegraphics[width=1\textwidth,height=\textheight]{$grn/analysis/06_rna_de/01.huang_leaf.pdf}
-\caption{Figure 2a}
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/13_auroc/05.auc.lin2017.pdf}
+\caption{Fig 2}
 \end{figure}
+
+Barplot showing AUROC and AUPRs for lin2017 tissue-specific and pooled
+GRNs.
 
 \pagebreak
 
 \begin{figure}
 \centering
-\includegraphics[width=1\textwidth,height=\textheight]{$grn/analysis/06_rna_de/01.huang_root.pdf}
-\caption{Figure 2b}
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/13_auroc/05.auc.kremling2018.pdf}
+\caption{Fig 3}
 \end{figure}
+
+Barplot showing AUROC and AUPRs for kremling2018 tissue-specific and
+pooled GRNs.
 
 \pagebreak
 
 \begin{figure}
 \centering
-\includegraphics[width=1\textwidth,height=\textheight]{$grn/analysis/06_rna_de/01.huang_sam.pdf}
-\caption{Figure 2c}
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/13_auroc/05.auc.all.pdf}
+\caption{Fig 4}
 \end{figure}
+
+Barplot showing AUROC and AUPRs for all GRNs.
 
 \pagebreak
 
 \begin{figure}
 \centering
-\includegraphics[width=1\textwidth,height=\textheight]{$grn/analysis/06_rna_de/01.huang_seed.pdf}
-\caption{Figure 2d}
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/13_auroc/06.pcc.lin2017.pdf}
+\caption{Fig 5}
 \end{figure}
+
+Barplots showing AUROC and AUPRs for PCC-based TF-target prediction
+(ranked by PCC).
 
 \pagebreak
 
 \begin{figure}
 \centering
-\includegraphics[width=1\textwidth,height=\textheight]{$grn/analysis/06_rna_de/01.walley_rna.pdf}
-\caption{Figure 2e}
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/13_auroc/06.pcc.kremling2018.pdf}
+\caption{Fig 6}
 \end{figure}
+
+Barplot showing AUROC and AUPRs for PCC-based TF-target prediction
+(ranked by PCC).
 
 \pagebreak
 
 \begin{figure}
 \centering
-\includegraphics[width=1\textwidth,height=\textheight]{$grn/analysis/06_rna_de/01.walley_protein.pdf}
-\caption{Figure 2f}
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/13_auroc/06.pcc.all.pdf}
+\caption{Fig 7}
 \end{figure}
+
+Barplot showing AUROC and AUPRs for PCC-based TF-target prediction
+(ranked by PCC).
 
 \pagebreak
 
 \begin{figure}
 \centering
-\includegraphics[width=1\textwidth,height=\textheight]{$grn/analysis/06_rna_de/01.walley_all.pdf}
-\caption{Figure 2g}
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/15_de_val/03.lin2017.pdf}
+\caption{Fig 8}
 \end{figure}
+
+Enrichment of DE genes (using Briggs dataset) in predicted TF targets
+made by different GRNs.
+
+\pagebreak
+
+\begin{figure}
+\centering
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/15_de_val/03.kremling2018.pdf}
+\caption{Fig 9}
+\end{figure}
+
+Enrichment of DE genes (using Briggs dataset) in predicted TF targets
+made by different GRNs.
+
+\pagebreak
+
+\begin{figure}
+\centering
+\includegraphics[width=1\textwidth,height=\textheight]{$grn/data/15_de_val/03.all.pdf}
+\caption{Fig 10}
+\end{figure}
+
+Enrichment of DE genes (using Briggs dataset) in predicted TF targets
+made by different GRNs.
 \newpage
 \singlespacing 
 \end{document}
