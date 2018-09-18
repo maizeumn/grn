@@ -1,6 +1,5 @@
 nid	mid	study	tag	note	timeseries
-n13a_1	me13a	li2013	1	SAM1	
-n13a_2	me13a	li2013	2	SAM2	
+n13a	me13a	li2013		SAM1	
 n13b	me13b	liu2013		leaf_13t	T
 n14a	me14a	hirsch2014		seedling_503	
 n14b	me14b	li2014		endsperm_7t	T

@@ -5,110 +5,25 @@ t_cfg = read_tsv(f_cfg)
 #th = t_cfg %>% mutate(fgn = sprintf("%s/12_output/%s.rda", dirw, nid)) 
 #}}}
 
-#{{{ prepare genie3 input
-diri = '~/projects/maize.expression/data'
+#{{{ prepare GRN input
+diri = '~/projects/maize.expression/data/09_output'
+mids = t_cfg %>% distinct(mid) %>% pull(mid)
+for (mid in mids) {
+    tc1 = t_cfg %>% filter(mid == !!mid)
+    fi = sprintf("%s/%s.rda", diri, mid)
+    stopifnot(file.exists(fi))
+    x = load(fi)
+    x
+    th = tl %>% select(-paired) %>%
+        replace_na(list(Tissue = '', Genotype = '', Treatment = '')) %>%
+        mutate(condition = sprintf("%s.%s.%s", Tissue, Genotype, Treatment)) 
+    t_exp = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
+        inner_join(th, by = 'SampleID') %>%
+        group_by(condition, gid) %>%
+        summarise(ReadCount = sum(ReadCount), CPM = mean(CPM), FPKM = mean(FPKM)) %>%
+        ungroup() 
+}
 
-
-#study = 'li2013'
-#study = 'hirsch2014'
-#study = 'leiboff2015'
-#study = 'jin2016'
-#study = 'stelpflug2016'
-study = 'walley2016'
-#study = 'lin2017'
-#study = 'kremling2018'
-#study = 'briggs'
-#study = 'dev41'
-#study = 'dev64'
-study
-diri1 = file.path(diri, study, 'data')
-if(study %in% c("dev41","dev64")) diri1 = file.path(diri, 'data', study)
-fi = file.path(diri1, '20.rc.norm.rda')
-x = load(fi)
-fh1 = file.path(diri1, '01.reads.tsv')
-fh2 = file.path(diri1, '02.reads.corrected.tsv')
-fh = ifelse(file.exists(fh2), fh2, fh1) 
-th = read_tsv(fh)
-diro = file.path(dird, '11_input')
-ngene = 46117
-#
-if(study == 'li2013') {
-    #{{{ li2013
-    th = th %>% select(SampleID, Genotype, Replicate) %>%
-        mutate(Replicate = sprintf("SAM%d", Replicate))
-    t_exp = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
-        inner_join(th, by = 'SampleID') %>%
-        transmute(tag = Replicate,
-                  condition = Genotype,
-                  gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
-    #}}}
-} else if(study == 'hirsch2014') {
-    #{{{ hirsch2014
-    th = th %>% select(SampleID, Genotype) %>%
-        mutate(tag = 'seedling_503')
-    t_exp = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
-        inner_join(th, by = 'SampleID') %>%
-        transmute(tag = tag,
-                  condition = Genotype,
-                  gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
-    #}}}
-} else if(study == 'leiboff2015') {
-    #{{{ leiboff2015
-    th = th %>% select(SampleID, Genotype) %>%
-        mutate(tag = 'SAM_380')
-    t_exp = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
-        inner_join(th, by = 'SampleID') %>%
-        group_by(tag, Genotype, gid) %>%
-        summarise(ReadCount = sum(ReadCount), CPM = mean(CPM), FPKM = mean(FPKM)) %>% ungroup() %>%
-        transmute(tag = tag,
-                  condition = Genotype,
-                  gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
-    #}}}
-} else if(study == 'jin2016') {
-    #{{{
-    th = th %>% select(SampleID, Genotype) %>%
-        mutate(tag = 'kernel_368')
-    t_exp = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
-        inner_join(th, by = 'SampleID') %>%
-        transmute(tag = tag,
-                  condition = Genotype,
-                  gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
-    #}}}
-} else if(study == 'stelpflug2016') {
-    #{{{
-    th = th %>% select(SampleID, Tissue) %>%
-        mutate(tag = 'B73_18')
-    t_exp = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
-        inner_join(th, by = 'SampleID') %>%
-        group_by(tag, Tissue, gid) %>%
-        summarise(ReadCount = sum(ReadCount), CPM = mean(CPM), FPKM = mean(FPKM)) %>% ungroup() %>%
-        transmute(tag = tag,
-                  condition = Tissue,
-                  gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
-    #}}}
-} else if(study == 'walley2016') {
-    #{{{
-    th = th %>% select(SampleID, Tissue) %>%
-        mutate(tag = 'B73_23')
-    t_exp = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
-        inner_join(th, by = 'SampleID') %>%
-        group_by(tag, Tissue, gid) %>%
-        summarise(ReadCount = sum(ReadCount), CPM = mean(CPM), FPKM = mean(FPKM)) %>% ungroup() %>%
-        transmute(tag = tag,
-                  condition = Tissue,
-                  gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
-    #}}}
-} else if(study == 'lin2017') {
-    #{{{
-    th = th %>% select(SampleID, Genotype, Tissue) %>%
-        mutate(tag = Tissue)
-    t_exp = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
-        inner_join(th, by = 'SampleID') %>%
-        group_by(tag, Genotype, gid) %>%
-        summarise(ReadCount = sum(ReadCount), CPM = mean(CPM), FPKM = mean(FPKM)) %>% ungroup() %>%
-        transmute(tag = tag,
-                  condition = Genotype,
-                  gid = gid, RC = ReadCount, CPM = CPM, FPKM = FPKM)
     t_exp2 = t_exp %>% 
         mutate(condition = sprintf("%s_%s", tag, condition),
                tag = '5_tissues')
