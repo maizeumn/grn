@@ -7,6 +7,8 @@ t_cfg = read_tsv(f_cfg)
 
 #{{{ prepare genie3 input
 diri = '~/projects/maize.expression/data'
+
+
 #study = 'li2013'
 #study = 'hirsch2014'
 #study = 'leiboff2015'

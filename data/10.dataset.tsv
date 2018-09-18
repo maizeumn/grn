@@ -26,5 +26,6 @@ n18a_7	me18a	kremling2018	LMAN	LMAN
 n99b_1	me99b	briggs	B73	B73	
 n99b_2	me99b	briggs	Mo17	Mo17	
 n99b_3	me99b	briggs	B73xMo17	B73xMo17	
-nc1	me16b+me16c	stelpflug2016+walley2016		B73_dev41	
-nt1	me13b+me15b	li2013+yu2015		leaf_22t	T
+nc01	mec01	stelpflug2016+walley2016		B73_dev41	
+nc02	mec02	stelpflug2016+walley2016+briggs		B73_dev64	
+nt01	met01	li2013+yu2015		leaf_22t	T
