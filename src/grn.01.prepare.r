@@ -195,7 +195,8 @@ tf
 tf_ids = tf$gid
 length(tf_ids)
 
-tf_ids_n = t_gs %>% distinct(reg.gid) %>% filter(!reg.gid %in% tf_ids)
+tf_ids_n = t_gs %>% distinct(reg.gid) %>% filter(!reg.gid %in% tf_ids) %>% 
+    pull(reg.gid)
 tf_ids_n
 tf_ids = c(tf_ids, tf_ids_n)
 length(tf_ids)
