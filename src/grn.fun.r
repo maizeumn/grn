@@ -39,6 +39,7 @@ auc_barplot <- function(ti, fo, wd, ht) {
     tp = ti %>% #filter(ctag %in% ctags, nid %in% nids) %>%
         rename(AUPR = aupr, AUROC = auroc) %>%
         gather(type, auc, -nid, -tag, -ctag) %>%
+        mutate(auc = as.numeric(auc)) %>% filter(!is.na(auc)) %>%
         mutate(type = factor(type, levels = c("AUROC", "AUPR"))) %>%
         mutate(lab = str_remove(sprintf("%.03f", auc), '^0+'))
     tps = tp %>% distinct(nid, tag) %>% rename(lab = tag)

@@ -11,32 +11,22 @@ x
 
 #{{{ prepare GRN input
 write_genie3_input <- function(mid, t_cfg, diro, use_cpm = T) {
-#{{{
+    #{{{
     cat(mid, '\n')
     tc1 = t_cfg %>% filter(mid == !!mid)
     fi = sprintf("%s/%s.rda", diri, mid)
     stopifnot(file.exists(fi))
     x = load(fi)
     x
-    th0 = tl %>% select(-paired) %>%
-        replace_na(list(Tissue = '', Genotype = '', Treatment = '')) %>%
-        mutate(condition = sprintf("%s.%s.%s", Tissue, Genotype, Treatment))
-    th1 = th0 %>% select(SampleID, condition)
-    if(!str_detect(mid, 'me[ct]')) {
-        tm0 = tm %>% select(gid, SampleID, ReadCount, CPM, FPKM) %>% 
-            inner_join(th1, by = 'SampleID') %>%
-            group_by(condition, gid) %>%
-            summarise(CPM = mean(CPM), FPKM = mean(FPKM)) %>%
-            ungroup()
-    }
+    th0 = th; tm0 = tm
     for (i in 1:nrow(tc1)) {
         nid = tc1$nid[i]; tag = tc1$tag[i]
         if(mid %in% c('me17a', 'me18a') & !is.na(tag)) {
             th = th0 %>% filter(Tissue == tag)
-            t_exp = tm0 %>% filter(condition %in% th$condition)
+            t_exp = tm0 %>% filter(SampleID %in% th$SampleID)
         } else if(mid %in% c('me99b') & !is.na(tag)) {
             th = th0 %>% filter(Genotype == tag)
-            t_exp = tm0 %>% filter(condition %in% th$condition)
+            t_exp = tm0 %>% filter(SampleID %in% th$SampleID)
         } else {
             th = th0
             t_exp = tm0
@@ -44,15 +34,14 @@ write_genie3_input <- function(mid, t_cfg, diro, use_cpm = T) {
         fo = sprintf("%s/%s.pkl", diro, nid)
         write_genie3_input1(t_exp, th, tf_ids, fo, use_cpm)
     }
-#}}}
+    #}}}
 }
-
 write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
     #{{{
-    n_cond = length(unique(t_exp$condition))
+    nsam = length(unique(t_exp$SampleID))
     gids = t_exp %>% group_by(gid) %>%
-        summarise(n_cond_exp = sum(CPM >= 1)) %>%
-        filter(n_cond_exp >= n_cond * .1) %>%
+        summarise(nsam_exp = sum(CPM >= 1)) %>%
+        filter(nsam_exp >= nsam * .1) %>%
         pull(gid)
     t_flt = t_exp %>% filter(gid %in% gids)
     if(use_cpm) {
@@ -61,8 +50,8 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
         t_flt = t_flt %>% mutate(exp.val = asinh(FPKM))
     }
     et_b = t_flt %>% 
-        select(condition, gid, exp.val) %>%
-        spread(condition, exp.val)
+        select(SampleID, gid, exp.val) %>%
+        spread(SampleID, exp.val)
     tids = et_b %>% pull(gid)
     em_b = t(as.matrix(et_b[,-1]))
     rids = tf_ids[tf_ids %in% gids]
@@ -77,7 +66,43 @@ diri = '~/projects/maize.expression/data/15_output'
 diro = file.path(dird, '11_input')
 mids = t_cfg %>% distinct(mid) %>% pull(mid)
 
-sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
+#sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
+diro = file.path(dird, '11_input_fpkm')
+#sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro, use_cpm = F)
 #}}}
 
+#{{{ process GENIE3 output
+convert_genie3_output <- function(nid, dird) {
+    #{{{
+    diri = file.path(dird, '11_input')
+    diro = file.path(dird, '12_output')
+    diri = file.path(dird, '11_input_fpkm')
+    diro = file.path(dird, '12_output_fpkm')
+    fi1 = sprintf("%s/%s.pkl", diri, nid)
+    fi2 = sprintf("%s/%s.pkl", diro, nid)
+    fo = sprintf("%s/%s.rda", diro, nid)
+    if(!file.exists(fi2)) {
+        cat(sprintf("%-8s: not done yet - skipped\n", nid))
+    } else if (file.exists(fo)) { 
+        cat(sprintf("%-8s: already converted - skipped\n", nid))
+    } else {
+        cat(sprintf("%-8s: working\n", nid))
+        x = py_load_object(normalizePath(fi1))
+        VIM = py_load_object(normalizePath(fi2))
+        tids = x[[2]]; rids = x[[3]]
+        stopifnot(dim(VIM)[1] == length(tids))
+        rownames(VIM) = tids
+        colnames(VIM) = tids
+        trash = VIM[tids[!tids %in% rids],]
+        stopifnot(sum(trash) == 0)
+        reg.mat = VIM[rids,]
+        save(rids, tids, reg.mat, file = fo)
+    }
+    #}}}
+}
+
+nids = t_cfg$nid
+nid = 'n13a'
+x = sapply(nids, convert_genie3_output, dird = dird)
+#}}}
 

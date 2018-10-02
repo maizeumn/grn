@@ -39,7 +39,7 @@ def run_GENIE3(fi, fo, thread, tree_method, K, ntrees):
                  ntrees = ntrees, 
                  nthreads = thread)
     with open(fo, "wb") as fho:
-        _pickle.dump(VIM, fho)
+        _pickle.dump(VIM, fho, protocol = 4)
 
 if __name__ == "__main__":
     import argparse
