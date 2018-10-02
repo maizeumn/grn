@@ -687,9 +687,9 @@ fi = file.path(dirw, "01.rda")
 tissues6 = c('auricle_v12', 'ear_v14', 'embryo_27DAP', 'kernel_14DAP', 'root_0DAP',
             'seedlingmeristem_11DAS')
 
+opt = 'all'
 opt = 'kremling2018'
 opt = 'lin2017'
-opt = 'all'
 nids = lst_eval[[opt]]
 net_sizes = c("10k", "100k", "1m")
 net_size_map = c("10000"="10k", "1e+05"="100k", "1e+06"="1m")
