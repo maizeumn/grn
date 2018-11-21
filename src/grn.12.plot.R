@@ -286,8 +286,23 @@ ggsave(p1, filename = fo, width = 8, height = 8)
 #}}}
 
 #{{{ evaluate briggs data
+#{{{ filter GRN using briggs DE info
 fi = file.path(dirw, '01.br.rds')
 ev_br = readRDS(fi)
+ev_br_filt = ev_br %>%
+    mutate(tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE')) %>%
+    filter(!reg.DE %in% c('non_DE','DE1-2','DE2-4'), tgt.DE == 'DE') %>%
+    mutate(drc = ifelse(reg.DEdir==tgt.DEdir, 1, -1)) %>%
+    group_by(nid, reg.gid, tgt.gid) %>%
+    summarise(n.tissue = n(), m.drc = sum(drc)/n.tissue)  %>%
+    ungroup()
+ev_br_filt %>% count(nid, n.tissue)
+fo = file.path(dirw, '01.br.filt.rds')
+saveRDS(ev_br_filt, file = fo)
+#}}}
+
+fi = file.path(dirw, '01.br.filt.rds')
+ev_br_filt = readRDS(fi)
 tissues6 = c('auricle_v12','ear_v14','embryo_27DAP','kernel_14DAP','root_0DAP',
             'seedlingmeristem_11DAS')
 net_sizes = c(1e4, 5e4, 1e5)
@@ -327,58 +342,42 @@ ggsave(p1, filename = fp, width = 8, height = 8)
 #}}}
 
 #{{{ how often is a link observed in multiple tissues? is it consistent?
-tx = ev_br %>%
-    mutate(tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE')) %>%
-    filter(tgt.DE == 'DE') %>%
-    filter(reg.DE != 'non_DE') %>%
-    mutate(drc = ifelse(reg.DEdir==tgt.DEdir, 1, -1)) %>%
-    group_by(nid, reg.gid, tgt.gid, reg.DE) %>%
-    summarise(ntot = n(), m.drc = sum(drc)/ntot)  %>%
-    ungroup()
-    #mutate(lab = str_remove(sprintf("%.02f", nt1/ntot), '^0+')) %>%
-
-tp = tx %>% filter(ntot >= 5) %>%
+tp = ev_br_filt %>% filter(n.tissue >= 5) %>%
     inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
-    mutate(txt = factor(txt, levels=th$txt)) %>%
-    mutate(reg.DE = factor(reg.DE, levels = rev(des)))
-tps = tp %>% count(nid, reg.DE) %>% inner_join(th, by='nid') %>%
+    mutate(txt = factor(txt, levels=rev(th$txt))) #%>%
+    #mutate(reg.DE = factor(reg.DE, levels = rev(des)))
+tps = tp %>% count(nid) %>% inner_join(th, by='nid') %>%
     mutate(txt = factor(txt, levels=th$txt))
-p = ggplot(tp, aes(x=reg.DE,y=m.drc)) +
+p = ggplot(tp, aes(x=txt,y=m.drc)) +
     geom_violin() +
-    geom_text(data=tps, aes(x=reg.DE, y=0, label=n), hjust=.5, size=2.5) +
+    geom_text(data=tps, aes(x=txt, y=0, label=n), hjust=.5, size=2.5) +
     scale_y_continuous(limits=c(-1,1), expand=expand_scale(mult=c(.01,.01))) +
     scale_color_aaas() +
     coord_flip() +
-    facet_wrap(~txt, ncol=4) +
     otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
            legend.pos = 'top.right', legend.dir = 'v')
 fo = file.path(dirw, '12.br.2.dir.tissue.pdf')
-ggsave(p, file=fo, width=8, height=8)
+ggsave(p, file=fo, width=6, height=8)
 
-tp = tx %>% group_by(nid, reg.DE, reg.gid) %>%
-    summarise(nall=sum(ntot), ntgt = n(), m.drc = sum(ntot*m.drc)/sum(ntot)) %>%
+tp = ev_br_filt %>% group_by(nid, reg.gid) %>%
+    summarise(n.tissues=sum(n.tissue), ntgt = n(), 
+              m.drc = sum(n.tissue*m.drc)/sum(n.tissue)) %>%
     ungroup() %>%
-    filter(nall >= 10) %>%
+    filter(n.tissues >= 10) %>%
     inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
-    mutate(txt = factor(txt, levels=th$txt)) %>%
-    mutate(reg.DE = factor(reg.DE, levels = rev(des)))
-tp %>% group_by(nid, reg.DE) %>%
-    summarise(nreg = n(),
-              q25=quantile(ntgt,.25), q50=quantile(ntgt,.5), q75=quantile(ntgt,.75)) %>%
-    ungroup() %>% print(n=90)
-tps = tp %>% count(nid, reg.DE) %>% inner_join(th, by='nid') %>%
+    mutate(txt = factor(txt, levels=rev(th$txt)))
+tps = tp %>% count(nid) %>% inner_join(th, by='nid') %>%
     mutate(txt = factor(txt, levels=th$txt))
-p = ggplot(tp, aes(x=reg.DE,y=m.drc)) +
+p = ggplot(tp, aes(x=txt,y=m.drc)) +
     geom_violin() +
-    geom_text(data=tps, aes(x=reg.DE, y=0, label=n), hjust=.5, size=2.5) +
+    geom_text(data=tps, aes(x=txt, y=0, label=n), hjust=.5, size=2.5) +
     scale_y_continuous(limits=c(-1,1), expand=expand_scale(mult=c(.01,.01))) +
     scale_color_aaas() +
     coord_flip() +
-    facet_wrap(~txt, ncol=4) +
     otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
            legend.pos = 'top.right', legend.dir = 'v')
 fo = file.path(dirw, '12.br.2b.dir.tissue.pdf')
-ggsave(p, file=fo, width=8, height=8)
+ggsave(p, file=fo, width=6, height=8)
 
 gid0 = 'Zm00001d004230'
 br$de %>% filter(gid==gid0) %>% print(n=23)
@@ -394,32 +393,28 @@ tx %>% filter(reg.gid==gid0) %>%
 #}}}
 
 #{{{ is a link is observed in multiple networks, is it consistent?
-tp = tx %>% group_by(reg.gid,tgt.gid, reg.DE) %>%
+tp = ev_br_filt %>% group_by(reg.gid,tgt.gid) %>%
     summarise(nnet = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
-    filter(nnet >= 3) %>%
-    mutate(reg.DE = factor(reg.DE, levels = rev(des)))
-tps = tp %>% count(reg.DE)
-
-p = ggplot(tp, aes(x=reg.DE,y=m.drc)) +
+    filter(nnet >= 3)
+p = ggplot(tp, aes(x=0, y=m.drc)) +
     geom_violin() +
-    geom_text(data=tps, aes(x=reg.DE, y=0, label=n), hjust=.5, size=3) +
+    #geom_text(data=tps, aes(x=reg.DE, y=0, label=n), hjust=.5, size=3) +
+    geom_text(x=0, y=0, label=nrow(tp), hjust=.5, size=3) +
     scale_y_continuous(limits=c(-1,1), expand=expand_scale(mult=c(.01,.01))) +
     scale_color_aaas() +
     coord_flip() +
     otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
            legend.pos = 'top.right', legend.dir = 'v')
 fo = file.path(dirw, '12.br.3.dir.net.pdf')
-ggsave(p, file=fo, width=6, height=6)
+ggsave(p, file=fo, width=6, height=5)
 #}}}
 
 #{{{ obtain high quality edges
-tg = tx %>% group_by(reg.gid, tgt.gid, reg.DE) %>%
+tg = ev_br_filt %>% group_by(reg.gid, tgt.gid) %>%
     summarise(nnet = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
-    filter(nnet >= 5) %>%
-    mutate(reg.DE = factor(reg.DE, levels = rev(des)))
+    filter(nnet >= 3) %>%
+    filter(abs(m.drc) > .5)
 tg %>% count(nnet)
-tg %>% distinct(reg.gid, reg.DE) %>% count(reg.DE)
-
 #}}}
 
 #{{{
@@ -481,23 +476,23 @@ ggsave(p1, filename = fp, width = 8, height = 8)
 fi = file.path(dirw, '01.bm.rds')
 ev_bm = readRDS(fi)
 
-tp = tx %>% inner_join(ev_bm, by = c('nid','reg.gid','tgt.gid')) %>%
-    mutate(reg.DE = factor(reg.DE, levels = des)) %>%
+tp = ev_br_filt %>% inner_join(ev_bm, by = c('nid','reg.gid','tgt.gid')) %>%
     inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
-    mutate(txt = factor(txt, levels=th$txt))
-tps = tp %>% count(nid,Tissue,reg.DE) %>%
+    mutate(txt = factor(txt, levels=rev(th$txt)))
+tps = tp %>% count(nid,Tissue) %>%
     inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
     mutate(txt = factor(txt, levels=th$txt))
 
-p = ggplot(tp, aes(x = reg.DE, y = pcc)) +
+p = ggplot(tp, aes(x = txt, y = pcc)) +
     geom_violin() +
-    geom_text(data=tps, aes(x=reg.DE, y=0, label=n), hjust=.5, size=3) +
-    facet_grid(txt~Tissue) +
+    geom_text(data=tps, aes(x=txt, y=0, label=n), hjust=.5, size=3) +
+    coord_flip() +
+    facet_wrap(~Tissue, ncol=5) +
     scale_fill_futurama() +
     otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
            legend.pos = 'top.right', legend.dir = 'v') +
     theme(strip.text.y = element_text(angle=0))
 fo = file.path(dirw, '15.biomap.1.pcc.pdf')
-ggsave(p, file=fo, width=10, height=12)
+ggsave(p, file=fo, width=10, height=8)
 #}}}
 
