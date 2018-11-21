@@ -1,9 +1,7 @@
 source("grn.fun.r")
-dirg = '~/data/genome/B73'
-fg = file.path(dirg, "51.gtb")
-tg = read_tsv(fg, col_types = "ccciiccccccccccccc") %>%
-    transmute(tid = id, gid = par, chrom = chr)
-fm = file.path(dirg, "gene_mapping/maize.v3TOv4.geneIDhistory.txt")
+genome = 'B73'
+x = load(file.path(dirg, genome, '55.rda'))
+fm = file.path(dirg, genome, "gene_mapping/maize.v3TOv4.geneIDhistory.txt")
 tm = read_tsv(fm, col_names = F) %>%
     transmute(ogid = X1, gid = X2, change = X3, method = X4, type = X5) %>%
     select(ogid, gid, type)
@@ -75,7 +73,7 @@ fo = sprintf("%s/05.%s.tsv", dirw, tag)
 write_tsv(to, fo)
 #}}}
 
-#{{{ O2 
+#{{{ O2
 # liftOver 01.v3.coord.bed $genome/B73/chain/AGP_v3_to_v4.bed.gz 02.v4.coord.bed 03.unmapped.bed
 # slopBed -i 02.v4.coord.bed -g $genome/B73/15.sizes -b 10000 > 05.flank10k.bed
 # intersectBed -a $genome/B73/v37/gene.bed -b 05.flank10k.bed -u > 06.ovlp.gid.bed
@@ -130,6 +128,23 @@ to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
 fo = sprintf("%s/05.%s.tsv", dirw, tag)
 write_tsv(to, fo)
 #}}}
+
+#{{{ bZIP22
+tag = 'bZIP22'
+fi = sprintf("%s/raw/%s.tsv", dirw, tag)
+ti = read_tsv(fi, col_names = F)
+tfid = ti$X1[1]
+ti2 = ti %>% transmute(ogid = X2)
+nrow(ti2)
+ti3 = ti2 %>% inner_join(tm, by = 'ogid')
+ti3 %>% count(type)
+ti4 = ti3 #%>% filter(type == '1-to-1')
+sum(ti4$gid %in% t_gs$gid)
+
+to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
+fo = sprintf("%s/05.%s.tsv", dirw, tag)
+write_tsv(to, fo)
+#}}}
 #}}}
 
 #{{{ Go/CornCyc/#PPIM
@@ -177,7 +192,7 @@ fo = sprintf("%s/06_known_ggi/%s.tsv", dird, ctag)
 
 #{{{ build GRN gold-standard dataset
 ctags = c('KN1_ear', 'KN1_tassel', 'KN1_leaf', 'KN1_any', 'KN1_all',
-          'FEA4', 'O2', 'RA1', 'HDA101')
+          'FEA4', 'O2', 'RA1', 'HDA101', 'bZIP22')
 to = tibble()
 for (ctag in ctags) {
     fi = sprintf("%s/07_known_tf/05.%s.tsv", dird, ctag)
@@ -236,7 +251,7 @@ for (i in 1:length(studies)) {
 #}}}
 
 #{{{ #Top45 TFs and targets by Y1H
-dirw = file.path(dird, '08.y1h.45')
+dirw = file.path(dird, '08_y1h_45')
 fi = file.path(dirw, "y1h.targets.tsv")
 ti = read_tsv(fi)
 colnames(ti) = c("reg.v3", "reg.v4", "tgt.v3", "tgt.v4")

@@ -3,7 +3,6 @@ source("grn.fun.r")
 require(reticulate)
 f_cfg = file.path(dird, '10.dataset.tsv')
 t_cfg = read_tsv(f_cfg)
-#th = t_cfg %>% mutate(fgn = sprintf("%s/12_output/%s.rda", dirw, nid)) 
 fi = file.path(dird, '09.gs.rda')
 x = load(fi)
 x
@@ -65,44 +64,11 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
 diri = '~/projects/maize.expression/data/15_output'
 diro = file.path(dird, '11_input')
 mids = t_cfg %>% distinct(mid) %>% pull(mid)
-
+mids = c("me13c")
 #sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
-diro = file.path(dird, '11_input_fpkm')
+
+#diro = file.path(dird, '11_input_fpkm')
 #sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro, use_cpm = F)
 #}}}
 
-#{{{ process GENIE3 output
-convert_genie3_output <- function(nid, dird) {
-    #{{{
-    diri = file.path(dird, '11_input')
-    diro = file.path(dird, '12_output')
-    diri = file.path(dird, '11_input_fpkm')
-    diro = file.path(dird, '12_output_fpkm')
-    fi1 = sprintf("%s/%s.pkl", diri, nid)
-    fi2 = sprintf("%s/%s.pkl", diro, nid)
-    fo = sprintf("%s/%s.rda", diro, nid)
-    if(!file.exists(fi2)) {
-        cat(sprintf("%-8s: not done yet - skipped\n", nid))
-    } else if (file.exists(fo)) { 
-        cat(sprintf("%-8s: already converted - skipped\n", nid))
-    } else {
-        cat(sprintf("%-8s: working\n", nid))
-        x = py_load_object(normalizePath(fi1))
-        VIM = py_load_object(normalizePath(fi2))
-        tids = x[[2]]; rids = x[[3]]
-        stopifnot(dim(VIM)[1] == length(tids))
-        rownames(VIM) = tids
-        colnames(VIM) = tids
-        trash = VIM[tids[!tids %in% rids],]
-        stopifnot(sum(trash) == 0)
-        reg.mat = VIM[rids,]
-        save(rids, tids, reg.mat, file = fo)
-    }
-    #}}}
-}
-
-nids = t_cfg$nid
-nid = 'n13a'
-x = sapply(nids, convert_genie3_output, dird = dird)
-#}}}
 

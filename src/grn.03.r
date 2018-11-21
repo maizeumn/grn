@@ -1,6 +1,6 @@
 source("grn.fun.r")
 
-#{{{ read in
+#{{{ old - read in
 fi = file.path(dird, '05.previous.grns/10.RData')
 x = load(fi)
 fi = file.path(dird, '07.known.tf/10.RData')
