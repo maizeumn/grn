@@ -178,12 +178,14 @@ sum(es_tf %in% es)
 
 #{{{ known TF AUROC
 fi = file.path(dirw, '01.tf.rds')
-eval_tf = readRDS(fi)
+ev_tf = readRDS(fi)
+
 #{{{ selected roc/pr plot
 nids = c("n16b","n16c","n99b_1","nc03")
 cols.dev = c(pal_npg()(4)[2:4], brewer.pal(6,"Paired")[6])
+cols.dev = c(pal_npg()(4))
 
-tp1 = tx %>%
+tp1 = ev_tf %>% inner_join(th, by='nid') %>%
     filter(nid %in% nids) %>%
     select(nid,study,note,roc) %>% unnest() %>%
     mutate(ctag = sprintf("%s AUROC", ctag))
@@ -198,7 +200,7 @@ p1 = ggplot(tp1) +
            xtitle=T, ytitle=T, xtext=T, ytext=T, 
            xgrid=T, ygrid=T, xtick=T, ytick=T)
 #
-tp2 = tx %>% 
+tp2 = ev_tf %>% inner_join(th, by='nid') %>%
     filter(nid %in% nids) %>%
     select(nid,study,note,pr) %>% unnest() %>%
     mutate(ctag = sprintf("%s AUPR", ctag))
@@ -216,7 +218,7 @@ p2 = ggplot(tp2) +
     guides(direction = 'vertical', color = guide_legend(ncol = 1, byrow = F)) 
 #
 fo = file.path(dirw, "10.dev.atlas.pdf")
-ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>% 
+ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>%
     ggexport(filename = fo, width = 10, height = 5)
 #}}}
 
@@ -243,7 +245,7 @@ p1 = ggplot(tp, aes(x=nid, y=auc, fill=type)) +
     coord_flip() +
     facet_wrap(type~ctag, scale = 'free_x', nrow = 2) +
     otheme(strip.size=7, legend.pos='none', margin=c(.2,.2,.2,.2),
-           xtitle=T, ytext=T) +
+           xtitle=F, ytext=T) +
     theme(axis.text.y=element_text(color=th$col))
 ggarrange(p1, nrow = 1, ncol = 1, labels = '', heights = c(2,2)) %>%
     ggexport(filename = fp, width = wd, height = ht)
@@ -251,34 +253,40 @@ ggarrange(p1, nrow = 1, ncol = 1, labels = '', heights = c(2,2)) %>%
 #}}}
 
 #{{{ evaluate using GO/CornCyc
-tp = t_gc %>% filter(ntgt >= 3) %>%
-    mutate(nid = factor(nid, levels = rev(t_cfg$nid)))
-tps = tp %>% group_by(nid, ctag) %>% 
-    summarise(n.tf = n(),
-              r.median = median(rich),
-              r.mean = mean(rich),
-              r.q25 = quantile(rich, .25),
-              r.q75 = quantile(rich, .75))
-#
+fi = file.path(dirw, '01.go.rds')
+ev_tf = readRDS(fi)
+net_sizes = c(1e4,5e4,1e5,5e5)
+tps = ev_go %>% distinct(nid,txt,col)
+tp = ev_go %>% select(-note,-sample_size,-fi) %>% unnest() %>%
+    filter(n.tgt >= 3) %>%
+    group_by(nid,net_size,grp_tag,permut) %>%
+    summarise(rich = sum(pairs.coreg)/sum(pairs.total)) %>%
+    ungroup() %>% spread(permut, rich) %>%
+    mutate(fc = observed/random) %>%
+    mutate(net_size=factor(net_size,levels=net_sizes),
+           nid = factor(nid, levels = rev(tps$nid)))
+
 p1 = ggplot(tp) +
-    #stat_boxplot(geom = "errorbar", position = 'dodge', width = .3, linetype = 'solid') +  
+    #stat_boxplot(geom = "errorbar", position = 'dodge', width = .3, linetype = 'solid') +
     #geom_boxplot(aes(x = nid, y = rich), outlier.shape = NA, alpha = .9, size = .3, width = .8) +
-    geom_violin(aes(x = nid, y = rich), alpha = .9, size = .3, width = .8) +
-    geom_point(data = tps, aes(x = nid, y = r.median, color = 'median')) +
-    geom_text(data = tps, aes(x = nid, y = 1, label = n.tf), size = 3, hjust = 1) +
-    #geom_vline(xintercept = seq(1.5,22.5), alpha= .5, linetype='dotted') +
-    scale_x_discrete(breaks = t_cfg$nid, labels = t_cfg$note, expand = expand_scale(mult=c(.03,.03))) +
-    scale_y_continuous(name = 'Enrich Score', expand = c(0,0)) +
+    #geom_violin(aes(x = nid, y = rich), alpha = .9, size = .3, width = .8) +
+    #geom_point(data = tps, aes(x = nid, y = r.median, color = 'median')) +
+    geom_point(aes(nid,fc,color=net_size,shape=net_size), size=2.5) +
+    #geom_text(data = tps, aes(x = nid, y = 1, label = n.tf), size = 3, hjust = 1) +
+    geom_hline(yintercept = 1, alpha= .5, linetype='dotted') +
+    scale_x_discrete(breaks = tps$nid, labels = tps$txt, expand = expand_scale(mult=c(.03,.03))) +
+    scale_y_continuous(name = 'Fold Enrichment', expand = c(.05,0)) +
     coord_flip() +
-    facet_grid(.~ctag) +
+    facet_grid(.~grp_tag) +
     scale_fill_npg() +
     scale_color_npg() +
-    otheme(strip.size = 8, margin = c(1,5,.5,.5,.5),
-           xtitle = T, ytitle = F, xtext = T, ytext = T, xgrid = F, ygrid = T) +
-    theme(legend.position = c(.5,1), legend.justification = c(.5,0)) + 
-    guides(color = F, fill = guide_legend(nrow = 1, byrow = T))
+    otheme(legend.pos='top.right',
+           strip.size = 8, margin = c(1,5,.5,.5,.5),
+           xtitle=T, xtext=T, ytext=T, ygrid=T, xtick=T) +
+    theme(axis.text.y = element_text(color = tps$col)) +
+    guides(color = guide_legend(ncol = 1, byrow = F))
     #theme(axis.text.x = element_text(size = 8, angle = 30, hjust = 1))
-fo = sprintf("%s/14.go.pdf", dird)
+fo = file.path(dirw, "14.go.pdf")
 ggsave(p1, filename = fo, width = 8, height = 8)
 #
 #}}}

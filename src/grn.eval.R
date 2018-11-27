@@ -14,7 +14,7 @@ opt = args$opt
 if( file.access(f_net) == -1 )
     stop(sprintf("file ( %s ) cannot be accessed", f_net))
 
-source("~/projects/rmaize/maize.grn.R")
+source("~/projects/maize.grn/src/functions.R")
 x = load(f_net)
 
 eval_gs <- function(f_net, gs) {
@@ -50,6 +50,37 @@ eval_gs <- function(f_net, gs) {
         t_auroc = rbind(t_auroc, t_auroc1)
     }
     list('pr'=t_pr, 'roc'=t_roc, 'aupr'=t_aupr, 'auroc'=t_auroc)
+    #}}}
+}
+eval_go_corncyc <- function(f_net, gs, net_sizes = c(1e4,5e4,1e5,5e5)) {
+    #{{{
+    y = load(f_net)
+    set.seed(1026)
+    tn1 = tn %>% mutate(permut='observed') %>% select(permut, reg.gid, tgt.gid)
+    tn2 = tn %>% mutate(tgt.gid = sample(tgt.gid)) %>%
+        mutate(permut='random') %>% select(permut,reg.gid,tgt.gid)
+    tnc = tn1 %>% bind_rows(tn2)
+    res = tibble()
+    for (net_size in net_sizes) {
+        tn1 = tnc %>%
+            group_by(permut) %>%
+            filter(row_number() <= net_size) %>% ungroup() %>%
+            inner_join(gs$grp_f, by = c("tgt.gid" = 'gid')) %>%
+            rename(grp_tag = ctag) %>%
+            count(permut, grp_tag, grp, reg.gid) %>%
+            rename(ng = n) %>%
+            group_by(permut, grp_tag, grp) %>%
+            summarise(n.reg = n(), n.tgt = sum(ng),
+                      pairs.total = n.tgt * (n.tgt-1) / 2,
+                      pairs.coreg = sum( ng*(ng-1)/2 ),
+                      rich = pairs.coreg/pairs.total) %>%
+            ungroup() %>%
+            mutate(net_size = !!net_size) %>%
+            select(net_size,everything()) %>%
+            arrange(desc(rich))
+        res = rbind(res, tn1)
+    }
+    res
     #}}}
 }
 eval_briggs <- function(f_net, br, net_size=5e4) {
@@ -94,6 +125,9 @@ if (opt == 'tf') {
     require(PRROC)
     gs = read_gs()
     res = eval_gs(f_net, gs)
+} else if (opt == 'go') {
+    gs = read_gs()
+    res = eval_go_corncyc(f_net, gs)
 } else if (opt == 'briggs') {
     br = read_briggs()
     res = eval_briggs(f_net, br)
