@@ -12,4 +12,5 @@ This repo also provides a collection of published maize transcription factor fun
 | [Pautler2015 FEA1](https://paperpile.com/view/1d33d29b-c855-080f-95ea-b1a6c6554b50) | fasciated ear4 | shoot meristem | 98 |  | [link]() |
 | [Li2015 O2](https://paperpile.com/view/d4421338-7ca5-045b-a047-931256301428) | Opaque2 | endosperm | 35 (24) |  | [link]() |
 | [Yang2016 HDA101](https://paperpile.com/view/926a768f-372e-08b0-8ce3-7dc97260cfa8) | HDA101 | seed, kernel | 108 |  | [link]() |
+| [Li2018 bZIP22](https://paperpile.com/view/675896ec-b96f-0feb-b2ad-eaa5fa2ab553<Paste>) | ZmbZIP22 | kernel | 33 (26) |  | [link]() |
 
