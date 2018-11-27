@@ -1,5 +1,5 @@
 #{{{ head
-source("grn.fun.r")
+source("functions.R")
 #source("enrich.R")
 fi = file.path(dird, '05.previous.grns/10.RData')
 x = load(fi)

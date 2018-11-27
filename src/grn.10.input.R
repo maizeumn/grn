@@ -1,8 +1,6 @@
 #{{{ head
-source("grn.fun.r")
+source("functions.R")
 require(reticulate)
-f_cfg = file.path(dird, '10.dataset.tsv')
-t_cfg = read_tsv(f_cfg)
 fi = file.path(dird, '09.gs.rda')
 x = load(fi)
 x
@@ -63,7 +61,7 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
 
 diri = '~/projects/maize.expression/data/15_output'
 diro = file.path(dird, '11_input')
-mids = t_cfg %>% distinct(mid) %>% pull(mid)
+mids = t_cfg %>% filter(!is.na(mid)) %>% distinct(mid) %>% pull(mid)
 mids = c("me13c")
 #sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
 

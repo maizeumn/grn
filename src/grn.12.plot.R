@@ -1,8 +1,6 @@
-#{{{ head
-source("grn.fun.r")
+source("functions.R")
 dirw = file.path(dird, '14_eval_sum')
 diri = '~/projects/maize.expression'
-#}}}
 
 #{{{ manually merge tissue GRNs
 if(F) {
@@ -310,37 +308,6 @@ net_size_map = c('1e4'=1e4, '1e5'=1e5, '1e6'=1e6)
 net_size = 1e4
 des = c("non_DE","DE1-2","DE2-4","DE4+","SPE")
 
-#{{{ does TF and target always change in the same direction?
-tp = ev_br %>%
-    filter(tissue %in% tissues6) %>%
-    mutate(tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE')) %>%
-    filter(tgt.DE == 'DE') %>%
-    group_by(nid, tissue, reg.DE) %>%
-    summarise(ntot = n(), p.same = sum(reg.DEdir==tgt.DEdir)/ntot) %>%
-    ungroup() %>%
-    mutate(lab = str_remove(sprintf("%.02f", p.same), '^0+')) %>%
-    mutate(reg.DE = factor(reg.DE, levels = des)) %>%
-    mutate(nid = factor(nid, levels = rev(th$nid)))
-p1 = ggplot(tp, aes(x=nid)) +
-    geom_bar(aes(y=p.same, fill=reg.DE), stat='identity', position='dodge', width=.9, alpha=.7) +
-    geom_text(aes(y=p.same+.01, group=reg.DE, label=lab), hjust=0, position=position_dodge(width=1), size=2) +
-    geom_text(aes(y=.01, group=reg.DE, label=ntot), hjust=0, position=position_dodge(width=1), size=2) +
-    #geom_hline(data=tpl, aes(yintercept=prop.de), size=.3, alpha=.5) +
-    geom_hline(yintercept=.5, size=.3, alpha=.5) +
-    scale_x_discrete(breaks=th$nid, labels=th$txt, expand = c(.01,0)) +
-    scale_y_continuous(name = 'Prop. links showing consistent regulator/target changes', expand = expand_scale(mult=c(0,.1))) +
-    scale_fill_d3() +
-    coord_flip() +
-    facet_wrap(~tissue, nrow = 1, scale = 'free_x') +
-    otheme(strip.size = 9, margin = c(1.5,.2,.2,.2),
-           xtitle = T, ytext = T, xgrid = F, ygrid = T) +
-    theme(axis.text.y=element_text(color=th$col)) +
-    theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
-    guides(direction = 'horizontal', fill = guide_legend(nrow = 1, byrow = F))
-fp = file.path(dirw, "12.br.1.dir.pdf")
-ggsave(p1, filename = fp, width = 8, height = 8)
-#}}}
-
 #{{{ how often is a link observed in multiple tissues? is it consistent?
 tp = ev_br_filt %>% filter(n.tissue >= 5) %>%
     inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
@@ -358,9 +325,11 @@ p = ggplot(tp, aes(x=txt,y=m.drc)) +
            legend.pos = 'top.right', legend.dir = 'v')
 fo = file.path(dirw, '12.br.2.dir.tissue.pdf')
 ggsave(p, file=fo, width=6, height=8)
+#}}}
 
+#{{{ if a TF has multiple targets, does it show consistent +/- effect?
 tp = ev_br_filt %>% group_by(nid, reg.gid) %>%
-    summarise(n.tissues=sum(n.tissue), ntgt = n(), 
+    summarise(n.tissues=sum(n.tissue), ntgt = n(),
               m.drc = sum(n.tissue*m.drc)/sum(n.tissue)) %>%
     ungroup() %>%
     filter(n.tissues >= 10) %>%
@@ -392,7 +361,7 @@ tx %>% filter(reg.gid==gid0) %>%
     summarise(p.tgt = sum(drc=='B<M')/n()) %>% ungroup()
 #}}}
 
-#{{{ is a link is observed in multiple networks, is it consistent?
+#{{{ if a link is observed in multiple networks, is it consistent?
 tp = ev_br_filt %>% group_by(reg.gid,tgt.gid) %>%
     summarise(nnet = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
     filter(nnet >= 3)
@@ -407,6 +376,31 @@ p = ggplot(tp, aes(x=0, y=m.drc)) +
            legend.pos = 'top.right', legend.dir = 'v')
 fo = file.path(dirw, '12.br.3.dir.net.pdf')
 ggsave(p, file=fo, width=6, height=5)
+#}}}
+
+#{{{ if a TF is observed in multiple networks, is it consistent?
+tg = ev_br_filt %>% group_by(reg.gid, tgt.gid) %>%
+    summarise(nnet = n(), m.drc = mean(m.drc),
+              nn1 = sum(nid %in% nids_geno),
+              nn2 = sum(nid %in% nids_dev)) %>%
+    ungroup() %>%
+    filter(nn1 >= 1, nn2 >= 1, nnet >= 2) %>%
+    filter(abs(m.drc) > .5)
+tg %>% count(nnet)
+
+tp = tg %>% group_by(reg.gid) %>%
+    summarise(n.tgt = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
+    filter(n.tgt >= 3)
+tp %>% arrange(desc(n.tgt)) %>% print(n=40)
+p = ggplot(tp, aes(x=m.drc)) +
+    geom_histogram() +
+    scale_x_continuous(name = 'effect on target (positive or negative)', expand=expand_scale(mult=c(.01,.01))) +
+    scale_y_continuous(name = '# TFs', expand=expand_scale(mult=c(0,.05))) +
+    scale_color_aaas() +
+    otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
+           legend.pos = 'top.right', legend.dir = 'v')
+fo = file.path(dirw, '12.br.2b.dir.tissue.pdf')
+ggsave(p, file=fo, width=6, height=4)
 #}}}
 
 #{{{ obtain high quality edges
@@ -434,7 +428,7 @@ tp2 = tp0 %>% select(nid,tissue,net_size,n.links,starts_with("p.reg.")) %>%
     mutate(tag = str_replace(tag, "^p\\.reg\\.", ""))
 tags = c("DE",'DE2','DE4','DE8','SPE')
 tags = c("DE",'SPE')
-tp = tp1 %>% 
+tp = tp1 %>%
     inner_join(tp2, by = c('nid','tissue','net_size','n.links','tag')) %>%
     filter(net_size == !!net_size) %>%
     mutate(txt = sprintf("%d", n.reg)) %>%
@@ -475,6 +469,19 @@ ggsave(p1, filename = fp, width = 8, height = 8)
 #{{{ eval using biomap data - correlation
 fi = file.path(dirw, '01.bm.rds')
 ev_bm = readRDS(fi)
+
+ev_bm_nr = ev_bm %>% distinct(reg.gid,tgt.gid,Tissue,pcc)
+
+tp = tg %>% inner_join(ev_bm_nr, by=c('reg.gid','tgt.gid')) 
+p = ggplot(tp, aes(x = pcc)) +
+    geom_histogram() +
+    facet_wrap(~Tissue, ncol=1)+
+    scale_fill_futurama() +
+    otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
+           legend.pos = 'top.right', legend.dir = 'v') +
+    theme(strip.text.y = element_text(angle=0))
+fo = file.path(dirw, '15.biomap.1.pcc.pdf')
+ggsave(p, file=fo, width=6, height=8)
 
 tp = ev_br_filt %>% inner_join(ev_bm, by = c('nid','reg.gid','tgt.gid')) %>%
     inner_join(th[,c('nid','txt','col')], by = 'nid') %>%

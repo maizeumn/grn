@@ -1,5 +1,4 @@
-#{{{ head
-source("grn.fun.r")
+source(file.path(dirr, "grn.fun.r"))
 require(PRROC)
 #source("enrich.R")
 diri = '~/projects/maize.expression'
@@ -8,7 +7,6 @@ f_cfg = file.path(dirw, '10.dataset.tsv')
 t_cfg = read_tsv(f_cfg)
 t_cfg = t_cfg %>% mutate(note = ifelse(is.na(note), study, sprintf("%s_%s", study, note)))
 studies = t_cfg %>% distinct(study) %>% pull(study)
-#}}}
 
 #{{{ evaluate B73 and Mo17 network, hybrid, ovlp w. others
 dirw = file.path(dird, '25_briggs')

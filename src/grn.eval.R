@@ -14,7 +14,7 @@ opt = args$opt
 if( file.access(f_net) == -1 )
     stop(sprintf("file ( %s ) cannot be accessed", f_net))
 
-source("~/projects/maize.grn/src/grn.fun.r")
+source("~/projects/rmaize/maize.grn.R")
 x = load(f_net)
 
 eval_gs <- function(f_net, gs) {
@@ -26,6 +26,7 @@ eval_gs <- function(f_net, gs) {
     for (ctag in ctags_v) {
         rid = tfs %>% filter(ctag == !!ctag) %>% pull(reg.gid)
         score = as.numeric(reg.mat[rid,])
+        score[is.na(score)] = 0
         true.tgts = tf %>% filter(reg.gid == rid) %>% pull(tgt.gid)
         categ = rep(0, length(tids))
         names(categ) = tids
@@ -79,9 +80,9 @@ eval_biomap <- function(f_net, bm, net_size=5e4) {
     tp = tn %>%
         filter(row_number() <= net_size) %>%
         inner_join(bm, by = c('reg.gid' = 'gid')) %>%
-        rename(r.cpm = CPM) %>%
+        mutate(r.cpm = asinh(CPM)) %>% select(-CPM) %>%
         inner_join(bm, by = c('tgt.gid'='gid','Genotype'='Genotype','Tissue'='Tissue')) %>%
-        rename(t.cpm = CPM) %>%
+        mutate(t.cpm = asinh(CPM)) %>%
         group_by(reg.gid, tgt.gid, Tissue) %>%
         summarise(pcc = cor(r.cpm, t.cpm)) %>% ungroup() %>%
         filter(!is.na(pcc))

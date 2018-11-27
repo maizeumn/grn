@@ -1,11 +1,11 @@
 nid	mid	study	tag	note	net_type	sample_size
-n13a	me13a	li2013		SAM1	ibm	108
+n13a	me13a	li2013		SAM	ril	108
 n13b	me13b	liu2013		leaf	timeseries	13
-n13c	me13c	eitchen2013		diverse_inbreds	genotype	62
+n13c	me13c	eitchen2013		seedling_leaf3	genotype	62
 n14a	me14a	hirsch2014		seedling	genotype	503
 n14b	me14b	li2014		endsperm	timeseries	7
 n15a	me15a	leiboff2015		SAM	genotype	380
-n15b	me15b	yu2015		leaf	timeseries	
+n15b	me15b	yu2015		leaf	timeseries	9
 n16a	me16a	jin2016		kernel	genotype	368
 n16b	me16b	stelpflug2016		B73	tissue	76
 n16c	me16c	walley2016		B73	tissue	23
@@ -24,10 +24,17 @@ n18a_5	me18a	kremling2018	L3Tip	L3Tip	genotype	306
 n18a_6	me18a	kremling2018	LMAD	LMAD	genotype	306
 n18a_7	me18a	kremling2018	LMAN	LMAN	genotype	306
 n18d	me18d	shaefer2018	root	root_GCN	genotype	46
+n99a_1	me99a	kaeppler2018	inbred	inbred	genotype	170
+n99a_2	me99a	kaeppler2018	hybrid	hybrid	genotype	299
 n99b_1	me99b	briggs	B73	B73	tissue	23
 n99b_2	me99b	briggs	Mo17	Mo17	tissue	23
 n99b_3	me99b	briggs	BxM	BxM	tissue	23
+np16_1		walley2016	mRNA	mRNA	liftover	23
+np18_1		huang2018	leaf	leaf	liftover	394
+np18_2		huang2018	root	root	liftover	176
+np18_3		huang2018	SAM	SAM	liftover	406
+np18_4		huang2018	seed	seed	liftover	159
 nc01	mec01	B73_dev41		B73	tissue	41
 nc02	mec02	B73_dev64		B73	tissue	64
 nc03	mec03	B73_dev200		B73	tissue	200
-nt01	met01	leaf_22t			timeseries	22
+nt01	met01	leaf_22t		B73	timeseries	22

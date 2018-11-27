@@ -1,4 +1,4 @@
-source("grn.fun.r")
+source("functions.R")
 genome = 'B73'
 x = load(file.path(dirg, genome, '55.rda'))
 fm = file.path(dirg, genome, "gene_mapping/maize.v3TOv4.geneIDhistory.txt")
@@ -222,19 +222,15 @@ save(t_gs, t_grp, t_grp_f, tf_ids, file = fo)
 #}}}
 
 #{{{ Walley2016 and Huang2018 GRNs
-studies = c(rep("huang", 4), rep("walley", 3))
-tags = c('leaf', 'root', 'sam', 'seed',
-         'rna', 'protein', 'all')
-for (i in 1:length(studies)) {
-    study = studies[i]; tag = tags[i]
+lift_previous_grn <- function(nid, study, tag, tm, dird = '~/projects/maize.grn/data') {
+    #{{{
     fi = sprintf("%s/05_previous_grns/%s_%s.txt", dird, study, tag)
     if(study == 'huang')
         ti = read_tsv(fi)[,1:3]
     else
         ti = read_tsv(fi, col_names = F)[,1:3]
     colnames(ti) = c('rid', 'tid', 'score')
-    #
-    tn = ti %>% 
+    tn = ti %>%
         inner_join(tm, by = c('rid' = 'ogid')) %>%
         rename(reg.gid = gid, rtype = type) %>%
         inner_join(tm, by = c('tid' = 'ogid')) %>%
@@ -243,11 +239,20 @@ for (i in 1:length(studies)) {
         select(reg.gid, tgt.gid, score)
     rids = unique(tn$reg.gid)
     tids = unique(tn$tgt.gid)
-    #   
-    fo = sprintf("%s/12_output/np%d.rda", dird, i)
-    save(tn, rids, tids, file = fo)
-    cat(i, "\n")
+    reg.mat = tn %>% spread(tgt.gid, score) %>%
+        as.data.frame() %>% column_to_rownames(var = 'reg.gid')
+    cat(sprintf("%s %s %s: %d edges, %d TFs, %d targets\n", nid, study, tag,
+                nrow(tn), length(rids), length(tids)))
+    fo = sprintf("%s/12_output/%s.rda", dird, nid)
+    save(reg.mat, rids, tids, tn, file = fo)
+    TRUE
+    #}}}
 }
+
+tp = th %>% filter(nid %in% c("np16_1", sprintf("np18_%d", 1:4))) %>%
+    transmute(nid=nid, study=str_replace(study,"\\d+$",''), tag=note)
+
+pmap_lgl(tp, lift_previous_grn, tm)
 #}}}
 
 #{{{ #Top45 TFs and targets by Y1H

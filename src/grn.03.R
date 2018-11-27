@@ -1,4 +1,4 @@
-source("grn.fun.r")
+source("functions.R")
 
 #{{{ old - read in
 fi = file.path(dird, '05.previous.grns/10.RData')

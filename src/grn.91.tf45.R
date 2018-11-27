@@ -1,5 +1,4 @@
-require(tidyverse)
-require(igraph)
+source("functions.R")
 dirg = '/home/springer/zhoux379/data/genome/B73'
 dirp = '/home/springer/zhoux379/projects/maize.grn'
 dird = file.path(dirp, 'data')

@@ -1,7 +1,5 @@
-#{{{ head
-source("grn.fun.r")
+source("functions.R")
 dirw = file.path(dird, '14_eval_sum')
-#}}}
 
 gs = read_gs()
 br = read_briggs()
