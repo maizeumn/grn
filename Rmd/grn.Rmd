@@ -50,7 +50,7 @@ ft = file.path(dirw, "10.dataset.xlsx")
 net_types = c("tissue","genotype","tissue*genotype",'ril','liftover')
 tt = read_xlsx(ft) %>% select(net_type,nid,study,note,sample_size) %>%
     filter(net_type %in% net_types) %>%
-    filter(! nid %in% c("n99b_2","n99b_3","nc01","nc02")) %>%
+    filter(! nid %in% c("n99a_2","n99b_2","n99b_3","nc01","nc02")) %>%
     mutate(net_type = factor(net_type, levels=net_types)) %>%
     arrange(net_type, nid)
 kable(tt, format = 'latex', longtable = F, booktabs = T,
