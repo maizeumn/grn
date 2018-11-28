@@ -1,6 +1,6 @@
 ---
 title: "maize GRN figures and tables"
-output: 
+output:
   pdf_document:
     citation_package: natbib
     keep_tex: false
@@ -41,46 +41,48 @@ header-includes:
 
 ```{r, message=FALSE, echo=FALSE}
 require(tidyverse)
+require(readxl)
 require(knitr)
 require(kableExtra)
 options(knitr.kable.NA = '')
-dirw = '~/projects/maize.grn/data' 
-ft = file.path(dirw, "10.dataset.tsv")
-tt = read_tsv(ft)
-kable(tt, format = 'latex', longtable = T, booktabs = T,
-  format.args = list(big.mark = ","), 
-  caption = "Table X. GRNs built in this study.") %>%
-  column_spec(1, bold=F) %>%
-  kable_styling("striped", full_width = F)
+dirw = '~/projects/maize.grn/data'
+ft = file.path(dirw, "10.dataset.xlsx")
+tt = read_xlsx(ft) %>% select(net_type,nid,study,note,sample_size) %>%
+    arrange(net_type, nid)
+kable(tt, format = 'latex', longtable = F, booktabs = T,
+  format.args = list(big.mark = ","),
+  caption = "Table 1. GRNs built in this study.") %>%
+  kable_styling(latex_options = c("striped", "hold_position"), full_width = F, font_size = 8) %>%
+  column_spec(1, bold=T) %>%
+  collapse_rows(columns = 1, latex_hline = "major", valign = "top")
 ```
 
-
 \pagebreak
-![Fig 1]($grn/data/14_eval_sum/10.dev.atlas.pdf){width=100%}
-
-Area under receiver operating curves (AUROC) and area under precision-recall curve (AUPR) for GRNs built using different input datasets evaluated using experimentally (Chip-seq, mutant & wildtype RNA-Seq) determined transcription factor (TF) targets.
-
-\pagebreak
-![Fig 2]($grn/data/14_eval_sum/05.auc.pdf){width=100%}
-
-Barplot showing AUROC and AUPRs for lin2017 tissue-specific and pooled GRNs. 
-
-\pagebreak
-![Fig 3]($grn/data/14_eval_sum/14.go.pdf){width=100%}
+![Fig 1]($grn/data/14_eval_sum/14.go.pdf){width=100%}
 
 Fold enrichment of GO and CornCyc categories for built networks (different sizes of top edges taken).
 
 \pagebreak
-![Fig 4a]($grn/data/14_eval_sum/12.briggs.10000.pdf){width=100%}
+![Fig SX]($grn/data/14_eval_sum/10.dev.atlas.pdf){width=100%}
+
+Area under receiver operating curves (AUROC) and area under precision-recall curve (AUPR) for GRNs built using different input datasets evaluated using experimentally (Chip-seq, mutant & wildtype RNA-Seq) determined transcription factor (TF) targets.
+
+\pagebreak
+![Fig SX]($grn/data/14_eval_sum/05.auc.pdf){width=100%}
+
+Barplot showing AUROC and AUPRs for lin2017 tissue-specific and pooled GRNs. 
+
+\pagebreak
+![Fig SX]($grn/data/14_eval_sum/12.briggs.10000.pdf){width=100%}
 
 Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs. Only the top 10,000 strongest edges were taken from each GRN.
 
 \pagebreak
-![Fig 4b]($grn/data/14_eval_sum/12.briggs.100000.pdf){width=100%}
+![Fig SX]($grn/data/14_eval_sum/12.briggs.100000.pdf){width=100%}
 
 Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs. Only the top 100,000 strongest edges were taken from each GRN.
 
 \pagebreak
-![Fig X]($grn/data/14_eval_sum/15.biomap.1.pcc.pdf){width=100%}
+![Fig SX]($grn/data/14_eval_sum/15.biomap.1.pcc.pdf){width=100%}
 
 Evaluation of GRN predictions using the bioMAP data containing ~200 genotypes (34 inbreds + 200 hybrids) in five tissues.  The (Pearson) correlations between regulators and targets (as predicted by each GRN) were evaluated using the bioMAP expression matrix in each tissue, and shown as a boxplot for the top 10,000, 100,000 or 1,000,000 strongest edges in each network.
