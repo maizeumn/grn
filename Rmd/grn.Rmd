@@ -47,12 +47,16 @@ require(kableExtra)
 options(knitr.kable.NA = '')
 dirw = '~/projects/maize.grn/data'
 ft = file.path(dirw, "10.dataset.xlsx")
+net_types = c("tissue","genotype","tissue*genotype",'ril','liftover')
 tt = read_xlsx(ft) %>% select(net_type,nid,study,note,sample_size) %>%
+    filter(net_type %in% net_types) %>%
+    filter(! nid %in% c("n99b_2","n99b_3","nc01","nc02")) %>%
+    mutate(net_type = factor(net_type, levels=net_types)) %>%
     arrange(net_type, nid)
 kable(tt, format = 'latex', longtable = F, booktabs = T,
   format.args = list(big.mark = ","),
   caption = "Table 1. GRNs built in this study.") %>%
-  kable_styling(latex_options = c("striped", "hold_position"), full_width = F, font_size = 8) %>%
+  kable_styling(latex_options = c("striped", "hold_position"), full_width = F, font_size = 9) %>%
   column_spec(1, bold=T) %>%
   collapse_rows(columns = 1, latex_hline = "major", valign = "top")
 ```
