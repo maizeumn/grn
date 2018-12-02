@@ -5,7 +5,7 @@
 ##PBS -q ram256g
 #PBS -q small
 
-cd /home/springer/zhoux379/projects/maize.grn/src
-#Rscript --no-init-file --no-restore grn.10.input.R
-Rscript --no-init-file --no-restore grn.11.eval.R
+cd $grn/src
+Rscript --no-init-file --no-restore grn.10.input.R
+#Rscript --no-init-file --no-restore grn.11.eval.R
 

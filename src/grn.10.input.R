@@ -1,36 +1,64 @@
-#{{{ head
 source("functions.R")
 require(reticulate)
 fi = file.path(dird, '09.gs.rda')
 x = load(fi)
-x
-#}}}
 
 #{{{ prepare GRN input
-write_genie3_input <- function(mid, t_cfg, diro, use_cpm = T) {
+write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', use_cpm=T) {
     #{{{
-    cat(mid, '\n')
-    tc1 = t_cfg %>% filter(mid == !!mid)
-    fi = sprintf("%s/%s.rda", diri, mid)
+    fh1 = sprintf("%s/05_read_list/%s.tsv", diri, mid)
+    fh2 = sprintf("%s/05_read_list/%s.c.tsv", diri, mid)
+    fh = ifelse(file.exists(fh2), fh2, fh1)
+    stopifnot(file.exists(fh))
+    th = read_tsv(fh)
+    #
+    fi = sprintf("%s/08_raw_output/%s/cpm.rds", diri, mid)
     stopifnot(file.exists(fi))
-    x = load(fi)
-    x
-    th0 = th; tm0 = tm
-    for (i in 1:nrow(tc1)) {
-        nid = tc1$nid[i]; tag = tc1$tag[i]
-        if(mid %in% c('me17a', 'me18a') & !is.na(tag)) {
-            th = th0 %>% filter(Tissue == tag)
-            t_exp = tm0 %>% filter(SampleID %in% th$SampleID)
-        } else if(mid %in% c('me99b') & !is.na(tag)) {
-            th = th0 %>% filter(Genotype == tag)
-            t_exp = tm0 %>% filter(SampleID %in% th$SampleID)
+    res = readRDS(fi)
+    tm = res$tm
+    #
+    ths = th %>% distinct(Tissue, Genotype, Treatment) %>%
+        mutate(nSampleID = sprintf("%s_%d", mid, 1:length(Tissue)))
+    th = th %>% inner_join(ths, by = c("Tissue", "Genotype", "Treatment"))
+    t_map = th %>% select(SampleID, nSampleID)
+    th = ths %>% mutate(SampleID=nSampleID) %>% select(-nSampleID)
+    #
+    tm = tm %>% inner_join(t_map, by = 'SampleID') %>%
+        mutate(SampleID = nSampleID) %>%
+        group_by(gid, SampleID) %>%
+        summarise(CPM = mean(CPM), FPKM = mean(FPKM)) %>%
+        ungroup()
+    #
+    tc = t_cfg %>% filter(mid == !!mid)
+    for (i in 1:nrow(tc)) {
+        nid = tc$nid[i]; tag = tc$note[i]
+        #{{{ get th1 and tm1
+        if(mid %in% c('me17a','me18a','me99c') &
+           ! nid %in% c('n17a','n18a','n99c')) {
+            th1 = th %>% filter(Tissue == tag)
+            tm1 = tm %>% filter(SampleID %in% th$SampleID)
+        } else if(mid %in% c('me99b') & !nid %in% c('n99b')) {
+            th1 = th %>% filter(Genotype == tag)
+            tm1 = tm %>% filter(SampleID %in% th$SampleID)
+        } else if(mid == 'me99a' & str_detect(nid, "_[1-5]$")) {
+            th1 = th %>% filter(Tissue == tag)
+            tm1 = tm %>% filter(SampleID %in% th$SampleID)
+        } else if(mid == 'me99a' & nid == 'n99a_6') {
+            th1 = th %>% filter(Tissue == 'seedling', inbred == T)
+            tm1 = tm %>% filter(SampleID %in% th$SampleID)
+        } else if(mid == 'me99a' & nid == 'n99a_7') {
+            th1 = th %>% filter(Tissue == 'seedling', inbred == F)
+            tm1 = tm %>% filter(SampleID %in% th$SampleID)
         } else {
-            th = th0
-            t_exp = tm0
+            th1 = th
+            tm1 = tm
         }
+        #}}}
+        cat(sprintf('%s %d\n', nid, nrow(th1)))
         fo = sprintf("%s/%s.pkl", diro, nid)
-        write_genie3_input1(t_exp, th, tf_ids, fo, use_cpm)
+        write_genie3_input1(tm1, th1, tf_ids, fo, use_cpm)
     }
+    T
     #}}}
 }
 write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
@@ -55,15 +83,14 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
     fo = normalizePath(fo, mustWork = F)
     x = list('em' = em_b, 'gene_names' = tids, 'regulators' = rids)
     x = list(em_b, tids, rids)
-    py_save_object(x, fo) 
+    py_save_object(x, fo)
     #}}}
 }
 
-diri = '~/projects/rnaseq/08_raw_output'
 diro = file.path(dird, '11_input')
-mids = t_cfg %>% filter(!is.na(mid)) %>% distinct(mid) %>% pull(mid)
-mids = c("me13c")
-#sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
+mids = t_cfg %>% filter(str_detect(mid,'^me')) %>% distinct(mid) %>% pull(mid)
+mids = c("me99a",'me99b','me99c','nc01','nc02','nc03','nc04')
+map_int(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
 #}}}
 
 

@@ -1,8 +1,8 @@
 nid	mid	study	note	net_type	sample_size
-n13a	me13a	li2013	SAM	ril	108
+n13a	me13a	li2013	SAM	ril	107
 n13c	me13c	eitchen2013	seedling_leaf3	genotype	62
 n14a	me14a	hirsch2014	seedling	genotype	503
-n15a	me15a	leiboff2015	SAM	genotype	380
+n15a	me15a	leiboff2015	SAM	genotype	383
 n16a	me16a	jin2016	kernel	genotype	368
 n16b	me16b	stelpflug2016	B73	tissue	93
 n16c	me16c	walley2016	B73	tissue	23
@@ -21,7 +21,7 @@ n18a_5			L3Tip	genotype	266
 n18a_6			LMAD	genotype	204
 n18a_7			LMAN	genotype	262
 n18d	me18d	shaefer2018	root_GCN	genotype	48
-n99a	me99a	kaeppler2018	5*96	tissue*genotype	460
+n99a	me99a	kaeppler2018	5*96	tissue*genotype	447
 n99a_1			endosperm	genotype	89
 n99a_2			internode	genotype	43
 n99a_3			leaf	genotype	50
@@ -42,8 +42,7 @@ n99c_5			seedling	genotype	84
 nc01	mec01	leaf dev	leaf	tissue	40
 nc02	mec02	seed dev	embryo_endpsperm	tissue	61
 nc03	mec03	dev atlas	combined	tissue	139
-nc03	mec03	root dev	root	tissue	50
-nt01	met01	leaf_22t	leaf	timeseries	22
+nc04	mec04	root dev	root	tissue	50
 np16_1	np16_1	walley2016	mRNA	liftover	23
 np18_1	np18_1	huang2018	leaf	liftover	394
 np18_2	np18_2	huang2018	root	liftover	176
