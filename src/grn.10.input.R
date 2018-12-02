@@ -3,7 +3,6 @@ require(reticulate)
 fi = file.path(dird, '09.gs.rda')
 x = load(fi)
 
-#{{{ prepare GRN input
 write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', use_cpm=T) {
     #{{{
     fh1 = sprintf("%s/05_read_list/%s.tsv", diri, mid)
@@ -17,9 +16,15 @@ write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', 
     res = readRDS(fi)
     tm = res$tm
     #
-    ths = th %>% distinct(Tissue, Genotype, Treatment) %>%
-        mutate(nSampleID = sprintf("%s_%d", mid, 1:length(Tissue)))
-    th = th %>% inner_join(ths, by = c("Tissue", "Genotype", "Treatment"))
+    if(mid %in% c('me99a','me99c')) {
+        ths = th %>% distinct(Tissue, Genotype, Treatment, inbred) %>%
+            mutate(nSampleID = sprintf("%s_%d", mid, 1:length(Tissue)))
+        th = th %>% inner_join(ths, by = c("Tissue","Genotype","Treatment",'inbred'))
+    } else {
+        ths = th %>% distinct(Tissue, Genotype, Treatment) %>%
+            mutate(nSampleID = sprintf("%s_%d", mid, 1:length(Tissue)))
+        th = th %>% inner_join(ths, by = c("Tissue","Genotype","Treatment"))
+    }
     t_map = th %>% select(SampleID, nSampleID)
     th = ths %>% mutate(SampleID=nSampleID) %>% select(-nSampleID)
     #
@@ -35,9 +40,10 @@ write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', 
         #{{{ get th1 and tm1
         if(mid %in% c('me17a','me18a','me99c') &
            ! nid %in% c('n17a','n18a','n99c')) {
-            th1 = th %>% filter(Tissue == tag)
+            th1 = th %>% filter(tolower(Tissue) == tolower(tag))
             tm1 = tm %>% filter(SampleID %in% th$SampleID)
         } else if(mid %in% c('me99b') & !nid %in% c('n99b')) {
+            th$Genotype[th$Genotype=='B73xMo17'] = 'BxM'
             th1 = th %>% filter(Genotype == tag)
             tm1 = tm %>% filter(SampleID %in% th$SampleID)
         } else if(mid == 'me99a' & str_detect(nid, "_[1-5]$")) {
@@ -89,8 +95,7 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
 
 diro = file.path(dird, '11_input')
 mids = t_cfg %>% filter(str_detect(mid,'^me')) %>% distinct(mid) %>% pull(mid)
-mids = c("me99a",'me99b','me99c','nc01','nc02','nc03','nc04')
+mids = c('me99b','me99c',sprintf("mec%02d",1:4))
 map_int(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
-#}}}
 
 
