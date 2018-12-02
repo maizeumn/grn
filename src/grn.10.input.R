@@ -59,14 +59,11 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
     #}}}
 }
 
-diri = '~/projects/maize.expression/data/15_output'
+diri = '~/projects/rnaseq/08_raw_output'
 diro = file.path(dird, '11_input')
 mids = t_cfg %>% filter(!is.na(mid)) %>% distinct(mid) %>% pull(mid)
 mids = c("me13c")
 #sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
-
-#diro = file.path(dird, '11_input_fpkm')
-#sapply(mids, write_genie3_input, t_cfg = t_cfg, diro = diro, use_cpm = F)
 #}}}
 
 
