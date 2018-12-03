@@ -41,24 +41,19 @@ write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', 
         if(mid %in% c('me17a','me18a','me99c') &
            ! nid %in% c('n17a','n18a','n99c')) {
             th1 = th %>% filter(tolower(Tissue) == tolower(tag))
-            tm1 = tm %>% filter(SampleID %in% th$SampleID)
         } else if(mid %in% c('me99b') & !nid %in% c('n99b')) {
             th$Genotype[th$Genotype=='B73xMo17'] = 'BxM'
             th1 = th %>% filter(Genotype == tag)
-            tm1 = tm %>% filter(SampleID %in% th$SampleID)
         } else if(mid == 'me99a' & str_detect(nid, "_[1-5]$")) {
             th1 = th %>% filter(Tissue == tag)
-            tm1 = tm %>% filter(SampleID %in% th$SampleID)
         } else if(mid == 'me99a' & nid == 'n99a_6') {
             th1 = th %>% filter(Tissue == 'seedling', inbred == T)
-            tm1 = tm %>% filter(SampleID %in% th$SampleID)
         } else if(mid == 'me99a' & nid == 'n99a_7') {
             th1 = th %>% filter(Tissue == 'seedling', inbred == F)
-            tm1 = tm %>% filter(SampleID %in% th$SampleID)
         } else {
             th1 = th
-            tm1 = tm
         }
+        tm1 = tm %>% filter(SampleID %in% th1$SampleID)
         #}}}
         cat(sprintf('%s %d\n', nid, nrow(th1)))
         fo = sprintf("%s/%s.pkl", diro, nid)
@@ -80,7 +75,7 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
     } else {
         t_flt = t_flt %>% mutate(exp.val = asinh(FPKM))
     }
-    et_b = t_flt %>% 
+    et_b = t_flt %>%
         select(SampleID, gid, exp.val) %>%
         spread(SampleID, exp.val)
     tids = et_b %>% pull(gid)
@@ -95,7 +90,7 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
 
 diro = file.path(dird, '11_input')
 mids = t_cfg %>% filter(str_detect(mid,'^me')) %>% distinct(mid) %>% pull(mid)
-mids = c('me99b','me99c',sprintf("mec%02d",1:4))
+mids = c('me17a','me18a',sprintf('me99%s',letters[1:3]))
 map_int(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
 
 
