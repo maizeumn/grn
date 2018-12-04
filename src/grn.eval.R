@@ -14,7 +14,7 @@ opt = args$opt
 if( file.access(f_net) == -1 )
     stop(sprintf("file ( %s ) cannot be accessed", f_net))
 
-source("~/projects/maize.grn/src/functions.R")
+source("~/projects/grn/src/functions.R")
 x = load(f_net)
 
 eval_gs <- function(f_net, gs) {

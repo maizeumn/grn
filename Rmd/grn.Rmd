@@ -43,46 +43,49 @@ header-includes:
 source("../src/functions.R")
 options(knitr.table.format = "latex")
 th %>% select(net_type,nid,study,note,sample_size) %>%
-    mutate(reference='') %>%
+    mutate(reference=str_to_title(study)) %>%
+    mutate(reference=str_replace(reference, '(\\d+)$', ' et al. \\1')) %>%
     #filter(! nid %in% c("n99a_2","n99b_2","n99b_3","nc01","nc02")) %>%
     arrange(net_type, nid) %>%
     select(-nid) %>%
     mutate(net_type = cell_spec(net_type, color=th$col),
-           study = cell_spec(study, color=th$col)) %>%
+           study = cell_spec(study, color=th$col),
+           note = cell_spec(note, color=th$col),
+           sample_size = cell_spec(sample_size, color=th$col)) %>%
     kable(format='latex', escape=F, longtable=F, booktabs=T,
         format.args = list(big.mark = ","),
         caption = "Table 1. GRNs built in this study.") %>%
     kable_styling(latex_options = c("striped", "hold_position"), full_width = F, font_size = 9) %>%
         column_spec(1, bold=T) %>%
-        collapse_rows(columns = 1, latex_hline = "major", valign = "top")
+        collapse_rows(columns=1:2, latex_hline="major", valign="top")
 ```
 
 \pagebreak
-![Fig 1]($grn/data/14_eval_sum/14.go.pdf){width=100%}
+![Fig S1]($grn/data/14_eval_sum/14.go.pdf){width=100%}
 
 Fold enrichment of GO and CornCyc categories for built networks (different sizes of top edges taken).
 
 \pagebreak
-![Fig SX]($grn/data/14_eval_sum/10.dev.atlas.pdf){width=100%}
+![Fig S2]($grn/data/14_eval_sum/10.dev.atlas.pdf){width=100%}
 
 Area under receiver operating curves (AUROC) and area under precision-recall curve (AUPR) for GRNs built using different input datasets evaluated using experimentally (Chip-seq, mutant & wildtype RNA-Seq) determined transcription factor (TF) targets.
 
 \pagebreak
-![Fig SX]($grn/data/14_eval_sum/05.auc.pdf){width=100%}
+![Fig S3]($grn/data/14_eval_sum/05.auc.pdf){width=100%}
 
-Barplot showing AUROC and AUPRs for lin2017 tissue-specific and pooled GRNs. 
+Barplot showing AUROC and AUPRs for all GRNs evaluated using each of the 6 known TFs.
 
 \pagebreak
-![Fig SX]($grn/data/14_eval_sum/12.briggs.10000.pdf){width=100%}
+![Fig S4]($grn/data/14_eval_sum/12.briggs.10000.pdf){width=100%}
 
 Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs. Only the top 10,000 strongest edges were taken from each GRN.
 
 \pagebreak
-![Fig SX]($grn/data/14_eval_sum/12.briggs.100000.pdf){width=100%}
+![Fig S5]($grn/data/14_eval_sum/12.briggs.100000.pdf){width=100%}
 
 Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs. Only the top 100,000 strongest edges were taken from each GRN.
 
 \pagebreak
-![Fig SX]($grn/data/14_eval_sum/15.biomap.1.pcc.pdf){width=100%}
+![Fig S6]($grn/data/14_eval_sum/15.biomap.1.pcc.pdf){width=100%}
 
 Evaluation of GRN predictions using the bioMAP data containing ~200 genotypes (34 inbreds + 200 hybrids) in five tissues.  The (Pearson) correlations between regulators and targets (as predicted by each GRN) were evaluated using the bioMAP expression matrix in each tissue, and shown as a boxplot for the top 10,000, 100,000 or 1,000,000 strongest edges in each network.

@@ -1,6 +1,6 @@
 source("functions.R")
 dirw = file.path(dird, '14_eval_sum')
-diri = '~/projects/maize.expression'
+diri = '~/projects/rnaseq'
 
 #{{{ manually merge tissue GRNs
 if(F) {
@@ -183,12 +183,15 @@ ev_tf = readRDS(fi)
 #{{{ selected roc/pr plot
 nids = c("n16b","n16c","n99b_1","nc03")
 cols.dev = c(pal_npg()(4)[2:4], brewer.pal(6,"Paired")[6])
-cols.dev = c(pal_npg()(4))
+cols.dev = c(pal_npg()(8))
+ss = th %>% distinct(nid,study) %>% filter(nid %in% nids) %>%
+    arrange(nid) %>% pull(study)
 
 tp1 = ev_tf %>% inner_join(th, by='nid') %>%
     filter(nid %in% nids) %>%
     select(nid,study,note,roc) %>% unnest() %>%
-    mutate(ctag = sprintf("%s AUROC", ctag))
+    mutate(ctag = sprintf("%s AUROC", ctag)) %>%
+    mutate(study=factor(study,levels=rev(ss)))
 p1 = ggplot(tp1) +
     geom_line(mapping = aes(x = TPR, y = FPR, color = study)) +
     geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
@@ -203,7 +206,8 @@ p1 = ggplot(tp1) +
 tp2 = ev_tf %>% inner_join(th, by='nid') %>%
     filter(nid %in% nids) %>%
     select(nid,study,note,pr) %>% unnest() %>%
-    mutate(ctag = sprintf("%s AUPR", ctag))
+    mutate(ctag = sprintf("%s AUPR", ctag)) %>%
+    mutate(study=factor(study,levels=rev(ss)))
 p2 = ggplot(tp2) +
     geom_line(mapping = aes(x = recall, y = precision, color = study)) +
     #geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
@@ -224,8 +228,8 @@ ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>%
 
 #{{{ aupr/auroc bar-plot
 fp = file.path(dirw, "05.auc.pdf")
-wd = 8; ht = 10
-tp = ev_tf %>% select(nid,auroc,aupr) %>% unnest() %>% select(-ctag1) %>% 
+wd = 8; ht = 12
+tp = ev_tf %>% select(nid,auroc,aupr) %>% unnest() %>% select(-ctag1) %>%
     #filter(ctag %in% ctags, nid %in% nids) %>%
     rename(AUPR = aupr, AUROC = auroc) %>%
     gather(type, auc, -nid,  -ctag) %>%
@@ -245,7 +249,7 @@ p1 = ggplot(tp, aes(x=nid, y=auc, fill=type)) +
     coord_flip() +
     facet_wrap(type~ctag, scale = 'free_x', nrow = 2) +
     otheme(strip.size=7, legend.pos='none', margin=c(.2,.2,.2,.2),
-           xtitle=F, ytext=T) +
+           ygrid=T, xtitle=F, ytext=T) +
     theme(axis.text.y=element_text(color=th$col))
 ggarrange(p1, nrow = 1, ncol = 1, labels = '', heights = c(2,2)) %>%
     ggexport(filename = fp, width = wd, height = ht)
@@ -254,8 +258,9 @@ ggarrange(p1, nrow = 1, ncol = 1, labels = '', heights = c(2,2)) %>%
 
 #{{{ evaluate using GO/CornCyc
 fi = file.path(dirw, '01.go.rds')
-ev_tf = readRDS(fi)
+ev_go = readRDS(fi)
 net_sizes = c(1e4,5e4,1e5,5e5)
+net_sizes = c(5e4,5e5)
 tps = ev_go %>% distinct(nid,txt,col)
 tp = ev_go %>% select(-note,-sample_size,-fi) %>% unnest() %>%
     filter(n.tgt >= 3) %>%
@@ -274,20 +279,20 @@ p1 = ggplot(tp) +
     geom_point(aes(nid,fc,color=net_size,shape=net_size), size=2.5) +
     #geom_text(data = tps, aes(x = nid, y = 1, label = n.tf), size = 3, hjust = 1) +
     geom_hline(yintercept = 1, alpha= .5, linetype='dotted') +
-    scale_x_discrete(breaks = tps$nid, labels = tps$txt, expand = expand_scale(mult=c(.03,.03))) +
+    scale_x_discrete(breaks = tps$nid, labels = tps$txt, expand = expand_scale(mult=c(.01,.01))) +
     scale_y_continuous(name = 'Fold Enrichment', expand = c(.05,0)) +
     coord_flip() +
     facet_grid(.~grp_tag) +
     scale_fill_npg() +
     scale_color_npg() +
-    otheme(legend.pos='top.right',
-           strip.size = 8, margin = c(1,5,.5,.5,.5),
+    otheme(legend.pos='bottom.right',
+           strip.size = 8, margin = c(.5,.5,.5,.5),
            xtitle=T, xtext=T, ytext=T, ygrid=T, xtick=T) +
     theme(axis.text.y = element_text(color = tps$col)) +
     guides(color = guide_legend(ncol = 1, byrow = F))
     #theme(axis.text.x = element_text(size = 8, angle = 30, hjust = 1))
 fo = file.path(dirw, "14.go.pdf")
-ggsave(p1, filename = fo, width = 8, height = 8)
+ggsave(p1, filename = fo, width = 8, height = 10)
 #
 #}}}
 

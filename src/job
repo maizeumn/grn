@@ -6,6 +6,6 @@
 #PBS -q small
 
 cd $grn/src
-Rscript --no-init-file --no-restore grn.10.input.R
-#Rscript --no-init-file --no-restore grn.11.eval.R
+#Rscript --no-init-file --no-restore grn.10.input.R
+Rscript --no-init-file --no-restore grn.11.eval.R
 

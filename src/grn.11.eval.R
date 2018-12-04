@@ -51,19 +51,19 @@ to = tibble(nid = rep(nids, map_int(y, length)), pcc = flattern_dbl(y))
 #fo = file.path(dirw, '01.tf.rds')
 #saveRDS(ev_tf, file = fo)
 
-ev_go = th %>% mutate(fi = sprintf("%s/13_eval/%s_go.rds", dird, nid)) %>%
-    mutate(res = map(fi, readRDS))
-fo = file.path(dirw, '01.go.rds')
-saveRDS(ev_go, file = fo)
+#ev_go = th %>% mutate(fi = sprintf("%s/13_eval/%s_go.rds", dird, nid)) %>%
+    #mutate(res = map(fi, readRDS))
+#fo = file.path(dirw, '01.go.rds')
+#saveRDS(ev_go, file = fo)
 
-#ev_br = th %>% mutate(fi = sprintf("%s/13_eval/%s_br.rds", dird, nid)) %>%
-    #mutate(res = map(fi, readRDS)) %>%
-    #select(nid,res) %>% unnest()
-#fo = file.path(dirw, '01.br.rds')
-#saveRDS(ev_br, file = fo)
+ev_br = th %>% mutate(fi = sprintf("%s/13_eval/%s_br.rds", dird, nid)) %>%
+    mutate(res = map(fi, readRDS)) %>%
+    select(nid,res) %>% unnest()
+fo = file.path(dirw, '01.br.rds')
+saveRDS(ev_br, file = fo)
 
-#ev_bm = th %>% mutate(fi = sprintf("%s/13_eval/%s_bm.rds", dird, nid)) %>%
-    #mutate(res = map(fi, readRDS)) %>%
-    #select(nid,res) %>% unnest()
-#fo = file.path(dirw, '01.bm.rds')
-#saveRDS(ev_bm, file = fo)
+ev_bm = th %>% mutate(fi = sprintf("%s/13_eval/%s_bm.rds", dird, nid)) %>%
+    mutate(res = map(fi, readRDS)) %>%
+    select(nid,res) %>% unnest()
+fo = file.path(dirw, '01.bm.rds')
+saveRDS(ev_bm, file = fo)
