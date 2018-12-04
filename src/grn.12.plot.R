@@ -260,24 +260,20 @@ ggarrange(p1, nrow = 1, ncol = 1, labels = '', heights = c(2,2)) %>%
 fi = file.path(dirw, '01.go.rds')
 ev_go = readRDS(fi)
 net_sizes = c(1e4,5e4,1e5,5e5)
-net_sizes = c(5e4,5e5)
+net_sizes = c(5e4,1e5,5e5)
+
+#{{{ enrichment
 tps = ev_go %>% distinct(nid,txt,col)
-tp = ev_go %>% select(-note,-sample_size,-fi) %>% unnest() %>%
-    filter(n.tgt >= 3) %>%
-    group_by(nid,net_size,grp_tag,permut) %>%
-    summarise(rich = sum(pairs.coreg)/sum(pairs.total)) %>%
-    ungroup() %>% spread(permut, rich) %>%
-    mutate(fc = observed/random) %>%
+tp = ev_go %>% select(-study,-note,-sample_size,-fi) %>% unnest() %>%
+    filter(n.tgt >= 10, net_size %in% net_sizes) %>%
+    group_by(nid,net_size,grp_tag) %>%
+    summarise(fc = sum(pairs.coreg.obs)/sum(pairs.coreg.exp)) %>%
+    ungroup() %>%
     mutate(net_size=factor(net_size,levels=net_sizes),
            nid = factor(nid, levels = rev(tps$nid)))
-
+#
 p1 = ggplot(tp) +
-    #stat_boxplot(geom = "errorbar", position = 'dodge', width = .3, linetype = 'solid') +
-    #geom_boxplot(aes(x = nid, y = rich), outlier.shape = NA, alpha = .9, size = .3, width = .8) +
-    #geom_violin(aes(x = nid, y = rich), alpha = .9, size = .3, width = .8) +
-    #geom_point(data = tps, aes(x = nid, y = r.median, color = 'median')) +
     geom_point(aes(nid,fc,color=net_size,shape=net_size), size=2.5) +
-    #geom_text(data = tps, aes(x = nid, y = 1, label = n.tf), size = 3, hjust = 1) +
     geom_hline(yintercept = 1, alpha= .5, linetype='dotted') +
     scale_x_discrete(breaks = tps$nid, labels = tps$txt, expand = expand_scale(mult=c(.01,.01))) +
     scale_y_continuous(name = 'Fold Enrichment', expand = c(.05,0)) +
@@ -293,7 +289,71 @@ p1 = ggplot(tp) +
     #theme(axis.text.x = element_text(size = 8, angle = 30, hjust = 1))
 fo = file.path(dirw, "14.go.pdf")
 ggsave(p1, filename = fo, width = 8, height = 10)
+#}}}
+
+#{{{
+tp = ev_go %>% select(net_type,nid,col,txt,res) %>%
+    unnest() %>%
+    filter(net_size==50000,grp_tag=='GO',n.tgt>=50,fc>=3, fc!=Inf) %>%
+    select(net_type,nid,col,txt,grp,pairs.coreg.obs,pairs.coreg.exp,fc)
+
+goname = gs$grp %>% distinct(grp,note)
+tp %>% count(grp,net_type) %>% spread(net_type,n) %>%
+    select(-ril,-liftover) %>% inner_join(goname, by='grp') %>%
+    pull(note)
+
+tps = tp %>% count(grp)
+p = ggplot(tps, aes(x=n)) +
+    geom_histogram() +
+    scale_x_continuous(name = '# Enriched GRNs', expand=c(0,0)) +
+    scale_y_continuous(name = '# GO Terms', expand=expand_scale(mult=c(0,.05))) +
+    scale_color_aaas() +
+    otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
+           legend.pos = 'top.right', legend.dir = 'v')
+fo = file.path(dirw, '14.2.dist.pdf')
+ggsave(p, file=fo, width=6, height=4)
+
+
+to = tp %>% mutate(txt = factor(txt,levels=th$txt)) %>%
+    select(txt,grp,fc) %>%
+    spread(txt,fc) %>%
+    inner_join(goname, by = 'grp') %>%
+    select(grp,note, everything())
+fo = file.path(dirw, '41.enriched.go.tsv')
+write_tsv(to, fo, na = '')
+#}}}
+
+#{{{
+tp = ev_go %>% select(net_type,nid,col,txt,res) %>%
+    unnest() %>%
+    filter(net_size==50000,grp_tag=='GO',n.tgt>=20,fc>=2, fc!=Inf) %>%
+    select(nid,grp) %>% mutate(s=1) %>%
+    spread(nid,s)
+tp[is.na(tp)] = 0
+e = tp %>% select(-grp)
+dim(e)
+
+cor_opt = "spearman"
+hc_opt = "ward.D"
+hc_title = sprintf("dist: %s\nhclust: %s", cor_opt, hc_opt)
+edist <- as.dist(1-cor(e, method = cor_opt))
+ehc <- hclust(edist, method = hc_opt)
+tree = as.phylo(ehc)
+lnames = ehc$labels[ehc$order]
 #
+tp = th %>% mutate(taxa = nid, lab = txt) %>%
+    select(taxa, everything())
+cols1 = c('gray80','black','red','seagreen3', pal_d3()(5))
+p1 = ggtree(tree, layout = 'rectangular') +
+    #geom_tiplab(size = labsize, color = 'black') +
+    scale_x_continuous(expand = expand_scale(.9,.03)) +
+    scale_y_discrete(expand = c(.01,0)) +
+    theme_tree2()
+p1 = p1 %<+% tp + geom_tiplab(aes(label = lab, color=net_type), family='mono') +
+    scale_color_aaas()
+fo = file.path(dirw, "gotree.pdf")
+ggsave(p1, filename = fo, width=7, height=8)
+#}}}
 #}}}
 
 #{{{ evaluate briggs data

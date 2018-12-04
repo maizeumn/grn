@@ -55,30 +55,30 @@ eval_gs <- function(f_net, gs) {
 eval_go_corncyc <- function(f_net, gs, net_sizes = c(1e4,5e4,1e5,5e5)) {
     #{{{
     y = load(f_net)
-    set.seed(1026)
-    tn1 = tn %>% mutate(permut='observed') %>% select(permut, reg.gid, tgt.gid)
-    tn2 = tn %>% mutate(tgt.gid = sample(tgt.gid)) %>%
-        mutate(permut='random') %>% select(permut,reg.gid,tgt.gid)
-    tnc = tn1 %>% bind_rows(tn2)
     res = tibble()
     for (net_size in net_sizes) {
-        tn1 = tnc %>%
-            group_by(permut) %>%
-            filter(row_number() <= net_size) %>% ungroup() %>%
+        set.seed(1026)
+        tn0 = tn %>% filter(row_number() <= net_size)
+        tn1 = tn0 %>% mutate(permut='observed') %>%
+            select(permut, reg.gid, tgt.gid)
+        tn2 = tn0 %>% mutate(tgt.gid = sample(tgt.gid)) %>%
+            mutate(permut='random') %>% select(permut,reg.gid,tgt.gid)
+        tnc = tn1 %>% bind_rows(tn2) %>%
             inner_join(gs$grp_f, by = c("tgt.gid" = 'gid')) %>%
             rename(grp_tag = ctag) %>%
             count(permut, grp_tag, grp, reg.gid) %>%
             rename(ng = n) %>%
             group_by(permut, grp_tag, grp) %>%
-            summarise(n.reg = n(), n.tgt = sum(ng),
-                      pairs.total = n.tgt * (n.tgt-1) / 2,
-                      pairs.coreg = sum( ng*(ng-1)/2 ),
-                      rich = pairs.coreg/pairs.total) %>%
+            summarise(n.tgt = sum(ng),
+                      pairs.coreg = sum( ng*(ng-1)/2 )) %>%
             ungroup() %>%
+            spread(permut, pairs.coreg) %>%
+            rename(pairs.coreg.obs=observed, pairs.coreg.exp=random) %>%
+            mutate(fc = pairs.coreg.obs/pairs.coreg.exp) %>%
             mutate(net_size = !!net_size) %>%
             select(net_size,everything()) %>%
-            arrange(desc(rich))
-        res = rbind(res, tn1)
+            arrange(desc(fc))
+        res = rbind(res, tnc)
     }
     res
     #}}}

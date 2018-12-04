@@ -61,7 +61,7 @@ th %>% select(net_type,nid,study,note,sample_size) %>%
 ```
 
 \pagebreak
-![Fig S1]($grn/data/14_eval_sum/14.go.pdf){width=100%}
+![Fig 1]($grn/data/14_eval_sum/14.go.pdf){width=100%}
 
 Fold enrichment of GO and CornCyc categories for built networks (different sizes of top edges taken).
 

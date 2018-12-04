@@ -11,8 +11,7 @@ dirw = file.path(dird, '07_known_tf')
 #{{{ KN1
 tag = 'KN1'
 fi = sprintf("%s/raw/%s.tsv", dirw, tag)
-ti = read_tsv(fi)
-ti = ti %>%
+ti = read_tsv(fi) %>%
     transmute(ogid = `Gene ID`,
               binding = `High confidence binding loci within 10 kb`,
               fdr_ear = `FDR ear`,
@@ -152,8 +151,12 @@ dirg = '~/data/genome/B73/61_functional'
 ctag = "GO"
 fi = file.path(dirg, "02.go.gs.tsv")
 ti = read_tsv(fi)
-tig = ti %>% transmute(ctag = ctag, grp = goid, gid = gid, 
-                       note = sprintf("%s_%s", evidence, gotype))
+tig = ti %>% mutate(note = str_c(evidence, gotype)) %>%
+    mutate(ctag = !!ctag) %>% select(ctag, grp=goid, gid, note)
+fi = file.path(dirg, "01.go.tsv")
+ti = read_tsv(fi)
+tig = ti %>% filter(ctag == 'uniprot.plants') %>%
+    mutate(ctag = !!ctag) %>% select(ctag, grp=goid, gid, note=goname)
 
 ctag = "CornCyc"
 fi = file.path(dirg, "07.corncyc.tsv")
@@ -196,7 +199,7 @@ ctags = c('KN1_ear', 'KN1_tassel', 'KN1_leaf', 'KN1_any', 'KN1_all',
 to = tibble()
 for (ctag in ctags) {
     fi = sprintf("%s/07_known_tf/05.%s.tsv", dird, ctag)
-    ti = read_tsv(fi) %>% 
+    ti = read_tsv(fi) %>%
         mutate(ctag = ctag) %>%
         select(ctag, everything())
     to = rbind(to, ti)
