@@ -82,14 +82,25 @@ ggpubr::ggarrange(p1, p2,
 
 #{{{ Y1H eval
 dirw = file.path(dird, '08_y1h')
-to = ev_tf %>% select(nid, ystat) %>% unnest() %>%
+fi = file.path(dirw, '01.rds')
+y1h = readRDS(fi)
+tn = y1h$tn %>% transmute(reg.gid=reg, tgt.gid=tgt, Y1H='Yes')
+
+tp = ev_tf %>% select(nid, ystat) %>% unnest() %>%
     filter(net_size == 50000) %>% select(-net_size) %>%
+    left_join(tn, by = c('reg.gid','tgt.gid'))
+tp %>% count(reg.gid)
+tp %>% count(tgt.gid)
+tp %>% count(reg.gid,tgt.gid)
+tp %>% count(reg.gid,tgt.gid) %>% count(n)
+tp %>% distinct(reg.gid,tgt.gid,Y1H) %>% count(Y1H)
+
+to = tp %>%
     inner_join(th, by='nid') %>%
-    select(reg.gid, tgt.gid, txt) %>%
+    select(reg.gid, tgt.gid, Y1H, txt) %>%
     mutate(txt = factor(txt, levels=th$txt)) %>%
     mutate(s = T) %>%
     spread(txt, s)
-
 fo = file.path(dirw, '11.support.edges.tsv')
 write_tsv(to, fo, na='')
 #}}}
