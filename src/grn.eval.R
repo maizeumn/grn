@@ -17,13 +17,14 @@ if( file.access(f_net) == -1 )
 source("~/projects/grn/src/functions.R")
 x = load(f_net)
 
-eval_gs <- function(f_net, gs) {
+eval_gs <- function(f_net, gs, y1h, net_sizes=c(1e4,5e4,1e5,5e5)) {
     #{{{
     tf = gs$tf; tfs = gs$tfs
     y = load(f_net)
     ctags_v = tfs %>% filter(reg.gid %in% rids) %>% pull(ctag)
     t_pr = tibble(); t_roc = tibble(); t_aupr = tibble(); t_auroc = tibble()
     for (ctag in ctags_v) {
+        #{{{
         rid = tfs %>% filter(ctag == !!ctag) %>% pull(reg.gid)
         score = as.numeric(reg.mat[rid,])
         score[is.na(score)] = 0
@@ -48,8 +49,29 @@ eval_gs <- function(f_net, gs) {
         t_auroc1 = tibble(ctag = ctag, auroc = auroc)
         t_aupr = rbind(t_aupr, t_aupr1)
         t_auroc = rbind(t_auroc, t_auroc1)
+        #}}}
     }
-    list('pr'=t_pr, 'roc'=t_roc, 'aupr'=t_aupr, 'auroc'=t_auroc)
+    # network properties
+    nstat = tibble()
+    ystat = tibble()
+    for(net_size in net_sizes) {
+        tn0 = tn %>% filter(row_number() <= net_size)
+        n.reg = length(unique(tn0$reg.gid))
+        n.tgt = length(unique(tn0$tgt.gid))
+        n.tgt.per.reg = tn0 %>% count(reg.gid) %>% pull(n)
+        stat1 = desc_stat(n.tgt.per.reg) %>%
+            mutate(net_size=!!net_size, n.reg=n.reg, n.tgt=n.tgt) %>%
+            select(net_size, n.reg, n.tgt, everything())
+        nstat = rbind(nstat, stat1)
+        #
+        ty = tn0 %>%
+            filter(reg.gid %in% y1h$reg.gids, tgt.gid %in% y1h$tgt.gids) %>%
+            mutate(net_size=net_size) %>%
+            select(net_size, reg.gid, tgt.gid)
+        ystat = rbind(ystat, ty)
+    }
+    list('pr'=t_pr, 'roc'=t_roc, 'aupr'=t_aupr, 'auroc'=t_auroc,
+        'nstat'=nstat, 'ystat'=ystat)
     #}}}
 }
 eval_go_corncyc <- function(f_net, gs, net_sizes = c(1e4,5e4,1e5,5e5)) {
@@ -124,14 +146,16 @@ eval_biomap <- function(f_net, bm, net_size=5e4) {
 if (opt == 'tf') {
     require(PRROC)
     gs = read_gs()
-    res = eval_gs(f_net, gs)
+    fi = file.path(dird, '08_y1h_45', '01.rds')
+    y1h = readRDS(fi)
+    res = eval_gs(f_net, gs, y1h)
 } else if (opt == 'go') {
     gs = read_gs()
     res = eval_go_corncyc(f_net, gs)
-} else if (opt == 'briggs') {
+} else if (opt == 'br') {
     br = read_briggs()
     res = eval_briggs(f_net, br)
-} else if (opt == 'biomap') {
+} else if (opt == 'bm') {
     bm = read_biomap(opt='inbred')
     res = eval_biomap(f_net, bm)
 } else {

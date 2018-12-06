@@ -155,7 +155,8 @@ tig = ti %>% mutate(note = str_c(evidence, gotype)) %>%
     mutate(ctag = !!ctag) %>% select(ctag, grp=goid, gid, note)
 fi = file.path(dirg, "01.go.tsv")
 ti = read_tsv(fi)
-tig = ti %>% filter(ctag == 'uniprot.plants') %>%
+tig = ti %>%
+    filter(ctag %in% c('uniprot.plants','arabidopsis'), gotype=='P') %>%
     mutate(ctag = !!ctag) %>% select(ctag, grp=goid, gid, note=goname)
 
 ctag = "CornCyc"
@@ -170,27 +171,12 @@ t_grp
 t_grp_f
 t_grp_f %>% count(grp) %>% count(n) %>% print(n=20)
 
-## create all possible regulation pairs
-#to = tig %>% group_by(goid) %>%
-#    do(data.frame(t(combn(.$gid, 2)))) %>%
-#    ungroup() %>%
-#    as_tibble() %>%
-#    transmute(reg.gid = X1, tgt.gid = X2)
-#to2 = to %>% rename(rid = reg.gid, tid = tgt.gid) %>%
-#    transmute(reg.gid = tid, tgt.gid = rid)
-
-#{{{ #PPIM
+# PPIM
 ctag = "PPIM"
-dirg = '~/data/genome/B73/61_functional'
 fi = file.path(dirg, "08.ppim.tsv")
-ti = read_tsv(fi) %>% filter(type1 == '1-to-1', type2 == '1-to-1') 
-
-to1 = ti %>% transmute(reg.gid = gid1, tgt.gid = gid2)
-to2 = ti %>% transmute(reg.gid = gid2, tgt.gid = gid1)
-to = to1 %>% bind_rows(to2)
-fo = sprintf("%s/06_known_ggi/%s.tsv", dird, ctag)
-#write_tsv(to, fo)
-#}}}
+ti = read_tsv(fi)
+ppi = ti %>% filter(type1 != '1-to-0', type2 != '1-to-0') %>%
+    select(gid1, gid2)
 #}}}
 
 #{{{ build GRN gold-standard dataset
@@ -212,8 +198,9 @@ tf = read_tsv(ff)
 tf
 tf_ids = tf$gid
 length(tf_ids)
+length(unique(tf_ids))
 
-tf_ids_n = t_gs %>% distinct(reg.gid) %>% filter(!reg.gid %in% tf_ids) %>% 
+tf_ids_n = t_gs %>% distinct(reg.gid) %>% filter(!reg.gid %in% tf_ids) %>%
     pull(reg.gid)
 tf_ids_n
 tf_ids = c(tf_ids, tf_ids_n)
@@ -221,7 +208,7 @@ length(tf_ids)
 #}}}
 
 fo = file.path(dird, '09.gs.rda')
-save(t_gs, t_grp, t_grp_f, tf_ids, file = fo)
+save(t_gs, t_grp, t_grp_f, tf_ids, ppi, file=fo)
 #}}}
 
 #{{{ Walley2016 and Huang2018 GRNs
@@ -259,7 +246,7 @@ pmap_lgl(tp, lift_previous_grn, tm)
 #}}}
 
 #{{{ #Top45 TFs and targets by Y1H
-dirw = file.path(dird, '08_y1h_45')
+dirw = file.path(dird, '08_y1h')
 fi = file.path(dirw, "y1h.targets.tsv")
 ti = read_tsv(fi)
 colnames(ti) = c("reg.v3", "reg.v4", "tgt.v3", "tgt.v4")
@@ -267,15 +254,31 @@ ti = ti %>% fill(reg.v3, reg.v4, .direction = 'down')
 ti %>% distinct(reg.v3)
 ti %>% distinct(tgt.v3)
 
-tch = ti %>% distinct(reg.v3, reg.v4) %>% 
-    left_join(tmr, by = c('reg.v3' = 'ogid')) %>%
+tch = ti %>% distinct(reg.v3, reg.v4) %>%
+    left_join(tm, by = c('reg.v3' = 'ogid')) %>%
     print(n = 45)
 tch %>% filter(is.na(gid) | reg.v4 != gid)
 
-tr = ti %>% filter(reg.v4 != 'none', !is.na(tgt.v4)) %>%
+tn = ti %>% filter(reg.v4 != 'none', !is.na(tgt.v4)) %>%
     transmute(reg = reg.v4, tgt = tgt.v4)
-fr = file.path(dirw, '10.tsv')
-write_tsv(tr, fr)
+fn = file.path(dirw, '10.tsv')
+#write_tsv(tn, fn)
+
+
+fi = file.path(dirw, 'phenolic.xlsx')
+ti = read_xlsx(fi,
+    col_names = c('gid_v3','gname','yeast_prom','prom_mplant',
+                 'gid','chrom','start','end','orig','note',
+                 'ref','x1','coexp','syntelog','sub1','sub2_ref')) %>%
+    filter(row_number() > 1) %>%
+    filter(!is.na(gid) & gid != 'Na') %>%
+    select(gid,gname,everything()) %>%
+    filter(gid_v3 != 'GRMZM2G049424')
+ti %>% count(gid) %>% count(n)
+
+fo = file.path(dirw, '01.rds')
+res = list(reg.gids = unique(tn$reg), tgt.gids = ti$gid, tn = tn)
+saveRDS(res, file=fo)
 #}}}
 
 

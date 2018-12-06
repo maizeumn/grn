@@ -80,7 +80,7 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
         spread(SampleID, exp.val)
     tids = et_b %>% pull(gid)
     em_b = t(as.matrix(et_b[,-1]))
-    rids = tf_ids[tf_ids %in% gids]
+    rids = unique(tf_ids[tf_ids %in% gids])
     fo = normalizePath(fo, mustWork = F)
     x = list('em' = em_b, 'gene_names' = tids, 'regulators' = rids)
     x = list(em_b, tids, rids)

@@ -28,15 +28,15 @@ def run_dynGENIE3(fi, fo, thread, tree_method, K, ntrees):
                     nthreads = thread)
     with open(fo, "wb") as fho:
         _pickle.dump(VIM, fho)
- 
+
 def run_GENIE3(fi, fo, thread, tree_method, K, ntrees):
     fhi = open(fi, 'rb')
     (exp_mat, tids, rids) = _pickle.load(fhi)
     fhi.close()
     VIM = GENIE3(exp_mat, gene_names = tids, regulators = rids,
-                 tree_method = tree_method, 
-                 K = K, 
-                 ntrees = ntrees, 
+                 tree_method = tree_method,
+                 K = K,
+                 ntrees = ntrees,
                  nthreads = thread)
     with open(fo, "wb") as fho:
         _pickle.dump(VIM, fho, protocol = 4)

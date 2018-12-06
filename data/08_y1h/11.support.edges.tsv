@@ -1,0 +1,191 @@
+reg.gid	tgt.gid	stelpflug2016 B73 [93]	walley2016 B73 [23]	briggs B73 [23]	briggs Mo17 [23]	briggs BxM [23]	leaf dev leaf [40]	seed dev embryo_endpsperm [61]	dev atlas combined [139]	root dev root [50]	eitchen2013 seedling_leaf3 [62]	hirsch2014 seedling [503]	leiboff2015 SAM [383]	lin2017 ear [26]	lin2017 root [27]	lin2017 shoot [27]	lin2017 SAM [27]	kremling2018 GRoot [274]	kremling2018 GShoot [280]	kremling2018 Kern [231]	kremling2018 L3Base [264]	kremling2018 L3Tip [266]	kremling2018 LMAD [204]	kremling2018 LMAN [262]	shaefer2018 root_GCN [48]	kaeppler2018 endosperm [89]	kaeppler2018 internode [43]	kaeppler2018 leaf [50]	kaeppler2018 root [49]	kaeppler2018 seedling [216]	kaeppler2018 seedling inbred [166]	kaeppler2018 seedling hybrid [50]	biomap endosperm [121]	biomap internode [77]	biomap leaf [84]	biomap root [84]	lin2017 5*27 [133]	kaeppler2018 5*96 [447]	briggs 3*23 [73]	biomap 5*121 [450]	li2013 SAM [107]	walley2016 mRNA [23]	huang2018 leaf [394]	huang2018 root [176]	huang2018 SAM [406]	huang2018 seed [159]
+Zm00001d002744	Zm00001d046915																TRUE																													
+Zm00001d005100	Zm00001d031489											TRUE	TRUE																																	
+Zm00001d005100	Zm00001d042848																					TRUE																								
+Zm00001d008356	Zm00001d010521				TRUE																																									
+Zm00001d008356	Zm00001d026370										TRUE																																			
+Zm00001d008356	Zm00001d038700				TRUE																																									
+Zm00001d008356	Zm00001d047797				TRUE																																									
+Zm00001d009622	Zm00001d007403										TRUE																																			
+Zm00001d009622	Zm00001d034635										TRUE																																			
+Zm00001d009622	Zm00001d037383										TRUE																																			
+Zm00001d009622	Zm00001d044683										TRUE																																			
+Zm00001d009622	Zm00001d046915										TRUE																																			
+Zm00001d009622	Zm00001d051529										TRUE																																			
+Zm00001d009823	Zm00001d003129																																									TRUE				
+Zm00001d009823	Zm00001d017077																																											TRUE		
+Zm00001d009823	Zm00001d046855												TRUE																																	
+Zm00001d010713	Zm00001d030090																								TRUE																					
+Zm00001d010713	Zm00001d043019										TRUE																																			
+Zm00001d010713	Zm00001d045043							TRUE																																						
+Zm00001d011470	Zm00001d010521												TRUE																		TRUE			TRUE												
+Zm00001d011470	Zm00001d012274								TRUE																																					
+Zm00001d011470	Zm00001d015618												TRUE																																TRUE	
+Zm00001d011470	Zm00001d017186				TRUE																																	TRUE								
+Zm00001d011470	Zm00001d017274												TRUE																																	
+Zm00001d011470	Zm00001d019669				TRUE	TRUE																												TRUE					TRUE							
+Zm00001d011470	Zm00001d028653				TRUE																																									
+Zm00001d011470	Zm00001d032468												TRUE																																TRUE	
+Zm00001d011470	Zm00001d038833	TRUE			TRUE				TRUE																																					
+Zm00001d011470	Zm00001d043019																																	TRUE											TRUE	
+Zm00001d011470	Zm00001d046915																																				TRUE									
+Zm00001d011470	Zm00001d047797			TRUE	TRUE				TRUE																														TRUE							
+Zm00001d011470	Zm00001d048709	TRUE																																										TRUE		
+Zm00001d011470	Zm00001d048710																																											TRUE		
+Zm00001d011470	Zm00001d049541												TRUE																		TRUE															
+Zm00001d011470	Zm00001d051161	TRUE											TRUE																									TRUE							TRUE	
+Zm00001d011470	Zm00001d051163																																					TRUE								
+Zm00001d011470	Zm00001d052673																																	TRUE												
+Zm00001d011470	Zm00001d052841																																												TRUE	
+Zm00001d011470	Zm00001d053156																																						TRUE							
+Zm00001d017782	Zm00001d006446																					TRUE																								
+Zm00001d017782	Zm00001d020530																																		TRUE											
+Zm00001d017782	Zm00001d037383																					TRUE																								
+Zm00001d017782	Zm00001d037784																					TRUE																								
+Zm00001d017782	Zm00001d039837																																					TRUE								
+Zm00001d017782	Zm00001d041763																					TRUE																								
+Zm00001d017782	Zm00001d044683																					TRUE																								
+Zm00001d017782	Zm00001d047452						TRUE																																							
+Zm00001d017782	Zm00001d048705																																							TRUE						
+Zm00001d017782	Zm00001d048707															TRUE																														
+Zm00001d017782	Zm00001d050224																																		TRUE											
+Zm00001d017782	Zm00001d051529																					TRUE																								
+Zm00001d017782	Zm00001d052673																					TRUE																								
+Zm00001d017911	Zm00001d004689		TRUE																																											
+Zm00001d017911	Zm00001d007718															TRUE																														
+Zm00001d023523	Zm00001d012981																			TRUE																										
+Zm00001d023523	Zm00001d026369																TRUE																													
+Zm00001d023523	Zm00001d031209																	TRUE																												
+Zm00001d023523	Zm00001d036293																	TRUE																												
+Zm00001d023523	Zm00001d042192					TRUE																																	TRUE							
+Zm00001d023523	Zm00001d044339																														TRUE															
+Zm00001d023523	Zm00001d051870																	TRUE			TRUE	TRUE																								
+Zm00001d023931	Zm00001d003016								TRUE																																					
+Zm00001d023931	Zm00001d004689	TRUE																																												TRUE
+Zm00001d023931	Zm00001d009858																										TRUE									TRUE										
+Zm00001d023931	Zm00001d010521												TRUE																																	
+Zm00001d023931	Zm00001d011438																										TRUE		TRUE							TRUE										
+Zm00001d023931	Zm00001d012274																																	TRUE												
+Zm00001d023931	Zm00001d013245																													TRUE								TRUE								
+Zm00001d023931	Zm00001d013862																																			TRUE										
+Zm00001d023931	Zm00001d015618																																			TRUE									TRUE	
+Zm00001d023931	Zm00001d017077																																			TRUE										
+Zm00001d023931	Zm00001d017186				TRUE																													TRUE											TRUE	
+Zm00001d023931	Zm00001d018181																																						TRUE							
+Zm00001d023931	Zm00001d018184			TRUE	TRUE																																		TRUE							
+Zm00001d023931	Zm00001d028653				TRUE																						TRUE			TRUE	TRUE															
+Zm00001d023931	Zm00001d030548																												TRUE																	
+Zm00001d023931	Zm00001d032152																												TRUE																	
+Zm00001d023931	Zm00001d032468																																												TRUE	
+Zm00001d023931	Zm00001d034072	TRUE																												TRUE	TRUE	TRUE														
+Zm00001d023931	Zm00001d034602	TRUE																												TRUE	TRUE															
+Zm00001d023931	Zm00001d034635																																	TRUE												
+Zm00001d023931	Zm00001d036293																																					TRUE							TRUE	
+Zm00001d023931	Zm00001d037383																																			TRUE										
+Zm00001d023931	Zm00001d037384								TRUE																				TRUE								TRUE			TRUE						
+Zm00001d023931	Zm00001d042943																										TRUE																			
+Zm00001d023931	Zm00001d044683																																	TRUE												
+Zm00001d023931	Zm00001d045206																										TRUE																			
+Zm00001d023931	Zm00001d046915									TRUE																																				
+Zm00001d023931	Zm00001d047797																													TRUE	TRUE							TRUE								
+Zm00001d023931	Zm00001d049541																																	TRUE		TRUE										
+Zm00001d023931	Zm00001d050224																																			TRUE									TRUE	
+Zm00001d023931	Zm00001d051161																																												TRUE	
+Zm00001d023931	Zm00001d051163																																	TRUE												
+Zm00001d023931	Zm00001d052053																																					TRUE								
+Zm00001d023931	Zm00001d052841																																												TRUE	
+Zm00001d023931	Zm00001d052842																												TRUE							TRUE										
+Zm00001d023931	Zm00001d053156								TRUE																													TRUE								TRUE
+Zm00001d025957	Zm00001d009858																																									TRUE				
+Zm00001d025957	Zm00001d017186																																						TRUE							
+Zm00001d025957	Zm00001d038700				TRUE																																		TRUE							
+Zm00001d025957	Zm00001d051529																																									TRUE				
+Zm00001d026096	Zm00001d032527															TRUE																														
+Zm00001d026096	Zm00001d042980		TRUE																																											
+Zm00001d026096	Zm00001d051754																																TRUE													
+Zm00001d026204	Zm00001d018181									TRUE																																				
+Zm00001d026204	Zm00001d029356		TRUE																																											
+Zm00001d026204	Zm00001d032468																																									TRUE				
+Zm00001d026204	Zm00001d038833			TRUE	TRUE																																									
+Zm00001d026204	Zm00001d046915		TRUE																																											
+Zm00001d026204	Zm00001d048705																																											TRUE		
+Zm00001d026204	Zm00001d050955														TRUE																															
+Zm00001d026204	Zm00001d052683																																											TRUE		
+Zm00001d026447	Zm00001d005998							TRUE																																						
+Zm00001d026447	Zm00001d009858						TRUE																																							
+Zm00001d026447	Zm00001d029359									TRUE																																				
+Zm00001d026447	Zm00001d034635																																									TRUE				
+Zm00001d026447	Zm00001d045206						TRUE																																							
+Zm00001d026447	Zm00001d045254																																									TRUE				
+Zm00001d027709	Zm00001d015513																																			TRUE										
+Zm00001d027709	Zm00001d017275																								TRUE																					
+Zm00001d027709	Zm00001d027519																																								TRUE					
+Zm00001d027709	Zm00001d028653									TRUE																																				
+Zm00001d027709	Zm00001d029353																						TRUE																							
+Zm00001d027709	Zm00001d034072			TRUE						TRUE																																				
+Zm00001d027709	Zm00001d045706									TRUE																																				
+Zm00001d027709	Zm00001d046915									TRUE																																				
+Zm00001d027709	Zm00001d047797									TRUE																																				
+Zm00001d027709	Zm00001d052841					TRUE																																								
+Zm00001d032691	Zm00001d011438																																											TRUE		
+Zm00001d032691	Zm00001d030548																																											TRUE		
+Zm00001d032691	Zm00001d044340																																											TRUE		
+Zm00001d032923	Zm00001d017276																											TRUE																		
+Zm00001d032923	Zm00001d022278																		TRUE																											
+Zm00001d032923	Zm00001d031489																									TRUE							TRUE													
+Zm00001d032923	Zm00001d041763																															TRUE														
+Zm00001d032923	Zm00001d047797																		TRUE																											
+Zm00001d032923	Zm00001d053156		TRUE																																											
+Zm00001d036736	Zm00001d034602						TRUE																																							
+Zm00001d036736	Zm00001d034635																																									TRUE				
+Zm00001d038846	Zm00001d017275																																													TRUE
+Zm00001d038846	Zm00001d027519																																													TRUE
+Zm00001d039694	Zm00001d003102																													TRUE																
+Zm00001d039694	Zm00001d012274																																					TRUE								
+Zm00001d039694	Zm00001d028654														TRUE																															
+Zm00001d039694	Zm00001d037382																TRUE																													
+Zm00001d039694	Zm00001d051754													TRUE																																
+Zm00001d040621	Zm00001d001960																								TRUE																					
+Zm00001d040621	Zm00001d015513																												TRUE																	
+Zm00001d040621	Zm00001d017601												TRUE																																	
+Zm00001d040621	Zm00001d029353												TRUE																																TRUE	
+Zm00001d040621	Zm00001d029356												TRUE											TRUE																						
+Zm00001d040621	Zm00001d037383																					TRUE																								
+Zm00001d040621	Zm00001d042980		TRUE										TRUE																																TRUE	
+Zm00001d040621	Zm00001d044683																					TRUE																								
+Zm00001d040621	Zm00001d050224																											TRUE																		
+Zm00001d040621	Zm00001d051529													TRUE								TRUE																								
+Zm00001d043036	Zm00001d051163		TRUE																																											
+Zm00001d043687	Zm00001d003016							TRUE																																						TRUE
+Zm00001d043687	Zm00001d044339							TRUE																																						TRUE
+Zm00001d043687	Zm00001d045254								TRUE																																					
+Zm00001d043687	Zm00001d052673							TRUE																																						TRUE
+Zm00001d044107	Zm00001d034635		TRUE																																											
+Zm00001d044825	Zm00001d024712												TRUE																																	
+Zm00001d044825	Zm00001d030090																																		TRUE											
+Zm00001d044825	Zm00001d037487					TRUE																																								
+Zm00001d044825	Zm00001d047796																										TRUE																			
+Zm00001d045204	Zm00001d009858																																		TRUE											
+Zm00001d045204	Zm00001d013862							TRUE																																						
+Zm00001d045204	Zm00001d051529																																		TRUE											
+Zm00001d045204	Zm00001d051938							TRUE																																						
+Zm00001d045772	Zm00001d001960																									TRUE							TRUE													
+Zm00001d045772	Zm00001d022278																									TRUE							TRUE					TRUE		TRUE						
+Zm00001d045772	Zm00001d044122																									TRUE							TRUE													
+Zm00001d048059	Zm00001d007403										TRUE																																			
+Zm00001d048059	Zm00001d018184										TRUE																																			
+Zm00001d049991	Zm00001d017276																																										TRUE			
+Zm00001d049991	Zm00001d026370			TRUE	TRUE																																									
+Zm00001d049991	Zm00001d029356														TRUE																															
+Zm00001d049991	Zm00001d030090					TRUE																																								
+Zm00001d049991	Zm00001d031489						TRUE																																							
+Zm00001d049991	Zm00001d045706			TRUE																																										
+Zm00001d051520	Zm00001d010521																																						TRUE							
+Zm00001d051520	Zm00001d015618														TRUE																															
+Zm00001d051520	Zm00001d034602										TRUE																																			
+Zm00001d051520	Zm00001d042192																																											TRUE		
+Zm00001d051520	Zm00001d051161										TRUE																																			
+Zm00001d051891	Zm00001d007718																																			TRUE										
+Zm00001d052167	Zm00001d029356				TRUE																																									
+Zm00001d052167	Zm00001d029359																														TRUE															
+Zm00001d052621	Zm00001d042848																					TRUE																								

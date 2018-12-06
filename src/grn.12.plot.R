@@ -2,7 +2,7 @@ source("functions.R")
 dirw = file.path(dird, '14_eval_sum')
 diri = '~/projects/rnaseq'
 
-#{{{ manually merge tissue GRNs
+#{{{ # manually merge tissue GRNs
 if(F) {
 study = "lin2017"
 study = "kremling2018"
@@ -41,139 +41,57 @@ save(rids, tids, tn2, file = fo2)
 }
 #}}}
 
-#{{{ use PCC to predict TF targets
-if(F) {
-dirw = file.path(dird, '13_auroc')
-#{{{ old codes
-    pcc.matrix = cor(asinh(expr), method = 'pearson')
-    pcc = pcc.matrix[lower.tri(pcc.matrix)]
+fi = file.path(dirw, '01.tf.rds')
+ev_tf = readRDS(fi)
 
-    ii = which(lower.tri(pcc.matrix))
-    colidx = as.integer((ii - 1) / nrow(pcc.matrix)) + 1
-    rowidx = ii - (colidx - 1) * nrow(pcc.matrix)
+#{{{ general network stats
+tp = ev_tf %>% select(nid, nstat) %>% unnest() %>%
+    filter(net_size==50000) %>%
+    inner_join(th, by = 'nid') %>%
+    mutate(txt = factor(txt, levels=rev(th$txt))) %>%
+    arrange(txt)
+ymax = 150
+tp$q95[tp$q95 > ymax] = ymax
 
-    pcc[pcc == 1] = 0.999999
-    pcc[pcc == -1] = -0.999999
-    #pcc2 = log((1+pcc) / (1-pcc)) / 2
-    pcc2 = atanh(pcc)
-    coexv = (pcc2 - mean(pcc2)) / sd(pcc2)
-
-    ord = order(-coexv)
-    idxs = ord[1:(1*1000000)]
-    dw = data.frame(g1 = gids[rowidx[idxs]], g2 = gids[colidx[idxs]], coex = coexv[idxs])
+p1 = ggplot(tp) +
+    geom_point(aes(x=n.reg, y=n.tgt, size=q50, color=net_type)) +
+    geom_text_repel(aes(x=n.reg, y=n.tgt, label=txt, color=net_type), size=2.5) +
+    scale_x_continuous(name = '# TFs in network') +
+    scale_y_continuous(name = '# Targets in network') +
+    scale_color_aaas() +
+    otheme(legend.pos = 'top.right', legend.dir = 'v',
+        xtick=T, ytick=T,
+        xtitle=T, ytitle=T, xtext=T, ytext=T)
+p2 = ggplot(tp) +
+    geom_errorbar(aes(x=txt, y=mean, ymin=q5, ymax=q95, color=net_type), linetype='solid', size=.2, width=.4) +
+    geom_crossbar(aes(x=txt, ymin=q25, y=q50, ymax=q75, color=net_type), fill='white', alpha=1, width=.8) +
+    scale_x_discrete(expand = c(.02,0)) +
+    scale_y_continuous(name = '# Targets per TF', limits=c(0,ymax), expand=expand_scale(mult=c(.01,.03))) +
+    coord_flip() +
+    scale_color_aaas() +
+    otheme(legend.pos = 'top.center.out', legend.dir = 'h',
+        xtick=T, ytick=T,
+        xtitle=T, ytitle=F, xtext=T, ytext=T) +
+    theme(axis.text.y = element_text(color=tp$col))
+fo = file.path(dirw, '03.stat.pdf')
+ggpubr::ggarrange(p1, p2,
+    nrow=1, ncol=2, widths = c(2.5,2), heights = c(1),
+    labels=LETTERS[1:2]) %>%
+    ggpubr::ggexport(filename = fo, width = 12, height = 8)
 #}}}
 
-#{{{ run
-th2 = th %>% mutate(fi = sprintf("%s/11_input/%s.rda", dird, nid)) %>%
-    filter(file.exists(fi))
-#th2 = th2 %>% filter(nid %in% c("n41", "n42", "n71", "n81", "n82")) 
+#{{{ Y1H eval
+dirw = file.path(dird, '08_y1h')
+to = ev_tf %>% select(nid, ystat) %>% unnest() %>%
+    filter(net_size == 50000) %>% select(-net_size) %>%
+    inner_join(th, by='nid') %>%
+    select(reg.gid, tgt.gid, txt) %>%
+    mutate(txt = factor(txt, levels=th$txt)) %>%
+    mutate(s = T) %>%
+    spread(txt, s)
 
-t_auc = tibble()
-for (i in 1:nrow(th2)) {
-    nid = th2$nid[i]; study = th2$study[i]; tag = th2$tag[i]; fi = th2$fi[i]
-    x = load(fi)
-    x
-    #
-    t2_tf = t_exp %>% filter(gid %in% t_gss$reg.gid) %>%
-        group_by(gid) %>%
-        summarise(ncond = sum(CPM>=1), pcond = ncond/n(), expressed = pcond >= .1,
-                  CPM.mean = mean(CPM), CPM.var = var(CPM),
-                  CPM.median = median(CPM), CPM.mad = mad(CPM)) %>%
-        ungroup() %>% inner_join(t_gss, by = c('gid'='reg.gid')) %>%
-        select(-ncond,-pcond)
-    #
-    n_cond = length(unique(t_exp$condition))
-    gids = t_exp %>% group_by(gid) %>%
-        summarise(n_cond_exp = sum(CPM >= 1)) %>%
-        filter(n_cond_exp >= n_cond * .1) %>%
-        pull(gid)
-    t_flt = t_exp %>% filter(gid %in% gids)
-    #
-    use_cpm = T
-    if(use_cpm) {
-        t_flt = t_flt %>% mutate(exp.val = asinh(CPM))
-    } else {
-        t_flt = t_flt %>% mutate(exp.val = asinh(FPKM))
-    }
-    #
-    et_b = t_flt %>% 
-        select(condition, gid, exp.val) %>%
-        spread(condition, exp.val)
-    em_b = as.matrix(et_b[,-1])
-    rownames(em_b) = et_b$gid
-    #
-    gids = rownames(em_b)
-    pcc.matrix = cor(t(em_b), method = 'pearson')
-    #
-    rids = t_gss$reg.gid
-    rids = rids[rids %in% gids]
-    t_pcc = pcc.matrix[,rids] %>% as_tibble() 
-    if(length(rids) == 1) colnames(t_pcc)[1] = rids[1]
-    t_pcc = t_pcc %>% mutate(tgt.gid = gids) %>%
-        gather(reg.gid, pcc, -tgt.gid) %>%
-        filter(reg.gid != tgt.gid) %>%
-        inner_join(t_gss, by = 'reg.gid') %>%
-        left_join(t_gs, by = c('ctag','reg.gid','tgt.gid')) %>%
-        replace_na(list(binding = 0)) %>%
-        mutate(categ = factor(binding))
-    #
-    ctagss = t_gss %>% filter(reg.gid %in% rids) %>% pull(ctag)
-    for (ctag in ctagss) {
-        ty = t_pcc %>% filter(ctag == !!ctag)
-        categ = as.integer(as.character(ty$categ))
-        score = as.numeric(ty$pcc)
-        score = as.numeric(abs(ty$pcc))
-        if(max(score) == 0) score[1] = 0.1
-        pr = pr.curve(scores.class0 = score, weights.class0 = categ, curve = T)
-        roc = roc.curve(scores.class0 = score, weights.class0 = categ, curve = T)
-        aupr = pr$auc.integral
-        auroc = roc$auc
-        t_auc1 = tibble(nid = nid, study = study, tag = tag, 
-                        ctag = ctag, aupr = aupr, auroc = auroc)
-        t_auc = rbind(t_auc, t_auc1)
-        cat(sprintf("%s %10s aupr [%.04f] auroc [%.04f]\n", nid, ctag, aupr, auroc))
-    } 
-}
-fo = file.path(dirw, '21.pcc.rda')
-save(t_auc, file = fo)
-#}}}
-
-#{{{ plot
-fi = file.path(dirw, '21.pcc.rda')
-x = load(fi)
-tpa = t_auc %>% 
-    mutate(tag = sprintf("%s %s", study, tag)) %>%
-    select(-study) 
-
-for (opt in names(lst_eval)) {
-    nids = lst_eval[[opt]]
-    tp = tpa %>% filter(nid %in% nids) %>% 
-        mutate(nid = factor(nid, levels = rev(nids)))
-    fp = sprintf("%s/06.pcc.%s.pdf", dirw, opt)
-    wd = 7; ht = 5
-    if (opt == 'all') ht = 7
-    auc_barplot(tp, fp, wd, ht)
-}
-#}}}
-}
-#}}}
-
-#{{{ check ovlp w. top45 TF Y1H - there's none!
-if(F) {
-    nid = 'nc03'
-    load_maize_dataset(id = nid, opt = 'grn')
-ft = file.path(dird, '08_y1h_45', '10.tsv')
-tt = read_tsv(ft)
-tt1 = tt %>% filter(reg == 'Zm00001d036736')
-es_tf = tt %>% mutate(ename = sprintf("%s_%s", reg, tgt)) %>% pull(ename)
-tn %>% filter(reg.gid == tt1$reg[1], tgt.gid %in% tt1$tgt)
-
-net_size = 1000000
-es = tn[1:net_size,] %>% mutate(ename = sprintf("%s_%s", reg.gid, tgt.gid)) %>% pull(ename)
-
-length(es_tf)
-sum(es_tf %in% es)
-}
+fo = file.path(dirw, '11.support.edges.tsv')
+write_tsv(to, fo, na='')
 #}}}
 
 #{{{ known TF AUROC
@@ -324,23 +242,53 @@ write_tsv(to, fo, na = '')
 #}}}
 
 #{{{
-tp = ev_go %>% select(net_type,nid,col,txt,res) %>%
-    unnest() %>%
-    filter(net_size==50000,grp_tag=='GO',n.tgt>=20,fc>=2, fc!=Inf) %>%
-    select(nid,grp) %>% mutate(s=1) %>%
-    spread(nid,s)
-tp[is.na(tp)] = 0
-e = tp %>% select(-grp)
+require(cluster)
+goname = gs$grp %>% distinct(grp,note)
+gos = ev_go %>% select(net_type,nid,col,txt,res) %>% unnest() %>%
+    filter(net_size==50000,grp_tag=='GO',n.tgt>=50,fc>=3, fc!=Inf) %>%
+    count(grp) %>% filter(n>=5, n<10) %>%
+    pull(grp)
+tp = ev_go %>% select(nid,res) %>% unnest() %>%
+    filter(net_size==50000,grp_tag=='GO',grp %in% gos) %>%
+    select(nid, grp, fc) %>%
+    mutate(fc = log2(fc)) %>%
+    mutate(fc = ifelse(is.finite(fc), fc, NA))
+e = tp %>% spread(nid, fc) %>% select(-grp)
+e[is.na(e)] = NA
 dim(e)
 
-cor_opt = "spearman"
+cor_opt = "pearson"
 hc_opt = "ward.D"
 hc_title = sprintf("dist: %s\nhclust: %s", cor_opt, hc_opt)
-edist <- as.dist(1-cor(e, method = cor_opt))
+#edist <- as.dist(1-cor(e, method = cor_opt))
+edist = daisy(t(e), metric = 'gower')
 ehc <- hclust(edist, method = hc_opt)
 tree = as.phylo(ehc)
 lnames = ehc$labels[ehc$order]
-#
+
+tpg = tp %>% distinct(grp) %>% inner_join(goname,by='grp')
+tpn = th %>% mutate(nid=factor(nid,levels=lnames)) %>% arrange(nid) %>%
+    mutate(txt = factor(txt,levels=txt))
+tp = tp %>% mutate(nid = factor(nid,levels=lnames))
+p = ggplot(tp) +
+    geom_tile(aes(x = nid, y = grp, fill = fc)) +
+    #geom_segment(data = tpx, mapping = aes(x=xt,xend=xt,y=xmin,yend=xmax), size = 3) +
+    #geom_segment(data = tpg, mapping = aes(x=xg,xend=xg,y=xmin,yend=xmax), color = tpg$col.gt, size = 1) +
+    #geom_text(data=tpg, mapping=aes(x=xg-3.5, y = x, label = lab), color = tpg$col.gt, size = 2, hjust = 0) +
+    scale_x_discrete(breaks=tpn$nid, labels=tpn$txt, position='top', expand=c(0,0)) +
+    scale_y_discrete(breaks=tpg$grp, labels=tpg$note, expand = c(0,0)) +
+    scale_fill_gradientn(name='log2FC', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    #scale_fill_viridis() +
+    otheme(legend.pos='right', legend.dir='v',
+           xtick=T,ytick=T,ytext = T) +
+    theme(plot.margin = unit(c(2,.2,.2,.2), "lines")) +
+    theme(panel.border = element_blank()) +
+    theme(axis.text.x=element_text(color=tpn$col,angle=45,size=7,hjust=0,vjust=0)) +
+    theme(legend.title = element_text())
+fo = sprintf("%s/14.go.heat.pdf", dirw)
+ggsave(p, file = fo, width = 12, height = 12)
+
+
 tp = th %>% mutate(taxa = nid, lab = txt) %>%
     select(taxa, everything())
 cols1 = c('gray80','black','red','seagreen3', pal_d3()(5))
@@ -574,5 +522,124 @@ p = ggplot(tp, aes(x = txt, y = pcc)) +
     theme(strip.text.y = element_text(angle=0))
 fo = file.path(dirw, '15.biomap.1.pcc.pdf')
 ggsave(p, file=fo, width=10, height=8)
+#}}}
+
+
+
+#{{{ # use PCC to predict TF targets
+if(F) {
+dirw = file.path(dird, '13_auroc')
+#{{{ old codes
+    pcc.matrix = cor(asinh(expr), method = 'pearson')
+    pcc = pcc.matrix[lower.tri(pcc.matrix)]
+
+    ii = which(lower.tri(pcc.matrix))
+    colidx = as.integer((ii - 1) / nrow(pcc.matrix)) + 1
+    rowidx = ii - (colidx - 1) * nrow(pcc.matrix)
+
+    pcc[pcc == 1] = 0.999999
+    pcc[pcc == -1] = -0.999999
+    #pcc2 = log((1+pcc) / (1-pcc)) / 2
+    pcc2 = atanh(pcc)
+    coexv = (pcc2 - mean(pcc2)) / sd(pcc2)
+
+    ord = order(-coexv)
+    idxs = ord[1:(1*1000000)]
+    dw = data.frame(g1 = gids[rowidx[idxs]], g2 = gids[colidx[idxs]], coex = coexv[idxs])
+#}}}
+
+#{{{ run
+th2 = th %>% mutate(fi = sprintf("%s/11_input/%s.rda", dird, nid)) %>%
+    filter(file.exists(fi))
+#th2 = th2 %>% filter(nid %in% c("n41", "n42", "n71", "n81", "n82")) 
+
+t_auc = tibble()
+for (i in 1:nrow(th2)) {
+    nid = th2$nid[i]; study = th2$study[i]; tag = th2$tag[i]; fi = th2$fi[i]
+    x = load(fi)
+    x
+    #
+    t2_tf = t_exp %>% filter(gid %in% t_gss$reg.gid) %>%
+        group_by(gid) %>%
+        summarise(ncond = sum(CPM>=1), pcond = ncond/n(), expressed = pcond >= .1,
+                  CPM.mean = mean(CPM), CPM.var = var(CPM),
+                  CPM.median = median(CPM), CPM.mad = mad(CPM)) %>%
+        ungroup() %>% inner_join(t_gss, by = c('gid'='reg.gid')) %>%
+        select(-ncond,-pcond)
+    #
+    n_cond = length(unique(t_exp$condition))
+    gids = t_exp %>% group_by(gid) %>%
+        summarise(n_cond_exp = sum(CPM >= 1)) %>%
+        filter(n_cond_exp >= n_cond * .1) %>%
+        pull(gid)
+    t_flt = t_exp %>% filter(gid %in% gids)
+    #
+    use_cpm = T
+    if(use_cpm) {
+        t_flt = t_flt %>% mutate(exp.val = asinh(CPM))
+    } else {
+        t_flt = t_flt %>% mutate(exp.val = asinh(FPKM))
+    }
+    #
+    et_b = t_flt %>% 
+        select(condition, gid, exp.val) %>%
+        spread(condition, exp.val)
+    em_b = as.matrix(et_b[,-1])
+    rownames(em_b) = et_b$gid
+    #
+    gids = rownames(em_b)
+    pcc.matrix = cor(t(em_b), method = 'pearson')
+    #
+    rids = t_gss$reg.gid
+    rids = rids[rids %in% gids]
+    t_pcc = pcc.matrix[,rids] %>% as_tibble() 
+    if(length(rids) == 1) colnames(t_pcc)[1] = rids[1]
+    t_pcc = t_pcc %>% mutate(tgt.gid = gids) %>%
+        gather(reg.gid, pcc, -tgt.gid) %>%
+        filter(reg.gid != tgt.gid) %>%
+        inner_join(t_gss, by = 'reg.gid') %>%
+        left_join(t_gs, by = c('ctag','reg.gid','tgt.gid')) %>%
+        replace_na(list(binding = 0)) %>%
+        mutate(categ = factor(binding))
+    #
+    ctagss = t_gss %>% filter(reg.gid %in% rids) %>% pull(ctag)
+    for (ctag in ctagss) {
+        ty = t_pcc %>% filter(ctag == !!ctag)
+        categ = as.integer(as.character(ty$categ))
+        score = as.numeric(ty$pcc)
+        score = as.numeric(abs(ty$pcc))
+        if(max(score) == 0) score[1] = 0.1
+        pr = pr.curve(scores.class0 = score, weights.class0 = categ, curve = T)
+        roc = roc.curve(scores.class0 = score, weights.class0 = categ, curve = T)
+        aupr = pr$auc.integral
+        auroc = roc$auc
+        t_auc1 = tibble(nid = nid, study = study, tag = tag, 
+                        ctag = ctag, aupr = aupr, auroc = auroc)
+        t_auc = rbind(t_auc, t_auc1)
+        cat(sprintf("%s %10s aupr [%.04f] auroc [%.04f]\n", nid, ctag, aupr, auroc))
+    } 
+}
+fo = file.path(dirw, '21.pcc.rda')
+save(t_auc, file = fo)
+#}}}
+
+#{{{ plot
+fi = file.path(dirw, '21.pcc.rda')
+x = load(fi)
+tpa = t_auc %>% 
+    mutate(tag = sprintf("%s %s", study, tag)) %>%
+    select(-study) 
+
+for (opt in names(lst_eval)) {
+    nids = lst_eval[[opt]]
+    tp = tpa %>% filter(nid %in% nids) %>% 
+        mutate(nid = factor(nid, levels = rev(nids)))
+    fp = sprintf("%s/06.pcc.%s.pdf", dirw, opt)
+    wd = 7; ht = 5
+    if (opt == 'all') ht = 7
+    auc_barplot(tp, fp, wd, ht)
+}
+#}}}
+}
 #}}}
 

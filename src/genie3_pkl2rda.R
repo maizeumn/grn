@@ -22,7 +22,7 @@ require(tidyverse)
 require(reticulate)
 x = py_load_object(normalizePath(f_exp))
 VIM = py_load_object(normalizePath(f_net))
-tids = x[[2]]; rids = x[[3]]
+tids = unique(x[[2]]); rids = unique(x[[3]])
 stopifnot(dim(VIM)[1] == length(tids))
 rownames(VIM) = tids
 colnames(VIM) = tids

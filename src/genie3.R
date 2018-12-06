@@ -64,7 +64,7 @@ length(rids)
 tids = gids
 cat(sprintf("%d rids, %d tids\n", length(rids), length(tids)))
 
-weightMat <- GENIE3(em_b, 
+weightMat <- GENIE3(em_b,
                     regulators = rids,
                     treeMethod = "RF",
                     K = 'sqrt',
