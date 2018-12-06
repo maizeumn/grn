@@ -92,6 +92,7 @@ tp = ev_tf %>% select(nid, ystat) %>% unnest() %>%
 tp %>% count(reg.gid)
 tp %>% count(tgt.gid)
 tp %>% count(reg.gid,tgt.gid)
+tp %>% filter(!is.na(Y1H)) %>% count(reg.gid,tgt.gid) %>% count(n)
 tp %>% count(reg.gid,tgt.gid) %>% count(n)
 tp %>% distinct(reg.gid,tgt.gid,Y1H) %>% count(Y1H)
 
