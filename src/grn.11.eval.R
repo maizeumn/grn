@@ -43,4 +43,15 @@ to = tibble(nid = rep(nids, map_int(y, length)), pcc = flattern_dbl(y))
 }
 #}}}
 
+f_net = '~/projects/grn/data/12_output/n99a_1.rda'
+y = load(f_net)
 
+res$enrich %>% select(-n_grp,-fc) %>% spread(net_size,pval)
+res$enrich %>% select(-n_grp,-pval) %>% spread(net_size,fc)
+
+res$enrich_term %>% group_by(net_size,ctag) %>%
+    summarise(n_grp=n(), n_grp_sig=sum(!is.na(fc) & fc>0 & pval<.05)) %>%
+    ungroup() %>%
+    mutate(txt=str_c(n_grp_sig,n_grp, sep="/")) %>%
+    select(net_size,ctag,txt) %>%
+    spread(net_size,txt)

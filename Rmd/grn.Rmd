@@ -26,7 +26,6 @@ header-includes:
 - \usepackage{wrapfig}
 - \usepackage{float}
 - \usepackage{colortbl}
-- \usepackage{pdflscape}
 - \usepackage{tabu}
 - \usepackage{threeparttable}
 - \usepackage{threeparttablex}
@@ -60,13 +59,17 @@ th %>% select(net_type,nid,study,note,sample_size) %>%
         collapse_rows(columns=1:2, latex_hline="major", valign="top")
 ```
 
-\pagebreak
 ![Fig 1]($grn/data/14_eval_sum/14.go.pdf){width=100%}
 
-Fold enrichment of GO and CornCyc categories for built networks (different sizes of top edges taken).
+Fold enrichment in functional categories for networks of different sizes.  For each functional classification (Gene Ontology or CornCyc metabolic pathway), the fold enrichment and significance of co-regulation in a given GRN was determined using permutation (comparing observation to the distribution of 100 permuted networks with the same size but functional labels shuffled, see Methods).  Network of two different sizes (top 50,000 edges (red circles) or 500,000 edges (blue triangles)) were used in this analysis.  Almost all enrichment is significant (i.e., having a P-value < 0.05), with rare insignificant ones shown in faded colors usually due to small sample size.  Numbers in plot indicate the number of enriched / total functional terms for each evaluation.
 
 \pagebreak
-![Fig S2]($grn/data/14_eval_sum/10.dev.atlas.pdf){width=100%}
+![Fig 2]($grn/data/14_eval_sum/14.go.heat.pdf){width=100%}
+
+Heatmap of 140 GO (uniprot.plants) terms significantly enriched (P < 0.05) in at least 5 GRNs.  Rows (GO terms) and columns (GRNs) are both clustered using hierarchical clustering (pearson correlation coefficient distant measure and "ward.D" clustering option).
+
+\pagebreak
+![Fig S2]($grn/data/14_eval_sum/05.roc_prc.dev.pdf){width=100%}
 
 Area under receiver operating curves (AUROC) and area under precision-recall curve (AUPR) for GRNs built using different input datasets evaluated using experimentally (Chip-seq, mutant & wildtype RNA-Seq) determined transcription factor (TF) targets.
 

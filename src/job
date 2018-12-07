@@ -1,5 +1,5 @@
 ##PBS -l nodes=1:ppn=24,mem=62gb,walltime=2:00:00
-#PBS -l nodes=1:ppn=1,mem=30gb,walltime=5:00:00
+#PBS -l nodes=1:ppn=1,mem=50gb,walltime=2:00:00
 #PBS -m ae
 #PBS -M zhoux379@umn.edu
 ##PBS -q ram256g
@@ -7,5 +7,6 @@
 
 cd $grn/src
 #Rscript --no-init-file --no-restore grn.10.input.R
-Rscript --no-init-file --no-restore grn.11.eval.R
 
+cd $grn/data
+grn.eval.R --opt go 12_output/n99a_1.rda x.rds

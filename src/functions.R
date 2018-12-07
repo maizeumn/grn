@@ -38,19 +38,8 @@ load_maize_dataset <- function(id = 'me99b', opt = "exp") {
     }
     #}}}
 }
-read_gs <- function(fi='~/projects/grn/data/09.gs.rda') {
-    #{{{ read known TF targets & GO
-    x = load(fi)
-    t_gs = t_gs %>%
-        filter(! ctag %in% c("KN1_any","KN1_ear","KN1_tassel","KN1_leaf")) %>%
-        mutate(ctag = ifelse(ctag=='KN1_all', 'KN1', ctag)) %>%
-        mutate(binding = 1)
-    t_gs %>% dplyr::count(ctag)
-    t_grp_f %>% dplyr::count(ctag)
-    ctags = unique(t_gs$ctag)
-    t_gss = t_gs %>% distinct(ctag, reg.gid)
-    list(tf = t_gs, tfs = t_gss, grp = t_grp, grp_f = t_grp_f, tf_ids = tf_ids)
-    #}}}
+read_gs <- function(fi='~/projects/grn/data/09.gs.rds') {
+    readRDS(fi)
 }
 read_briggs <- function(fi="~/projects/briggs/data/49_coop/01.master.rda") {
     #{{{ read briggs data

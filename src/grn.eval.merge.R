@@ -16,13 +16,15 @@ dirw = file.path(dird, '14_eval_sum')
 if (opt == 'tf') {
     ev = th %>% mutate(fi = sprintf("%s/13_eval/%s_tf.rds", dird, nid)) %>%
         mutate(res = map(fi, readRDS)) %>%
-        mutate(roc = map(res, "roc"), pr = map(res, "pr"),
-               auroc = map(res, "auroc"), aupr = map(res, "aupr"),
+        mutate(tfstat = map(res, 'tfstat'),
                nstat = map(res, 'nstat'), ystat = map(res, 'ystat')) %>%
-        select(nid,roc,pr,auroc,aupr,nstat,ystat)
+        select(nid,tfstat,nstat,ystat)
 } else if (opt == 'go') {
     ev = th %>% mutate(fi = sprintf("%s/13_eval/%s_go.rds", dird, nid)) %>%
-        mutate(res = map(fi, readRDS))
+        mutate(res = map(fi, readRDS)) %>%
+        mutate(enrich = map(res, "enrich"),
+               enrich_term = map(res, "enrich_term")) %>%
+        select(nid,enrich,enrich_term)
 } else if (opt == 'br') {
     ev = th %>% mutate(fi = sprintf("%s/13_eval/%s_br.rds", dird, nid)) %>%
         mutate(res = map(fi, readRDS)) %>%

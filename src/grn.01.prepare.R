@@ -1,10 +1,7 @@
 source("functions.R")
 genome = 'B73'
 x = load(file.path(dirg, genome, '55.rda'))
-fm = file.path(dirg, genome, "gene_mapping/maize.v3TOv4.geneIDhistory.txt")
-tm = read_tsv(fm, col_names = F) %>%
-    transmute(ogid = X1, gid = X2, change = X3, method = X4, type = X5) %>%
-    select(ogid, gid, type)
+tm = v3_to_v4()
 
 #{{{ map known TF targets
 dirw = file.path(dird, '07_known_tf')
@@ -146,69 +143,40 @@ write_tsv(to, fo)
 #}}}
 #}}}
 
-#{{{ Go/CornCyc/#PPIM
-dirg = '~/data/genome/B73/61_functional'
-ctag = "GO"
-fi = file.path(dirg, "02.go.gs.tsv")
+#{{{ Top45 TFs and targets by Y1H
+dirw = file.path(dird, '08_y1h')
+fi = file.path(dirw, "y1h.targets.tsv")
 ti = read_tsv(fi)
-tig = ti %>% mutate(note = str_c(evidence, gotype)) %>%
-    mutate(ctag = !!ctag) %>% select(ctag, grp=goid, gid, note)
-fi = file.path(dirg, "01.go.tsv")
-ti = read_tsv(fi)
-tig = ti %>%
-    filter(ctag %in% c('uniprot.plants','arabidopsis'), gotype=='P') %>%
-    mutate(ctag = !!ctag) %>% select(ctag, grp=goid, gid, note=goname)
+colnames(ti) = c("reg.v3", "reg.v4", "tgt.v3", "tgt.v4")
+ti = ti %>% fill(reg.v3, reg.v4, .direction = 'down')
+ti %>% distinct(reg.v3)
+ti %>% distinct(tgt.v3)
 
-ctag = "CornCyc"
-fi = file.path(dirg, "07.corncyc.tsv")
-ti = read_tsv(fi)
-tic = ti %>% transmute(ctag = ctag, grp = pid, gid = gid, note = pname)
+tch = ti %>% distinct(reg.v3, reg.v4) %>%
+    left_join(tm, by = c('reg.v3' = 'ogid')) %>%
+    print(n = 45)
+tch %>% filter(is.na(gid) | reg.v4 != gid)
 
-t_grp = rbind(tig, tic)
-grps = t_grp %>% count(grp) %>% filter(n > 4) %>% pull(grp)
-t_grp_f = t_grp %>% filter(grp %in% grps)
-t_grp
-t_grp_f
-t_grp_f %>% count(grp) %>% count(n) %>% print(n=20)
+tn = ti %>% filter(reg.v4 != 'none', !is.na(tgt.v4)) %>%
+    transmute(reg = reg.v4, tgt = tgt.v4)
+fn = file.path(dirw, '10.tsv')
+#write_tsv(tn, fn)
 
-# PPIM
-ctag = "PPIM"
-fi = file.path(dirg, "08.ppim.tsv")
-ti = read_tsv(fi)
-ppi = ti %>% filter(type1 != '1-to-0', type2 != '1-to-0') %>%
-    select(gid1, gid2)
-#}}}
 
-#{{{ build GRN gold-standard dataset
-ctags = c('KN1_ear', 'KN1_tassel', 'KN1_leaf', 'KN1_any', 'KN1_all',
-          'FEA4', 'O2', 'RA1', 'HDA101', 'bZIP22')
-to = tibble()
-for (ctag in ctags) {
-    fi = sprintf("%s/07_known_tf/05.%s.tsv", dird, ctag)
-    ti = read_tsv(fi) %>%
-        mutate(ctag = ctag) %>%
-        select(ctag, everything())
-    to = rbind(to, ti)
-}
-t_gs = to
+fi = file.path(dirw, 'phenolic.xlsx')
+ti = read_xlsx(fi,
+    col_names = c('gid_v3','gname','yeast_prom','prom_mplant',
+                 'gid','chrom','start','end','orig','note',
+                 'ref','x1','coexp','syntelog','sub1','sub2_ref')) %>%
+    filter(row_number() > 1) %>%
+    filter(!is.na(gid) & gid != 'Na') %>%
+    select(gid,gname,everything()) %>%
+    filter(gid_v3 != 'GRMZM2G049424')
+ti %>% count(gid) %>% count(n)
 
-#{{{ TF IDs
-ff = '~/data/genome/Zmays_v4/61_functional/06.tf.tsv'
-tf = read_tsv(ff)
-tf
-tf_ids = tf$gid
-length(tf_ids)
-length(unique(tf_ids))
-
-tf_ids_n = t_gs %>% distinct(reg.gid) %>% filter(!reg.gid %in% tf_ids) %>%
-    pull(reg.gid)
-tf_ids_n
-tf_ids = c(tf_ids, tf_ids_n)
-length(tf_ids)
-#}}}
-
-fo = file.path(dird, '09.gs.rda')
-save(t_gs, t_grp, t_grp_f, tf_ids, ppi, file=fo)
+fo = file.path(dirw, '01.rds')
+res = list(reg.gids = unique(tn$reg), tgt.gids = ti$gid, tn = tn)
+saveRDS(res, file=fo)
 #}}}
 
 #{{{ Walley2016 and Huang2018 GRNs
@@ -245,40 +213,78 @@ tp = th %>% filter(nid %in% c("np16_1", sprintf("np18_%d", 1:4))) %>%
 pmap_lgl(tp, lift_previous_grn, tm)
 #}}}
 
-#{{{ #Top45 TFs and targets by Y1H
-dirw = file.path(dird, '08_y1h')
-fi = file.path(dirw, "y1h.targets.tsv")
+#{{{ functional annotation: GO CornCyc Y1H
+dirg = '~/data/genome/B73/61_functional'
+fi = file.path(dirg, "02.go.gs.tsv")
 ti = read_tsv(fi)
-colnames(ti) = c("reg.v3", "reg.v4", "tgt.v3", "tgt.v4")
-ti = ti %>% fill(reg.v3, reg.v4, .direction = 'down')
-ti %>% distinct(reg.v3)
-ti %>% distinct(tgt.v3)
+go_hc = ti %>% mutate(note = str_c(evidence, gotype)) %>%
+    mutate(ctag = 'GO_HC') %>% select(ctag, grp=goid, gid, note)
 
-tch = ti %>% distinct(reg.v3, reg.v4) %>%
-    left_join(tm, by = c('reg.v3' = 'ogid')) %>%
-    print(n = 45)
-tch %>% filter(is.na(gid) | reg.v4 != gid)
+fi = file.path(dirg, "01.go.tsv")
+ti = read_tsv(fi)
+go = ti %>%
+    filter(!ctag %in% c('aggregate','fanngo'), gotype=='P') %>%
+    mutate(ctag = str_c("GO",ctag,sep="_")) %>%
+    select(ctag, grp=goid, gid, note=goname)
 
-tn = ti %>% filter(reg.v4 != 'none', !is.na(tgt.v4)) %>%
-    transmute(reg = reg.v4, tgt = tgt.v4)
-fn = file.path(dirw, '10.tsv')
-#write_tsv(tn, fn)
+ctag = "CornCyc"
+fi = file.path(dirg, "07.corncyc.tsv")
+ti = read_tsv(fi)
+cc = ti %>% transmute(ctag = !!ctag, grp = pid, gid = gid, note = pname)
 
+ctag = 'Y1H'
+fi = '~/projects/grn/data/08_y1h/01.rds'
+y1h = readRDS(fi)
+y1h = tibble(ctag = !!ctag, grp = 'Y1H', gid = y1h$tgt.gids, note = '')
 
-fi = file.path(dirw, 'phenolic.xlsx')
-ti = read_xlsx(fi,
-    col_names = c('gid_v3','gname','yeast_prom','prom_mplant',
-                 'gid','chrom','start','end','orig','note',
-                 'ref','x1','coexp','syntelog','sub1','sub2_ref')) %>%
-    filter(row_number() > 1) %>%
-    filter(!is.na(gid) & gid != 'Na') %>%
-    select(gid,gname,everything()) %>%
-    filter(gid_v3 != 'GRMZM2G049424')
-ti %>% count(gid) %>% count(n)
+ctag = "PPIM"
+fi = file.path(dirg, "08.ppim.tsv")
+ti = read_tsv(fi)
+ppi = ti %>% filter(type1 != '1-to-0', type2 != '1-to-0') %>%
+    select(gid1, gid2)
+ppic = ppi %>% mutate(grp = sprintf('ppi%d', 1:nrow(ppi))) %>%
+    gather(tag, gid, -grp) %>%
+    transmute(ctag='PPIM', grp=grp, gid=gid, note='')
 
-fo = file.path(dirw, '01.rds')
-res = list(reg.gids = unique(tn$reg), tgt.gids = ti$gid, tn = tn)
-saveRDS(res, file=fo)
+fun_ann = rbind(go_hc, go, cc, y1h)
+fun_ann %>% distinct(ctag,grp) %>% count(ctag)
 #}}}
 
+#{{{ known TF/target pairs
+ctags = c('KN1_ear', 'KN1_tassel', 'KN1_leaf', 'KN1_any', 'KN1_all',
+          'FEA4', 'O2', 'RA1', 'HDA101', 'bZIP22')
+tf = tibble()
+for (ctag in ctags) {
+    fi = sprintf("%s/07_known_tf/05.%s.tsv", dird, ctag)
+    ti = read_tsv(fi) %>%
+        mutate(ctag = ctag) %>%
+        select(ctag, everything())
+    tf = rbind(tf, ti)
+}
+tf = tf %>%
+    filter(! ctag %in% c("KN1_any","KN1_ear","KN1_tassel","KN1_leaf")) %>%
+    mutate(ctag = ifelse(ctag=='KN1_all', 'KN1', ctag)) %>%
+    mutate(binding = 1)
+tf %>% count(ctag)
+tfs = tf %>% distinct(ctag, reg.gid)
+#}}}
+
+#{{{ TF IDs
+ff = '~/data/genome/Zmays_v4/61_functional/06.tf.tsv'
+ti = read_tsv(ff)
+tf_ids = ti$gid
+length(tf_ids)
+length(unique(tf_ids))
+#
+tf_ids_n = tf %>% distinct(reg.gid) %>% filter(!reg.gid %in% tf_ids) %>%
+    pull(reg.gid)
+tf_ids_n
+tf_ids = c(tf_ids, tf_ids_n)
+length(tf_ids)
+#}}}
+
+# build GRN gold-standard dataset
+res = list(tf=tf, tfs=tfs, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
+fo = file.path(dird, '09.gs.rds')
+saveRDS(res, file=fo)
 
