@@ -89,6 +89,21 @@ Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by di
 Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs. Only the top 100,000 strongest edges were taken from each GRN.
 
 \pagebreak
+![Fig SX]($grn/data/14_eval_sum/12.br.2.dir.tissue.pdf){width=100%}
+
+When a predicted TF/target pair is supported by at least 3 tissues of B73/Mo17 comparison (i.e., TF is DE4+ and target is DE), how often is the regulatory interaction consistent?
+
+\pagebreak
+![Fig SX]($grn/data/14_eval_sum/12.br.3.dir.net.pdf){width=100%}
+
+When a supported TF/target pair (in at least 1 tissues of B73/Mo17 comparison where TF is DE4+ and target is DE) is observed in multiple GRNs, how often is the regulatory interaction consistent?
+
+\pagebreak
+![Fig SX]($grn/data/14_eval_sum/12.br.2b.dir.tissue.pdf){width=100%}
+
+This is taking Briggs-supported TF/target pairs that are observed in at least 3 networks, filtered to TFs with at least 3 targets.  Histogram shows the regulatory consistency among targets for each TF.
+
+\pagebreak
 ![Fig S6]($grn/data/14_eval_sum/15.biomap.1.pcc.pdf){width=100%}
 
 Evaluation of GRN predictions using the bioMAP data containing ~200 genotypes (34 inbreds + 200 hybrids) in five tissues.  The (Pearson) correlations between regulators and targets (as predicted by each GRN) were evaluated using the bioMAP expression matrix in each tissue, and shown as a boxplot for the top 10,000, 100,000 or 1,000,000 strongest edges in each network.
