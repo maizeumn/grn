@@ -1,6 +1,6 @@
 source("functions.R")
 genome = 'B73'
-x = load(file.path(dirg, genome, '55.rda'))
+genome_cfg = read_genome_conf(genome)
 tm = v3_to_v4()
 
 #{{{ map known TF targets
@@ -143,42 +143,6 @@ write_tsv(to, fo)
 #}}}
 #}}}
 
-#{{{ Top45 TFs and targets by Y1H
-dirw = file.path(dird, '08_y1h')
-fi = file.path(dirw, "y1h.targets.tsv")
-ti = read_tsv(fi)
-colnames(ti) = c("reg.v3", "reg.v4", "tgt.v3", "tgt.v4")
-ti = ti %>% fill(reg.v3, reg.v4, .direction = 'down')
-ti %>% distinct(reg.v3)
-ti %>% distinct(tgt.v3)
-
-tch = ti %>% distinct(reg.v3, reg.v4) %>%
-    left_join(tm, by = c('reg.v3' = 'ogid')) %>%
-    print(n = 45)
-tch %>% filter(is.na(gid) | reg.v4 != gid)
-
-tn = ti %>% filter(reg.v4 != 'none', !is.na(tgt.v4)) %>%
-    transmute(reg = reg.v4, tgt = tgt.v4)
-fn = file.path(dirw, '10.tsv')
-#write_tsv(tn, fn)
-
-
-fi = file.path(dirw, 'phenolic.xlsx')
-ti = read_xlsx(fi,
-    col_names = c('gid_v3','gname','yeast_prom','prom_mplant',
-                 'gid','chrom','start','end','orig','note',
-                 'ref','x1','coexp','syntelog','sub1','sub2_ref')) %>%
-    filter(row_number() > 1) %>%
-    filter(!is.na(gid) & gid != 'Na') %>%
-    select(gid,gname,everything()) %>%
-    filter(gid_v3 != 'GRMZM2G049424')
-ti %>% count(gid) %>% count(n)
-
-fo = file.path(dirw, '01.rds')
-res = list(reg.gids = unique(tn$reg), tgt.gids = ti$gid, tn = tn)
-saveRDS(res, file=fo)
-#}}}
-
 #{{{ Walley2016 and Huang2018 GRNs
 lift_previous_grn <- function(nid, study, tag, tm, dird = '~/projects/maize.grn/data') {
     #{{{
@@ -272,6 +236,7 @@ tfs = tf %>% distinct(ctag, reg.gid)
 #{{{ TF IDs
 ff = '~/data/genome/Zmays_v4/61_functional/06.tf.tsv'
 ti = read_tsv(ff)
+all_tf = ti
 tf_ids = ti$gid
 length(tf_ids)
 length(unique(tf_ids))
@@ -283,8 +248,10 @@ tf_ids = c(tf_ids, tf_ids_n)
 length(tf_ids)
 #}}}
 
+# optional: run grn.91.tf45.R
+
 # build GRN gold-standard dataset
-res = list(tf=tf, tfs=tfs, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
+res = list(tf=tf, tfs=tfs, all_tf=all_tf, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
 fo = file.path(dird, '09.gs.rds')
 saveRDS(res, file=fo)
 

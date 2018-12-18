@@ -1,8 +1,14 @@
 source("functions.R")
-require(reticulate)
-fi = file.path(dird, '09.gs.rds')
-gs = readRDS(fi)
-tf_ids = gs$tf_ids
+dirw = file.path(dird, '91_stress_recovery')
+
+fi = file.path(dirw, 'recovery_RNAs_fpkm_for_Peng.csv')
+ti = read_csv(fi, skip=2) %>% rename(gid = 'Locus.Identifier')
+th = ti[,1:8]
+tm = ti[c(1,9:ncol(ti))] %>%
+    gather(cond0, fpkm, -gid) %>%
+    separate(cond0, c('cond1','suf'), sep='_') %>% select(-suf) %>%
+    separate(cond1, c('cond2','rep'), sep='[\\.](?=R[1-3]$)', extra='merge', fill='left')
+tm %>% distinct(cond2)
 
 write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', use_cpm=T) {
     #{{{

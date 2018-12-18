@@ -44,18 +44,29 @@ read_gs <- function(fi='~/projects/grn/data/09.gs.rds') {
 read_briggs <- function(fi="~/projects/briggs/data/49_coop/01.master.rda") {
     #{{{ read briggs data
     x = load(fi)
-    tissues = unique(tm$Tissue)
+    tissues23 = c("seedlingleaf_11DAS", "blade_v12", "flagleaf_0DAP",
+            "husk_0DAP", "sheath_v12", "auricle_v12",
+            "floret_0DAP", "tasselstem_0DAP",
+            "internode_v12",
+            "root_0DAP", "seedlingroot_11DAS", "radicle_root",
+            "coleoptile_tip",
+            "silk_0DAP",
+            "tassel_v12", "spikelets_0DAP", "ear_v14",
+            "seedlingmeristem_11DAS",
+            "embryo_27DAP", "embryo_imbibedseed",
+            "endosperm_27DAP", "kernel_14DAP", "endosperm_14DAP")
     de = tm %>% filter(silent == 0) %>%
         mutate(DE= ifelse(pDE == 'non_DE', 'non_DE',
             ifelse(abs(log2mb) < 1, 'DE1-2',
             ifelse(abs(log2mb) < 2, 'DE2-4',
             ifelse(SPE == 'non_SPE', 'DE4+', 'SPE'))))) %>%
         mutate(DEdir = ifelse(log2mb<0, 'B>M', 'B<M')) %>%
+        mutate(Tissue = as.character(Tissue)) %>%
         select(Tissue, gid, DE, DEdir)
     de %>% count(Tissue, DE, DEdir)
     des = de %>% group_by(Tissue) %>%
         summarise(propDE = sum(DE!='non_DE')/n()) %>% ungroup()
-    list(tissues=tissues, de=de, des=des)
+    list(tissues=tissues23, de=de, des=des)
     #}}}
 }
 read_biomap <- function(opt='all') {

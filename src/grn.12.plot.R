@@ -107,7 +107,7 @@ tz = tp0 %>% select(nid, deg.reg) %>%
 dirw = file.path(dird, '08_y1h')
 fi = file.path(dirw, '01.rds')
 y1h = readRDS(fi)
-tn = y1h$tn %>% transmute(reg.gid=reg, tgt.gid=tgt, Y1H='Yes')
+tn = y1h$t_y1h %>% transmute(reg.gid=reg, tgt.gid=tgt, Y1H='Yes')
 
 tp = ev_tf %>% select(nid, ystat) %>% unnest() %>%
     filter(net_size == 50000) %>% select(-net_size) %>%
@@ -373,18 +373,130 @@ ev_br_filt = ev_br %>%
     summarise(n.tissue = n(), m.drc = sum(drc)/n.tissue)  %>%
     ungroup()
 ev_br_filt %>% count(nid, n.tissue)
+
+ev_br_sum = ev_br %>%
+    group_by(nid, tissue, reg.DE) %>%
+    summarise(nl = n(), n.reg = length(unique(reg.gid)),
+              nl.tgt.de = sum(tgt.DE != 'non_DE'),
+              pl.tgt.de = nl.tgt.de / nl) %>%
+    ungroup()
+
 fo = file.path(dirw, '01.br.filt.rds')
-saveRDS(ev_br_filt, file = fo)
+saveRDS(ev_br_filt, ev_br_sum, file = fo)
 #}}}
 
+br = read_briggs()
+tissues = c('auricle_v12','ear_v14','embryo_27DAP','kernel_14DAP','root_0DAP',
+            'seedlingmeristem_11DAS')
+tissues = br$tissues
+#
 fi = file.path(dirw, '01.br.filt.rds')
 ev_br_filt = readRDS(fi)
-tissues6 = c('auricle_v12','ear_v14','embryo_27DAP','kernel_14DAP','root_0DAP',
-            'seedlingmeristem_11DAS')
 net_sizes = c(1e4, 5e4, 1e5)
-net_size_map = c('1e4'=1e4, '1e5'=1e5, '1e6'=1e6)
-net_size = 1e4
+net_size_map = c('1e4'=1e4, '5e4'=5e4, '1e5'=1e5)
+net_size = 5e4
 des = c("non_DE","DE1-2","DE2-4","DE4+","SPE")
+
+#{{{ show support in Briggs dataset
+th2 = th %>% transmute(nid=nid, lgd=txt)
+tags = c("DE",'SPE')
+tags = c("non_DE", "DE1-2",'DE2-4','DE4+','SPE')
+tp = ev_br_filt$sum %>%
+    mutate(txt = sprintf("%d", n.reg)) %>%
+    mutate(lab = str_remove(sprintf("%.02f", pl.tgt.de), '^0+')) %>%
+    rename(tag = reg.DE) %>%
+    mutate(tag = factor(tag, levels = tags)) %>%
+    #mutate(net_size = factor(net_size_map[as.character(net_size)], levels = net_sizes)) %>%
+    inner_join(br$des, by = c("tissue"="Tissue")) %>%
+    mutate(fc = pl.tgt.de/propDE) %>%
+    mutate(tissue = factor(tissue, levels = tissues)) %>%
+    inner_join(th2, by='nid') %>%
+    mutate(nid = factor(nid, levels=th2$nid)) %>%
+    mutate(lgd = factor(lgd, levels=th2$lgd))
+
+#{{{ all
+tp0 = tp %>%
+    mutate(lgd = factor(lgd, levels=rev(th2$lgd)))
+p1 = ggplot(tp0, aes(x=lgd)) +
+    geom_point(aes(y=fc, color=tag, shape=tag), size=1) +
+    scale_x_discrete(expand = c(.01,0)) +
+    scale_y_continuous(name = 'Enrichment (fold change) in Target DE',
+                       breaks = c(1,2,4),
+                       expand = expand_scale(mult=c(0,.1))) +
+    scale_fill_d3() +
+    scale_shape_manual(values=pal_shapes()) +
+    scale_color_d3() +
+    coord_flip() +
+    facet_wrap(~tissue, nrow=2) +
+    otheme(legend.pos = 'top.center.out',
+           margin = c(.2,.2,.2,1),
+           strip.size = 9,
+           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+    theme(axis.text.y=element_text(color=rev(th$col))) +
+    theme(strip.text.y = element_text(angle=0,hjust=.5)) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
+    guides(direction = 'horizontal', color=guide_legend(nrow=1),
+        shape=guide_legend(nrow=1))
+fp = sprintf("%s/12.br.1.pdf", dirw)
+ggsave(p1, filename = fp, width = 12, height = 12)
+#}}}
+#{{{ all 2
+tp0 = tp %>%
+    mutate(tissue = factor(tissue, levels=rev(tissues)))
+p1 = ggplot(tp0, aes(x=tissue)) +
+    geom_point(aes(y=fc, color=tag, shape=tag), size=1.5) +
+    #scale_x_discrete(breaks=th$nid, labels=th$txt, expand = c(.01,0)) +
+    scale_y_continuous(name = 'Enrichment (fold change) in Target DE',
+                       breaks = c(1,2,4),
+                       expand = expand_scale(mult=c(.1,.1))) +
+    scale_fill_d3() +
+    scale_shape_manual(values=pal_shapes()) +
+    scale_color_d3() +
+    coord_flip() +
+    facet_wrap(~lgd, ncol=10) +
+    otheme(legend.pos = 'top.center.out',
+           strip.size = 7,
+           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
+    guides(direction = 'horizontal', color=guide_legend(nrow=1),
+        shape=guide_legend(nrow=1))
+fp = sprintf("%s/12.br.2.pdf", dirw)
+ggsave(p1, filename = fp, width = 10, height = 14)
+#}}}
+
+#{{{ tissue network
+nid = 'n99a_1' # kaeppler endosperm
+nid = 'n15a' # leiboff SAM
+nid = 'n14a' # hirsch seedling
+nid = 'n16a' # jin kernel
+txt = th %>% filter(nid==!!nid) %>% pull(txt)
+tp0 = tp %>% filter(nid == !!nid)
+p1 = ggplot(tp0, aes(x=tissue)) +
+    geom_point(aes(y=pl.tgt.de, color=tag, shape=tag), size=2) +
+    #geom_text(aes(y=pl.tgt.de+.01, group=tag, label=lab), hjust=0, position=position_dodge(width=1), size=2) +
+    #geom_text(aes(y=.01, group=tag, label=txt), hjust=0, position=position_dodge(width=1), size=2) +
+    #geom_hline(data=tpl, aes(yintercept=prop.de), size=.3, alpha=.5) +
+    #scale_x_discrete(breaks=th$nid, labels=th$txt, expand = c(.01,0)) +
+    scale_y_continuous(name = 'Proportion DE Targets', expand = expand_scale(mult=c(0,.1))) +
+    scale_shape_manual(name = txt, values=pal_shapes()) +
+    scale_color_d3(name = txt) +
+    otheme(legend.pos = 'top.center.out', legend.title = T,
+           margin = c(.5,.2,.2,1),
+           ytitle=T, xtext=T, ytick=T, ytext=T, xgrid=T, ygrid=F) +
+    theme(axis.text.x=element_text(angle=30,hjust=1,vjust=1)) +
+    #theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
+    guides(direction='horizontal',
+           color=guide_legend(title.position='left',nrow=1),
+           shape=guide_legend(title.position='left',nrow=1))
+fp = sprintf("%s/13.br.%s.pdf", dirw, nid)
+ggsave(p1, filename = fp, width = 9, height = 4)
+
+#}}}
+#}}}
+
+#{{{ case study
+
+#}}}
 
 #{{{ how often is a link observed in multiple tissues? is it consistent?
 tp = ev_br_filt %>% filter(n.tissue >= 5) %>%
@@ -489,59 +601,6 @@ tg = ev_br_filt %>% group_by(reg.gid, tgt.gid) %>%
 tg %>% count(nnet)
 #}}}
 
-#{{{
-tp0 = ev_br %>% #filter(net_size == !!net_size) %>%
-    filter(tissue %in% tissues6) %>%
-    group_by(nid, tissue, net_size) %>%
-    summarise(n.links = sum(n),
-              n.reg.de = sum(n[reg.DE]),
-              p.reg.de = sum(n[reg.DE & tgt.DE])/n.reg.de
-    ungroup()
-
-tp1 = tp0 %>% select(nid,tissue,net_size,n.links,starts_with("n.reg.")) %>%
-    gather(tag, n.reg, -nid,-tissue,-net_size,-n.links) %>%
-    mutate(tag = str_replace(tag, "^n\\.reg\\.", ""))
-tp2 = tp0 %>% select(nid,tissue,net_size,n.links,starts_with("p.reg.")) %>%
-    gather(tag, p.reg, -nid,-tissue,-net_size,-n.links) %>%
-    mutate(tag = str_replace(tag, "^p\\.reg\\.", ""))
-tags = c("DE",'DE2','DE4','DE8','SPE')
-tags = c("DE",'SPE')
-tp = tp1 %>%
-    inner_join(tp2, by = c('nid','tissue','net_size','n.links','tag')) %>%
-    filter(net_size == !!net_size) %>%
-    mutate(txt = sprintf("%d", n.reg)) %>%
-    mutate(lab = str_remove(sprintf("%.02f", p.reg), '^0+')) %>%
-    mutate(tag = toupper(tag)) %>%
-    filter(tag %in% tags) %>%
-    mutate(tag = factor(tag, levels = tags)) %>%
-    #mutate(net_size = factor(net_size_map[as.character(net_size)], levels = net_sizes)) %>%
-    mutate(tissue = factor(tissue, levels = tissues6)) %>%
-    filter(nid %in% th$nid) %>%
-    mutate(nid = factor(nid, levels=rev(th$nid)))
-tpl = br$des %>% transmute(tissue = Tissue, prop.de = propDE) %>%
-    filter(tissue %in% tissues6)
-    #complete(study, tissue, net_size, reg.DE, nesting(tgt.DE),
-    #         fill = list(n=0, nreg=0, ntgt=0))
-
-p1 = ggplot(tp, aes(x=nid)) +
-    geom_bar(aes(y=p.reg, fill=tag), stat='identity', position='dodge', width=.9, alpha=.7) +
-    geom_text(aes(y=p.reg+.01, group=tag, label=lab), hjust=0, position=position_dodge(width=1), size=2) +
-    geom_text(aes(y=.01, group=tag, label=txt), hjust=0, position=position_dodge(width=1), size=2) +
-    geom_hline(data=tpl, aes(yintercept=prop.de), size=.3, alpha=.5) +
-    scale_x_discrete(breaks=th$nid, labels=th$txt, expand = c(.01,0)) +
-    scale_y_continuous(name = 'Prop. DE Targets', expand = expand_scale(mult=c(0,.1))) +
-    scale_fill_d3() +
-    coord_flip() +
-    facet_wrap(~tissue, nrow = 1, scale = 'free_x') +
-    otheme(strip.size = 9, margin = c(1.5,.2,.2,.2),
-           xtitle = T, ytext = T, xgrid = F, ygrid = T) +
-    theme(axis.text.y=element_text(color=th$col)) +
-    theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
-    guides(direction = 'horizontal', fill = guide_legend(nrow = 1, byrow = F))
-fp = sprintf("%s/12.briggs.%d.pdf", dirw, net_size)
-ggsave(p1, filename = fp, width = 8, height = 8)
-#}}}
-
 #}}}
 
 #{{{ eval using biomap data - correlation
@@ -581,122 +640,4 @@ fo = file.path(dirw, '15.biomap.1.pcc.pdf')
 ggsave(p, file=fo, width=10, height=8)
 #}}}
 
-
-
-#{{{ # use PCC to predict TF targets
-if(F) {
-dirw = file.path(dird, '13_auroc')
-#{{{ old codes
-    pcc.matrix = cor(asinh(expr), method = 'pearson')
-    pcc = pcc.matrix[lower.tri(pcc.matrix)]
-
-    ii = which(lower.tri(pcc.matrix))
-    colidx = as.integer((ii - 1) / nrow(pcc.matrix)) + 1
-    rowidx = ii - (colidx - 1) * nrow(pcc.matrix)
-
-    pcc[pcc == 1] = 0.999999
-    pcc[pcc == -1] = -0.999999
-    #pcc2 = log((1+pcc) / (1-pcc)) / 2
-    pcc2 = atanh(pcc)
-    coexv = (pcc2 - mean(pcc2)) / sd(pcc2)
-
-    ord = order(-coexv)
-    idxs = ord[1:(1*1000000)]
-    dw = data.frame(g1 = gids[rowidx[idxs]], g2 = gids[colidx[idxs]], coex = coexv[idxs])
-#}}}
-
-#{{{ run
-th2 = th %>% mutate(fi = sprintf("%s/11_input/%s.rda", dird, nid)) %>%
-    filter(file.exists(fi))
-#th2 = th2 %>% filter(nid %in% c("n41", "n42", "n71", "n81", "n82")) 
-
-t_auc = tibble()
-for (i in 1:nrow(th2)) {
-    nid = th2$nid[i]; study = th2$study[i]; tag = th2$tag[i]; fi = th2$fi[i]
-    x = load(fi)
-    x
-    #
-    t2_tf = t_exp %>% filter(gid %in% t_gss$reg.gid) %>%
-        group_by(gid) %>%
-        summarise(ncond = sum(CPM>=1), pcond = ncond/n(), expressed = pcond >= .1,
-                  CPM.mean = mean(CPM), CPM.var = var(CPM),
-                  CPM.median = median(CPM), CPM.mad = mad(CPM)) %>%
-        ungroup() %>% inner_join(t_gss, by = c('gid'='reg.gid')) %>%
-        select(-ncond,-pcond)
-    #
-    n_cond = length(unique(t_exp$condition))
-    gids = t_exp %>% group_by(gid) %>%
-        summarise(n_cond_exp = sum(CPM >= 1)) %>%
-        filter(n_cond_exp >= n_cond * .1) %>%
-        pull(gid)
-    t_flt = t_exp %>% filter(gid %in% gids)
-    #
-    use_cpm = T
-    if(use_cpm) {
-        t_flt = t_flt %>% mutate(exp.val = asinh(CPM))
-    } else {
-        t_flt = t_flt %>% mutate(exp.val = asinh(FPKM))
-    }
-    #
-    et_b = t_flt %>% 
-        select(condition, gid, exp.val) %>%
-        spread(condition, exp.val)
-    em_b = as.matrix(et_b[,-1])
-    rownames(em_b) = et_b$gid
-    #
-    gids = rownames(em_b)
-    pcc.matrix = cor(t(em_b), method = 'pearson')
-    #
-    rids = t_gss$reg.gid
-    rids = rids[rids %in% gids]
-    t_pcc = pcc.matrix[,rids] %>% as_tibble() 
-    if(length(rids) == 1) colnames(t_pcc)[1] = rids[1]
-    t_pcc = t_pcc %>% mutate(tgt.gid = gids) %>%
-        gather(reg.gid, pcc, -tgt.gid) %>%
-        filter(reg.gid != tgt.gid) %>%
-        inner_join(t_gss, by = 'reg.gid') %>%
-        left_join(t_gs, by = c('ctag','reg.gid','tgt.gid')) %>%
-        replace_na(list(binding = 0)) %>%
-        mutate(categ = factor(binding))
-    #
-    ctagss = t_gss %>% filter(reg.gid %in% rids) %>% pull(ctag)
-    for (ctag in ctagss) {
-        ty = t_pcc %>% filter(ctag == !!ctag)
-        categ = as.integer(as.character(ty$categ))
-        score = as.numeric(ty$pcc)
-        score = as.numeric(abs(ty$pcc))
-        if(max(score) == 0) score[1] = 0.1
-        pr = pr.curve(scores.class0 = score, weights.class0 = categ, curve = T)
-        roc = roc.curve(scores.class0 = score, weights.class0 = categ, curve = T)
-        aupr = pr$auc.integral
-        auroc = roc$auc
-        t_auc1 = tibble(nid = nid, study = study, tag = tag, 
-                        ctag = ctag, aupr = aupr, auroc = auroc)
-        t_auc = rbind(t_auc, t_auc1)
-        cat(sprintf("%s %10s aupr [%.04f] auroc [%.04f]\n", nid, ctag, aupr, auroc))
-    } 
-}
-fo = file.path(dirw, '21.pcc.rda')
-save(t_auc, file = fo)
-#}}}
-
-#{{{ plot
-fi = file.path(dirw, '21.pcc.rda')
-x = load(fi)
-tpa = t_auc %>% 
-    mutate(tag = sprintf("%s %s", study, tag)) %>%
-    select(-study) 
-
-for (opt in names(lst_eval)) {
-    nids = lst_eval[[opt]]
-    tp = tpa %>% filter(nid %in% nids) %>% 
-        mutate(nid = factor(nid, levels = rev(nids)))
-    fp = sprintf("%s/06.pcc.%s.pdf", dirw, opt)
-    wd = 7; ht = 5
-    if (opt == 'all') ht = 7
-    auc_barplot(tp, fp, wd, ht)
-}
-#}}}
-}
-#}}}
 

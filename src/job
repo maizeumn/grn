@@ -6,7 +6,6 @@
 #PBS -q small
 
 cd $grn/src
-#Rscript --no-init-file --no-restore grn.10.input.R
+Rscript --no-init-file --no-restore grn.10.input.R
+#Rscript --no-init-file --no-restore grn.run.R
 
-cd $grn/data
-grn.eval.R --opt go 12_output/n99a_1.rda x.rds
