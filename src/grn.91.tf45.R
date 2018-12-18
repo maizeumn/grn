@@ -87,7 +87,7 @@ dev.off()
 fi = file.path(dirw, '01.rds')
 res = readRDS(fi)
 t_reg = res$t_reg
-t_tgt = res$t_tgt %>% select(gid, gname, gid_v3)
+t_tgt = res$t_tgt %>% select(gid, gid_v3)
 
 study='mec03'
 th = rnaseq_sample_meta(study)
@@ -98,7 +98,22 @@ tor = tm %>% filter(gid %in% t_reg$gid) %>%
     inner_join(th, by='SampleID') %>%
     mutate(Tissue=sprintf("%s|%s|%d", Tissue, Treatment,Replicate)) %>%
     select(gid,Tissue,CPM) %>%
-    spread(Tissue,CPM)
+    spread(Tissue,CPM) %>%
+    inner_join(t_reg, by = 'gid') %>%
+    select(gid,gid_v3, everything())
+fo = file.path(dirw, '15.tf.cpm.tsv')
+write_tsv(tor, fo)
+
+tot = tm %>% filter(gid %in% t_tgt$gid) %>%
+    select(gid,SampleID,CPM) %>%
+    inner_join(th, by='SampleID') %>%
+    mutate(Tissue=sprintf("%s|%s|%d", Tissue, Treatment,Replicate)) %>%
+    select(gid,Tissue,CPM) %>%
+    spread(Tissue,CPM) %>%
+    inner_join(t_tgt, by = 'gid') %>%
+    select(gid,gid_v3, everything())
+fo = file.path(dirw, '15.targets.cpm.tsv')
+write_tsv(tot, fo)
 #}}}
 
 
