@@ -1,45 +1,27 @@
 source("functions.R")
+ncfg = th
 dirw = file.path(dird, '14_eval_sum')
 diri = '~/projects/rnaseq'
+gcfg = read_genome_conf()
 
-#{{{ # manually merge tissue GRNs
-if(F) {
-study = "lin2017"
-study = "kremling2018"
-ths = th %>% filter(study == !!study, nid != 'n50', nid != 'n60')
-
-tno = tibble()
-for (i in 1:nrow(ths)) {
-    nid = ths$nid[i]
-    fgn = ths$fgn[i]
-    x = load(fgn)
-    x
-    if( i == 1 ) {
-        tno = tn %>%
-            mutate(weight.a = weight, weight.m = weight) %>%
-            select(-weight)
-    } else {
-        tno = tno %>% full_join(tn, by = c('reg.gid', 'tgt.gid')) %>%
-            replace_na(list(weight = 0)) %>%
-            mutate(weight.a = weight.a + weight,
-                   weight.m = weight.m * weight) %>%
-            select(-weight)
-    }
-    cat(nid,"\n")
+#{{{ take top50k edges from each GRN and save
+read_grn <- function(nid='n13a',net_size=5e4,diri='~/projects/grn/data/12_output') {
+    #{{{
+    cat(nid,'\n')
+    f_net = sprintf("%s/%s.rda", diri, nid)
+    x = load(f_net)
+    tn %>% filter(row_number() <= net_size)
+    #}}}
 }
-
-fo1 = file.path(dirw, "12_output/n58.rda")
-fo2 = file.path(dirw, "12_output/n59.rda")
-fo1 = file.path(dirw, "12_output/n68.rda")
-fo2 = file.path(dirw, "12_output/n69.rda")
-rids = tno %>% distinct(reg.gid) %>% pull(reg.gid)
-tids = tno %>% distinct(tgt.gid) %>% pull(tgt.gid)
-tn1 = tno %>% rename(weight = weight.a)
-tn2 = tno %>% rename(weight = weight.m)
-save(rids, tids, tn1, file = fo1)
-save(rids, tids, tn2, file = fo2)
-}
+t_net = ncfg %>%
+    select(nid) %>%
+    mutate(data=map(nid, read_grn)) %>% unnest()
+fo = file.path(dirw, '01.top50k.rds')
+saveRDS(t_net, file=fo)
 #}}}
+
+fi = file.path(dirw, '01.top50k.rds')
+t_net = readRDS(fi)
 
 fi = file.path(dirw, '01.tf.rds')
 ev_tf = readRDS(fi)
@@ -361,6 +343,63 @@ ggsave(p1, filename = fo, width=7, height=8)
 #}}}
 #}}}
 
+t_link_sup = t_net %>% unnest() %>%
+    right_join(t_link, by = c("reg.gid",'tgt.gid'))
+
+t_link = gs$tf %>% filter(reg.gid == gid) %>% select(reg.gid,tgt.gid,binding)
+#{{{ case study
+gs = read_gs()
+gid = gs$tfs %>% filter(ctag=='O2') %>% pull(reg.gid)
+tgts = gs$tf %>% filter(reg.gid==gid) %>% pull(tgt.gid)
+gcfg$gene.desc %>% filter(id %in% tgts) %>% print(n=40)
+tq = tibble(gid = c(gid, tgts), tf = c(T, rep(F,length(tgts)))) %>%
+    inner_join(gcfg$gene.desc, by = c('gid'='id')) %>%
+    mutate(gname = ifelse(is.na(note1),
+                          ifelse(is.na(note2), gid, note2), note1)) %>%
+    select(gid, tf, gname)
+
+study='mec03'
+study='me16a'
+th = rnaseq_sample_meta(study)
+tm = rnaseq_sample_cpm(study)
+ths = th %>%
+    distinct(Tissue,Genotype,Treatment) %>%
+    arrange(Tissue,Genotype,Treatment) %>%
+    #mutate(txt = sprintf("%s--%s",Tissue,Treatment))
+    mutate(txt = Genotype)
+
+tp = tm %>% filter(gid %in% tq$gid) %>%
+    select(gid,SampleID,CPM) %>%
+    inner_join(th, by='SampleID') %>%
+    group_by(gid,Genotype,Tissue,Treatment) %>%
+    summarise(CPM = asinh(mean(CPM))) %>% ungroup() %>%
+    #mutate(txt = sprintf("%s--%s",Tissue,Treatment)) %>%
+    mutate(txt = Genotype) %>%
+    inner_join(tq, by='gid') %>%
+    mutate(gid = factor(gid, levels=tq$gid)) %>%
+    mutate(txt = factor(txt, levels=ths$txt))
+
+p = ggplot(tp) +
+    geom_tile(aes(x = gid, y = txt, fill = CPM)) +
+    #geom_segment(data = tpx, mapping = aes(x=xt,xend=xt,y=xmin,yend=xmax), size = 3) +
+    #geom_segment(data = tpg, mapping = aes(x=xg,xend=xg,y=xmin,yend=xmax), color = tpg$col.gt, size = 1) +
+    #geom_text(data=tpg, mapping=aes(x=xg-3.5, y = x, label = lab), color = tpg$col.gt, size = 2, hjust = 0) +
+    scale_x_discrete(expand = c(0,0), breaks=tq$gid, labels=tq$gname) +
+    scale_y_discrete(expand = c(0,0)) +
+    scale_fill_gradientn(colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    #scale_fill_viridis() +
+    otheme(legend.pos = 'top.center.out', legend.dir = 'h',
+           xtext=T, ytext = T) +
+    theme(axis.text.x=element_text(angle=30,size=8,hjust=1,vjust=1)) +
+    theme(axis.text.y=element_text(size=7)) +
+    theme(plot.margin = unit(c(2,.2,.2,.2), "lines")) +
+    theme(panel.border = element_blank()) +
+    theme(legend.key.size = unit(.8, 'lines'), legend.text = element_text(size = 7))
+fo = sprintf("%s/15.cpm.2.pdf", dirw)
+ggsave(p, file = fo, width = 8, height = 15)
+#
+#}}}
+
 #{{{ evaluate briggs data
 #{{{ filter GRN using briggs DE info
 fi = file.path(dirw, '01.br.rds')
@@ -494,9 +533,6 @@ ggsave(p1, filename = fp, width = 9, height = 4)
 #}}}
 #}}}
 
-#{{{ case study
-
-#}}}
 
 #{{{ how often is a link observed in multiple tissues? is it consistent?
 tp = ev_br_filt %>% filter(n.tissue >= 5) %>%

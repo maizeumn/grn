@@ -15,29 +15,16 @@ th = t_cfg %>% select(-mid) %>%
     mutate(net_type = factor(net_type, levels = net_types)) %>%
     arrange(net_type, nid, sample_size) %>%
     mutate(col = net_cols[net_type]) %>%
-    mutate(txt = sprintf("%s %s [%d]", study,note,sample_size))
+    mutate(txt = sprintf("%s %s [%d]", study,note,sample_size)) #%>%
+    #select(-study,-note,-sample_size)
 nids_geno = th %>% filter(net_type == 'genotype') %>% pull(nid)
 nids_dev = th %>% filter(net_type == 'tissue') %>% pull(nid)
+nids22 = t_cfg %>%
+    filter(!str_detect(nid, '^n((17a)|(18a)|(99a)|(99b)|(99c))_')) %>%
+    pull(nid)
+nids25 = t_cfg %>%
+    filter(!str_detect(nid, '^n((17a)|(18a)|(99a)|(99c))_')) %>% pull(nid)
 
-load_maize_dataset <- function(id = 'me99b', opt = "exp") {
-    #{{{
-    if(opt == 'exp') {
-        diri = '~/projects/rnaseq/data/08_raw_output'
-        fi = sprintf("%s/%s.rda", diri, id)
-        stopifnot(file.exists(fi))
-        x = load(fi)
-        env(th = th, tm = tm)
-    } else if (opt == 'grn') {
-        diri = '~/projects/grn/data/12_output'
-        fi = sprintf("%s/%s.rda", diri, id)
-        stopifnot(file.exists(fi))
-        x = load(fi)
-        env(rids = rids, tids = tids, reg.mat = reg.mat, tn = tn)
-    } else {
-        stop(sprintf("unknown dataset opt: %s", opt))
-    }
-    #}}}
-}
 read_gs <- function(fi='~/projects/grn/data/09.gs.rds') {
     readRDS(fi)
 }
