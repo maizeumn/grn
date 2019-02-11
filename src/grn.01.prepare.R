@@ -254,4 +254,6 @@ length(tf_ids)
 res = list(tf=tf, tfs=tfs, all_tf=all_tf, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
 fo = file.path(dird, '09.gs.rds')
 saveRDS(res, file=fo)
+ft = file.path(dird, '09.tf.txt')
+write(tf_ids, file=ft)
 

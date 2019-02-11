@@ -4,7 +4,7 @@ fi = file.path(dird, '09.gs.rds')
 gs = readRDS(fi)
 tf_ids = gs$tf_ids
 
-write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', use_cpm=T) {
+write_me <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', use_cpm=T) {
     #{{{
     fh1 = sprintf("%s/05_read_list/%s.tsv", diri, mid)
     fh2 = sprintf("%s/05_read_list/%s.c.tsv", diri, mid)
@@ -57,13 +57,31 @@ write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', 
         tm1 = tm %>% filter(SampleID %in% th1$SampleID)
         #}}}
         cat(sprintf('%s %d\n', nid, nrow(th1)))
-        fo = sprintf("%s/%s.pkl", diro, nid)
-        write_genie3_input1(tm1, th1, tf_ids, fo, use_cpm)
+        fo = sprintf("%s/%s", diro, nid)
+        write_me1(tm1, th1, tf_ids, fo, use_cpm)
     }
     T
     #}}}
 }
-write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
+write_me1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
+    #{{{
+    if(use_cpm) {
+        t_exp = t_exp %>% mutate(exp.val = asinh(CPM))
+    } else {
+        t_exp = t_exp %>% mutate(exp.val = asinh(FPKM))
+    }
+    et = t_exp %>%
+        select(SampleID, gid, exp.val) %>%
+        spread(SampleID, exp.val)
+    gids = et %>% pull(gid)
+    fo1 = sprintf("%s.tsv", fo)
+    em = as_tibble(t(et[,-1]))
+    write_tsv(em, fo1, col_names = F)
+    fo2 = sprintf("%s.gid.txt", fo)
+    write(gids, fo2)
+    #}}}
+}
+write_me2 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
     #{{{
     if(use_cpm) {
         t_exp = t_exp %>% mutate(exp.val = asinh(CPM))
@@ -93,9 +111,9 @@ write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
     #}}}
 }
 
-diro = file.path(dird, '11_input')
+diro = file.path(dird, '11_exp_mat')
 mids = t_cfg %>% filter(str_detect(mid,'^me')) %>% distinct(mid) %>% pull(mid)
 #mids = c('me17a','me18a',sprintf('me99%s',letters[1:3]))
-map_int(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
+map_int(mids, write_me, t_cfg = t_cfg, diro = diro)
 
 

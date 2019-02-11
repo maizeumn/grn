@@ -1,50 +1,49 @@
-nid	mid	study	note	net_type	sample_size
-n13a	me13a	li2013	SAM	ril	107
-n13c	me13c	eitchen2013	seedling_leaf3	genotype	62
-n14a	me14a	hirsch2014	seedling	genotype	503
-n15a	me15a	leiboff2015	SAM	genotype	383
-n16a	me16a	jin2016	kernel	genotype	368
-n16b	me16b	stelpflug2016	B73	tissue	93
-n16c	me16c	walley2016	B73	tissue	23
-n17a	me17a	lin2017	5*27	tissue*genotype	133
-n17a_1			ear	genotype	26
-n17a_2			root	genotype	27
-n17a_3			shoot	genotype	27
-n17a_4			tassel	genotype	26
-n17a_5			SAM	genotype	27
-n18a	me18a	kremling2018	7*306	tissue*genotype	1781
-n18a_1			GRoot	genotype	274
-n18a_2			GShoot	genotype	280
-n18a_3			Kern	genotype	231
-n18a_4			L3Base	genotype	264
-n18a_5			L3Tip	genotype	266
-n18a_6			LMAD	genotype	204
-n18a_7			LMAN	genotype	262
-n18d	me18d	shaefer2018	root_GCN	genotype	48
-n99a	me99a	kaeppler2018	5*96	tissue*genotype	447
-n99a_1			endosperm	genotype	89
-n99a_2			internode	genotype	43
-n99a_3			leaf	genotype	50
-n99a_4			root	genotype	49
-n99a_5			seedling	genotype	216
-n99a_6			seedling inbred	genotype	166
-n99a_7			seedling hybrid	genotype	50
-n99b	me99b	briggs	3*23	tissue*genotype	73
-n99b_1			B73	tissue	23
-n99b_2			Mo17	tissue	23
-n99b_3			BxM	tissue	23
-n99c	me99c	biomap	5*121	tissue*genotype	450
-n99c_1			endosperm	genotype	121
-n99c_2			internode	genotype	77
-n99c_3			leaf	genotype	84
-n99c_4			root	genotype	84
-n99c_5			seedling	genotype	84
-nc01	mec01	leaf dev	leaf	tissue	40
-nc02	mec02	seed dev	embryo_endpsperm	tissue	61
-nc03	mec03	dev atlas	combined	tissue	139
-nc04	mec04	root dev	root	tissue	50
-np16_1	np16_1	walley2016	mRNA	liftover	23
-np18_1	np18_1	huang2018	leaf	liftover	394
-np18_2	np18_2	huang2018	root	liftover	176
-np18_3	np18_3	huang2018	SAM	liftover	406
-np18_4	np18_4	huang2018	seed	liftover	159
+nid	mid	study	note	subid	net_type	sample_size
+n13a	me13a	li2013	SAM	z	ril	107
+n13c	me13c	eitchen2013	seedling_leaf3	z	genotype	62
+n14a	me14a	hirsch2014	seedling	z	genotype	503
+n15a	me15a	leiboff2015	SAM	z	genotype	383
+n16a	me16a	jin2016	kernel	z	genotype	368
+n16b	me16b	stelpflug2016	B73	z	tissue	93
+n16c	me16c	walley2016	B73	z	tissue	23
+n17a	me17a	lin2017	5*27	z	tissue*genotype	133
+n17a_1	me17a	lin2017	ear	ear	genotype	26
+n17a_2	me17a	lin2017	root	root	genotype	27
+n17a_3	me17a	lin2017	shoot	shoot	genotype	27
+n17a_4	me17a	lin2017	tassel	tassel	genotype	26
+n17a_5	me17a	lin2017	SAM	SAM	genotype	27
+n18a	me18a	kremling2018	7*306	z	tissue*genotype	1781
+n18a_1	me18a	kremling2018	GRoot	GRoot	genotype	274
+n18a_2	me18a	kremling2018	GShoot	GShoot	genotype	280
+n18a_3	me18a	kremling2018	Kern	Kern	genotype	231
+n18a_4	me18a	kremling2018	L3Base	L3Base	genotype	264
+n18a_5	me18a	kremling2018	L3Tip	L3Tip	genotype	266
+n18a_6	me18a	kremling2018	LMAD	LMAD	genotype	204
+n18a_7	me18a	kremling2018	LMAN	LMAN	genotype	262
+n18d	me18d	shaefer2018	root_GCN	z	genotype	48
+n19a	me19a	mazaheri2019	seedling	z	genotype	453
+n99a	me99a	kaeppler2018	5*96	z	tissue*genotype	447
+n99a_1	me99a	kaeppler2018	endosperm	endosperm	genotype	89
+n99a_2	me99a	kaeppler2018	internode	internode	genotype	43
+n99a_3	me99a	kaeppler2018	leaf	leaf	genotype	50
+n99a_4	me99a	kaeppler2018	root	root	genotype	49
+n99a_5	me99a	kaeppler2018	seedling	seedling	genotype	216
+n99b	me99b	briggs	23*3	z	tissue*genotype	73
+n99b_1	me99b	briggs	B73	B73	tissue	23
+n99b_2	me99b	briggs	Mo17	Mo17	tissue	23
+n99b_3	me99b	briggs	BxM	B73xMo17	tissue	23
+n99c	me99c	biomap	5*121	z	tissue*genotype	450
+n99c_1	me99c	biomap	endosperm	Endosperm	genotype	121
+n99c_2	me99c	biomap	internode	Internode	genotype	77
+n99c_3	me99c	biomap	leaf	Leaf	genotype	84
+n99c_4	me99c	biomap	root	Root	genotype	84
+n99c_5	me99c	biomap	seedling	Seedling	genotype	84
+nc01	mec01	leaf dev	leaf	z	tissue	40
+nc02	mec02	seed dev	embryo_endpsperm	z	tissue	61
+nc03	mec03	dev atlas	combined	z	tissue	139
+nc04	mec04	root dev	3*15	z	tissue*genotype	50
+np16_1	np16_1	walley2016	mRNA	z	liftover	23
+np18_1	np18_1	huang2018	leaf	z	liftover	394
+np18_2	np18_2	huang2018	root	z	liftover	176
+np18_3	np18_3	huang2018	SAM	z	liftover	406
+np18_4	np18_4	huang2018	seed	z	liftover	159
