@@ -1,4 +1,5 @@
-require(rmaize)
+require(devtools)
+load_all('~/git/rmaize')
 dirg = '~/data/genome'
 dirp = '~/projects/grn'
 dird = file.path(dirp, 'data')
@@ -10,12 +11,17 @@ studies = t_cfg %>% distinct(study) %>% pull(study)
 net_types = c("tissue","genotype","tissue*genotype",'ril','liftover')
 net_cols = pal_aaas()(length(net_types))
 names(net_cols) = net_types
+nids_meta = c("n17a","n18a","n99a","n99b","n99c")
 th = t_cfg %>% select(-mid) %>%
     filter(net_type %in% net_types) %>%
+    mutate(net_type = ifelse(nid %in% nids_meta, 'genotype', net_type)) %>%
     mutate(net_type = factor(net_type, levels = net_types)) %>%
     arrange(net_type, nid, sample_size) %>%
+    mutate(net_type = as.character(net_type)) %>%
+    mutate(net_type = ifelse(nid %in% nids_meta, 'tissue*genotype', net_type)) %>%
+    mutate(net_type = factor(net_type, levels = net_types)) %>%
     mutate(col = net_cols[net_type]) %>%
-    mutate(txt = sprintf("%s %s [%d]", study,note,sample_size)) #%>%
+    mutate(lgd = sprintf("%s %s [%d]", study,note,sample_size)) #%>%
     #select(-study,-note,-sample_size)
 nids_geno = th %>% filter(net_type == 'genotype') %>% pull(nid)
 nids_dev = th %>% filter(net_type == 'tissue') %>% pull(nid)

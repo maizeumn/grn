@@ -41,73 +41,22 @@ header-includes:
 ```{r, message=FALSE, echo=FALSE}
 source("../src/functions.R")
 options(knitr.table.format = "latex")
-th %>% select(net_type,nid,study,note,sample_size) %>%
+tp = th %>% select(net_type,nid,study,note,sample_size,col) %>%
+    filter(! str_detect(nid, "^n99b")) %>%
     mutate(reference=str_to_title(study)) %>%
     mutate(reference=str_replace(reference, '(\\d+)$', ' et al. \\1')) %>%
-    #filter(! nid %in% c("n99a_2","n99b_2","n99b_3","nc01","nc02")) %>%
     arrange(net_type, nid) %>%
-    select(-nid) %>%
-    mutate(net_type = cell_spec(net_type, color=th$col),
-           study = cell_spec(study, color=th$col),
-           note = cell_spec(note, color=th$col),
-           sample_size = cell_spec(sample_size, color=th$col)) %>%
+    select(-nid)
+tp %>% select(-col) %>%
+    mutate(net_type = cell_spec(net_type, color=tp$col),
+           study = cell_spec(study, color=tp$col),
+           note = cell_spec(note, color=tp$col),
+           sample_size = cell_spec(sample_size, color=tp$col)) %>%
     kable(format='latex', escape=F, longtable=F, booktabs=T,
         format.args = list(big.mark = ","),
         caption = "Table 1. GRNs built in this study.") %>%
     kable_styling(latex_options = c("striped", "hold_position"), full_width = F, font_size = 9) %>%
         column_spec(1, bold=T) %>%
-        collapse_rows(columns=1:2, latex_hline="major", valign="top")
+        collapse_rows(columns=c(1,2,5), latex_hline="major", valign="top")
 ```
 
-![Fig SX]($grn/data/14_eval_sum/03.stat.pdf){width=100%}
-
-General network statistics.
-
-![Fig 1]($grn/data/14_eval_sum/09.go.pdf){width=100%}
-
-Fold enrichment in functional categories for networks of different sizes.  For each functional classification (Gene Ontology or CornCyc metabolic pathway), the fold enrichment and significance of co-regulation in a given GRN was determined using permutation (comparing observation to the distribution of 100 permuted networks with the same size but functional labels shuffled, see Methods).  Network of two different sizes (top 50,000 edges (red circles) or 500,000 edges (blue triangles)) were used in this analysis.  Almost all enrichment is significant (i.e., having a P-value < 0.05), with rare insignificant ones shown in faded colors usually due to small sample size.  Numbers in plot indicate the number of enriched / total functional terms for each evaluation.
-
-\pagebreak
-![Fig 2]($grn/data/14_eval_sum/09.go.heat.pdf){width=100%}
-
-Heatmap of 140 GO (uniprot.plants) terms significantly enriched (P < 0.05) in at least 5 GRNs.  Rows (GO terms) and columns (GRNs) are both clustered using hierarchical clustering (pearson correlation coefficient distant measure and "ward.D" clustering option).
-
-\pagebreak
-![Fig S2]($grn/data/14_eval_sum/05.roc_prc.dev.pdf){width=100%}
-
-Area under receiver operating curves (AUROC) and area under precision-recall curve (AUPR) for GRNs built using different input datasets evaluated using experimentally (Chip-seq, mutant & wildtype RNA-Seq) determined transcription factor (TF) targets.
-
-\pagebreak
-![Fig S3]($grn/data/14_eval_sum/05.auc.pdf){width=100%}
-
-Barplot showing AUROC and AUPRs for all GRNs evaluated using each of the 6 known TFs.
-
-\pagebreak
-![Fig S4]($grn/data/14_eval_sum/12.br.1.pdf){width=100%}
-
-Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs.
-
-\pagebreak
-![Fig S5]($grn/data/14_eval_sum/12.br.2.pdf){width=100%}
-
-Enrichment of DE genes (using Briggs dataset) in predicted TF targets made by different GRNs.
-
-\pagebreak
-![Fig SX]($grn/data/14_eval_sum/21.br.2.dir.tissue.pdf){width=100%}
-
-When a predicted TF/target pair is supported by at least 3 tissues of B73/Mo17 comparison (i.e., TF is DE4+ and target is DE), how often is the regulatory interaction consistent?
-
-\pagebreak
-![Fig SX]($grn/data/14_eval_sum/21.br.3.dir.net.pdf){width=100%}
-
-When a supported TF/target pair (in at least 1 tissues of B73/Mo17 comparison where TF is DE4+ and target is DE) is observed in multiple GRNs, how often is the regulatory interaction consistent?
-
-\pagebreak
-![Fig SX]($grn/data/14_eval_sum/21.br.2b.dir.tissue.pdf){width=100%}
-
-This is taking Briggs-supported TF/target pairs that are observed in at least 3 networks, filtered to TFs with at least 3 targets.  Histogram shows the regulatory consistency among targets for each TF.
-
-\pagebreak
-![Fig SX]($grn/data/14_eval_sum/51.biomap.1.pcc.pdf){width=100%}
-
-Evaluation of GRN predictions using the bioMAP data containing ~200 genotypes (34 inbreds + 200 hybrids) in five tissues.  The (Pearson) correlations between regulators and targets (as predicted by each GRN) were evaluated using the bioMAP expression matrix in each tissue, and shown as a boxplot for the top 10,000, 100,000 or 1,000,000 strongest edges in each network.

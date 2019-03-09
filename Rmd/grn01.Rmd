@@ -39,7 +39,8 @@ header-includes:
 \pagenumbering{gobble}
 
 ```{r echo = FALSE}
-require(tidyverse)
+require(devtools)
+load_all('~/git/rmaize')
 require(knitr)
 require(kableExtra)
 options(knitr.kable.NA = '')

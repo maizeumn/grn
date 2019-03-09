@@ -17,18 +17,27 @@ if (opt == 'tf') {
     ev = th %>% mutate(fi = sprintf("%s/13_eval/%s_tf.rds", dird, nid)) %>%
         mutate(res = map(fi, readRDS)) %>%
         mutate(tfstat = map(res, 'tfstat'),
-               nstat = map(res, 'nstat'), ystat = map(res, 'ystat')) %>%
-        select(nid,tfstat,nstat,ystat)
+               nstat = map(res, 'nstat'),
+               ystat = map(res, 'ystat'),
+               tn = map(res, 'tn')) %>%
+        mutate(tfstat = map(tfstat, select, ctag, auroc, auprc)) %>%
+        select(nid,tfstat,nstat,ystat,tn)
 } else if (opt == 'go') {
     ev = th %>% mutate(fi = sprintf("%s/13_eval/%s_go.rds", dird, nid)) %>%
         mutate(res = map(fi, readRDS)) %>%
         mutate(enrich = map(res, "enrich"),
-               enrich_term = map(res, "enrich_term")) %>%
-        select(nid,enrich,enrich_term)
+               enrich_grp = map(res, "enrich_grp"),
+               enrich_reg = map(res, "enrich_reg")) %>%
+        select(nid,enrich,enrich_grp,enrich_reg)
 } else if (opt == 'br') {
     ev = th %>% mutate(fi = sprintf("%s/13_eval/%s_br.rds", dird, nid)) %>%
         mutate(res = map(fi, readRDS)) %>%
         select(nid,res) %>% unnest()
+    evr = ev %>%
+        mutate(p.drc = ifelse(pcc < 0, -1, 1)) %>%
+        mutate(b.drc = ifelse(reg.DEdir==tgt.DEdir, 1, -1)) %>%
+        select(nid,tissue,reg.gid,tgt.gid,p.drc,b.drc,reg.DE,tgt.DE)
+    ev = evr
 } else if (opt == 'bm') {
     ev = th %>% mutate(fi = sprintf("%s/13_eval/%s_bm.rds", dird, nid)) %>%
         mutate(res = map(fi, readRDS)) %>%

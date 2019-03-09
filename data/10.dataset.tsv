@@ -28,10 +28,10 @@ n99a_2	me99a	kaeppler2018	internode	internode	genotype	43
 n99a_3	me99a	kaeppler2018	leaf	leaf	genotype	50
 n99a_4	me99a	kaeppler2018	root	root	genotype	49
 n99a_5	me99a	kaeppler2018	seedling	seedling	genotype	216
-n99b	me99b	briggs	23*3	z	tissue*genotype	73
-n99b_1	me99b	briggs	B73	B73	tissue	23
-n99b_2	me99b	briggs	Mo17	Mo17	tissue	23
-n99b_3	me99b	briggs	BxM	B73xMo17	tissue	23
+n99b	me99b	zhou2018	23*3	z	tissue*genotype	73
+n99b_1	me99b	zhou2018	B73	B73	tissue	23
+n99b_2	me99b	zhou2018	Mo17	Mo17	tissue	23
+n99b_3	me99b	zhou2018	BxM	B73xMo17	tissue	23
 n99c	me99c	biomap	5*121	z	tissue*genotype	450
 n99c_1	me99c	biomap	endosperm	Endosperm	genotype	121
 n99c_2	me99c	biomap	internode	Internode	genotype	77

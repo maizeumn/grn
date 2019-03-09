@@ -1,28 +1,13 @@
 source("functions.R")
-ncfg = th
+ncfg = th %>% filter(!str_detect(nid, "^n99[b]")) %>%
+   select(nid, net_type, sample_size, col, lgd)
+nids = ncfg$nid
+nid_txts = ncfg$lgd
+nid_cols = ncfg$col
 dirw = file.path(dird, '14_eval_sum')
 diri = '~/projects/rnaseq'
 gcfg = read_genome_conf()
-
-#{{{ take top50k edges from each GRN and save
-read_grn <- function(nid='n13a',net_size=5e4,diri='~/projects/grn/data/12_output') {
-    #{{{
-    cat(nid,'\n')
-    f_net = sprintf("%s/%s.rda", diri, nid)
-    x = load(f_net)
-    tn %>% filter(row_number() <= net_size)
-    #}}}
-}
-t_net = ncfg %>%
-    select(nid) %>%
-    mutate(data=map(nid, read_grn)) %>% unnest()
-fo = file.path(dirw, '01.top50k.rds')
-saveRDS(t_net, file=fo)
-#}}}
-
-fi = file.path(dirw, '01.top50k.rds')
-t_net = readRDS(fi)
-
+#
 fi = file.path(dirw, '01.tf.rds')
 ev_tf = readRDS(fi)
 
@@ -34,9 +19,8 @@ tp0 = ev_tf %>%
 tp1 = tp0 %>%
     mutate(deg.reg.q50 = map_dbl(deg.reg, .f <- function(x) median(x$n))) %>%
     select(nid, n.reg, n.tgt, deg.reg.q50) %>%
-    inner_join(th, by = 'nid') %>%
-    mutate(txt = factor(txt, levels=rev(th$txt))) %>%
-    arrange(txt)
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts)))
 #
 ymax = 150
 tp2 = tp0 %>%
@@ -45,44 +29,50 @@ tp2 = tp0 %>%
     unnest() %>%
     spread(statK, statV) %>%
     mutate(q95 = ifelse(q95 > ymax, ymax, q95)) %>%
-    inner_join(th, by = 'nid') %>%
-    mutate(txt = factor(txt, levels=rev(th$txt))) %>%
-    arrange(txt)
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts)))
 
 p1 = ggplot(tp1) +
     geom_point(aes(x=n.reg, y=n.tgt, size=deg.reg.q50, color=net_type)) +
-    geom_text_repel(aes(x=n.reg, y=n.tgt, label=txt, color=net_type), size=2.5) +
+    geom_text_repel(aes(x=n.reg, y=n.tgt, label=lgd, color=net_type), size=2.5) +
     scale_x_continuous(name = '# TFs in network') +
     scale_y_continuous(name = '# Targets in network') +
-    scale_color_aaas() +
-    otheme(legend.pos = 'top.right', legend.dir = 'v',
+    scale_color_aaas(name = 'Network type') +
+    scale_size(name = 'Median degree per TF') +
+    otheme(legend.pos = 'top.left', legend.dir = 'v', legend.title = T,
         xtick=T, ytick=T,
         xtitle=T, ytitle=T, xtext=T, ytext=T)
 p2 = ggplot(tp2) +
-    geom_errorbar(aes(x=txt, y=mean, ymin=q5, ymax=q95, color=net_type), linetype='solid', size=.2, width=.4) +
-    geom_crossbar(aes(x=txt, ymin=q25, y=q50, ymax=q75, color=net_type), fill='white', alpha=1, width=.8) +
+    geom_errorbar(aes(x=lgd, y=mean, ymin=q5, ymax=q95, color=net_type), linetype='solid', size=.2, width=.4) +
+    geom_crossbar(aes(x=lgd, ymin=q25, y=q50, ymax=q75, color=net_type), fill='white', alpha=1, width=.6) +
     scale_x_discrete(expand = c(.02,0)) +
     scale_y_continuous(name = '# Targets per TF', limits=c(0,ymax), expand=expand_scale(mult=c(.01,.03))) +
     coord_flip() +
     scale_color_aaas() +
-    otheme(legend.pos = 'top.center.out', legend.dir = 'h',
+    otheme(legend.pos = 'top.center.out', legend.dir='h',
         xtick=T, ytick=T,
         xtitle=T, ytitle=F, xtext=T, ytext=T) +
-    theme(axis.text.y = element_text(color=tp2$col))
+    theme(axis.text.y = element_text(color=rev(nid_cols)))
 fo = file.path(dirw, '03.stat.pdf')
 ggpubr::ggarrange(p1, p2,
     nrow=1, ncol=2, widths = c(2.5,2), heights = c(1),
     labels=LETTERS[1:2]) %>%
-    ggpubr::ggexport(filename = fo, width = 12, height = 8)
+    ggpubr::ggexport(filename = fo, width = 10, height = 8)
+#}}}
 #}}}
 
-#{{{ TF degree plot
-tz = tp0 %>% select(nid, deg.reg) %>%
-    unnest() %>% group_by(reg.gid) %>%
-    summarise(n.net = sum(n>0), cv = sd(n)/mean(n)) %>%
-    ungroup() %>%
-    filter(n.net >= 20, cv > 1)
-#}}}
+#{{{ non-syn
+fy = file.path('~/data/genome/B73/gene_mapping/syn.gid.tsv')
+ty = read_tsv(fy)
+
+nid='n15a'
+tn1 = ev_tf %>% filter(nid==!!nid) %>% select(nid, tn) %>% unnest() %>%
+    count(reg.gid) %>% rename(n.tgt=n)
+
+tn2 = tn1 %>% mutate(hub = n.tgt > 50) %>%
+    left_join(ty, by=c("reg.gid"="gid"))
+tn2 %>% count(hub, subgenome) %>% group_by(hub) %>%
+    summarise(n.tf=sum(n), prop = n[is.na(subgenome)]/sum(n)) %>% print(n=20)
 #}}}
 
 #{{{ Y1H eval
@@ -112,50 +102,50 @@ fo = file.path(dirw, '11.support.edges.tsv')
 write_tsv(to, fo, na='')
 #}}}
 
-#{{{ known TF AUROC
-dirw = file.path(dird, '14_eval_sum')
-tp0 = ev_tf %>% select(nid, tfstat) %>% unnest()
+#{{{ known TF / TFBS AUROC
+levs = c("AUROC", "AUPR")
+ctags = c(gs$ctags_tf5, 'known_TFs', gs$ctags_tfbs)
+tp0 = ev_tf %>% select(nid, tfstat) %>%
+    unnest() %>%
+    filter(nid %in% nids, ctag != 'HDA101')
 
-#{{{ selected roc/prc plot
-nids = c("n16b","n16c","n99b_1","nc03")
+#{{{ obsolete - selected roc/prc plot
+nids_tf = c("n16b","n16c","n99b_1","nc03")
 cols.dev = c(pal_npg()(4)[2:4], brewer.pal(6,"Paired")[6])
 cols.dev = c(pal_npg()(8))
-ss = th %>% distinct(nid,study) %>% filter(nid %in% nids) %>%
-    arrange(nid) %>% pull(study)
 
-tp1 = tp0 %>% inner_join(th, by='nid') %>%
-    filter(nid %in% nids) %>%
-    select(nid,study,note,ctag,roc) %>% unnest() %>%
+tp1 = tp0 %>% select(nid, ctag, roc) %>%
+    filter(nid %in% nids_tf) %>% unnest() %>%
     mutate(ctag = sprintf("%s AUROC", ctag)) %>%
-    mutate(study=factor(study,levels=rev(ss)))
+    inner_join(ncfg, by='nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts)))
+tp2 = tp0 %>% select(nid, ctag, prc) %>%
+    filter(nid %in% nids_tf) %>% unnest() %>%
+    mutate(ctag = sprintf("%s AUPR", ctag)) %>%
+    inner_join(ncfg, by='nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts)))
 p1 = ggplot(tp1) +
-    geom_line(mapping = aes(x = TPR, y = FPR, color = study)) +
+    geom_line(mapping = aes(x = TPR, y = FPR, color = lgd)) +
     geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
     scale_x_continuous(name = 'FPR: FP/(FP+TN)', breaks=c(.25,.5,.75), limits=c(0,1), expand = c(0,0)) +
     scale_y_continuous(name = 'TPR: TP/(TP+FN)', breaks=c(.25,.5,.75), limits=c(0,1), expand = c(0,0)) +
     scale_color_manual(values = cols.dev) +
     facet_wrap(~ctag, nrow = 1, strip.position = 'top') +
     otheme(strip.size = 9, legend.pos = 'none', margin = c(.5,.5,.1,.5),
-           xtitle=T, ytitle=T, xtext=T, ytext=T, 
+           xtitle=T, ytitle=T, xtext=T, ytext=T,
            xgrid=T, ygrid=T, xtick=T, ytick=T)
-#
-tp2 = tp0 %>% inner_join(th, by='nid') %>%
-    filter(nid %in% nids) %>%
-    select(nid,study,note,ctag,prc) %>% unnest() %>%
-    mutate(ctag = sprintf("%s AUPR", ctag)) %>%
-    mutate(study=factor(study,levels=rev(ss)))
 p2 = ggplot(tp2) +
-    geom_line(mapping = aes(x = recall, y = precision, color = study)) +
+    geom_line(mapping = aes(x = recall, y = precision, color = lgd)) +
     #geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
     scale_x_continuous(name = 'Recall: TP/(TP+FN)', breaks=c(.25,.5,.75), limits=c(0,1), expand = c(0,0)) +
     scale_y_continuous(name = 'Precision: TP/(TP+FP)', breaks=c(.25,.5,.75), limits=c(0,1), expand=c(0,0)) +
     scale_color_manual(values = cols.dev) +
     facet_wrap(~ctag, nrow = 1, strip.position = 'top') +
     otheme(strip.size = 9, margin = c(.1,.5,.5,.5),
-           xtitle=T, ytitle=T, xtext=T, ytext=T, 
+           xtitle=T, ytitle=T, xtext=T, ytext=T,
            xgrid=T, ygrid=T, xtick=T, ytick=T) +
-    theme(legend.position = c(.85,.25), legend.justification = c(0,0)) +
-    guides(direction = 'vertical', color = guide_legend(ncol = 1, byrow = F)) 
+    theme(legend.position = c(1,.25), legend.justification = c(1,0)) +
+    guides(direction = 'vertical', color = guide_legend(ncol = 1, byrow = F))
 #
 fo = file.path(dirw, "05.roc_prc.dev.pdf")
 ggpubr::ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>%
@@ -163,32 +153,49 @@ ggpubr::ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>%
 #}}}
 
 #{{{ aupr/auroc bar-plot
-fp = file.path(dirw, "05.auc.pdf")
-wd = 8; ht = 12
+tp0 = ev_tf %>% select(nid, tfstat) %>% unnest()
 tp = tp0 %>% select(nid,ctag,auroc,auprc) %>%
-    #filter(ctag %in% ctags, nid %in% nids) %>%
+    mutate(auprc = auprc/max(auprc), auroc = auroc/max(auroc)) %>%
     rename(AUPR = auprc, AUROC = auroc) %>%
     gather(type, auc, -nid,  -ctag) %>%
     mutate(auc = as.numeric(auc)) %>% filter(!is.na(auc)) %>%
-    mutate(type = factor(type, levels = c("AUROC", "AUPR"))) %>%
+    mutate(type = factor(type, levels = levs)) %>%
+    mutate(ctag = factor(ctag, levels = ctags)) %>%
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts)))
+tpl = tp0 %>% select(nid,ctag,auroc,auprc) %>%
+    rename(AUPR = auprc, AUROC = auroc) %>%
+    gather(type, auc, -nid,  -ctag) %>%
+    mutate(auc = as.numeric(auc)) %>% filter(!is.na(auc)) %>%
+    mutate(type = factor(type, levels = levs)) %>%
+    mutate(ctag = factor(ctag, levels = ctags)) %>%
     mutate(lab = str_remove(sprintf("%.03f", auc), '^0+')) %>%
-    mutate(nid = factor(nid, levels = rev(th$nid)))
-tpl = tp %>% distinct(type, ctag) %>% filter(type == 'AUROC') %>%
-    mutate(itc.y = .5)
-p1 = ggplot(tp, aes(x=nid, y=auc, fill=type)) +
-    geom_bar(stat='identity', width=.75, alpha=.7) +
-    geom_text(aes(label=lab), hjust=1, size=2) +
-    geom_hline(data=tpl, aes(yintercept=itc.y), size=.3, alpha=.5) +
-    scale_x_discrete(breaks=th$nid, labels=th$txt, expand=c(0,0)) +
-    scale_y_continuous(expand=expand_scale(mult=c(0,.05))) +
-    scale_fill_npg() +
-    coord_flip() +
-    facet_wrap(type~ctag, scale = 'free_x', nrow = 2) +
-    otheme(strip.size=7, legend.pos='none', margin=c(.2,.2,.2,.2),
-           ygrid=T, xtitle=F, ytext=T) +
-    theme(axis.text.y=element_text(color=th$col))
-ggpubr::ggarrange(p1, nrow = 1, ncol = 1, labels = '', heights = c(2,2)) %>%
-    ggpubr::ggexport(filename = fp, width = wd, height = ht)
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts)))
+lev = 'AUROC'
+tp = tp %>% filter(type == lev)
+tpl = tpl %>% filter(type == lev)
+
+tpx = gs$tnk %>% count(ctag) %>% mutate(lab=sprintf("%s (%d)",ctag,n)) %>%
+    mutate(ctag=factor(ctag, levels=ctags)) %>% arrange(ctag)
+tps = tp %>% distinct(nid) %>%
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts))) %>%
+    arrange(lgd)
+p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=auc)) +
+    geom_tile() +
+    geom_text(data=tpl, aes(x=ctag, y=lgd, label=lab), hjust=1, size=2) +
+    scale_x_discrete(breaks=tpx$ctag, labels=tpx$lab, expand=expand_scale(mult=c(0,0))) +
+    scale_y_discrete(expand=c(0,0)) +
+    #scale_fill_viridis(name="Area Under Curve (AUC)", begin = .4) +
+    scale_fill_gradientn(name = 'Area Under Curve (AUC)', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    facet_wrap(~type, nrow = 1) +
+    otheme(strip.size=8, legend.pos='none', margin=c(.2,.2,.2,.2),
+           ygrid=T, xtick=T, xtitle=F, xtext=T, ytext=T) +
+    theme(axis.text.x = element_text(angle = 30, hjust=1, vjust=1, size=7)) +
+    theme(axis.text.y = element_text(color=tps$col))
+fp = file.path(dirw, "05.auc.pdf")
+ggsave(p1, file = fp, width = 6, height = 6)
 #}}}
 #}}}
 
@@ -198,6 +205,7 @@ fi = file.path(dirw, '01.go.rds')
 ev_go = readRDS(fi)
 net_sizes = c(1e4,5e4,1e5,5e5)
 net_sizes = c(5e4,5e5)
+net_size_map = c('1e4'=1e4, '5e4'=5e4, '1e5'=1e5)
 
 #{{{ enrichment
 tp1 = ev_go %>% select(nid, enrich) %>% unnest()
@@ -207,39 +215,44 @@ tp2 = ev_go %>% select(nid, enrich_term) %>% unnest() %>%
     ungroup() %>%
     mutate(sigtxt = str_c(n_grp_sig,n_grp,sep='/')) %>%
     select(nid,net_size,ctag,sigtxt)
-ctags = c("GO_HC", "GO_arabidopsis","GO_Interproscan5","CornCyc")
+ctags = c("GO_HC", "GO_arabidopsis","CornCyc")
+ctags = c("li2013","liu2017","wang2018")
 tp = tp1 %>% left_join(tp2, by=c('nid','net_size','ctag')) %>%
     mutate(sig = ifelse(pval<.05, 1, 0)) %>%
     filter(ctag %in% ctags) %>%
+    mutate(fc = log2(fc)) %>%
     mutate(ctag = factor(ctag, levels = ctags)) %>%
-    inner_join(th, by='nid') %>%
+    inner_join(ncfg, by='nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts))) %>%
     filter(net_size %in% net_sizes) %>%
-    mutate(net_size=factor(net_size,levels=net_sizes)) %>%
-    mutate(txt = factor(txt, levels=rev(th$txt)))
+    mutate(net_size=factor(net_size,levels=net_sizes))
+tpi = tp %>% filter(sig == 0)
+tps = tp %>% distinct(lgd, col) %>% arrange(lgd)
 #
-p1 = ggplot(tp, aes(txt, fc)) +
-    geom_point(aes(color=net_size, shape=net_size, alpha=sig), size=2.5) +
+p1 = ggplot(tp, aes(lgd, fc)) +
+    geom_point(aes(color=net_size, shape=net_size), size=2) +
+    geom_point(data=tpi, aes(x=lgd,y=fc), shape=4, size=2) +
     geom_text_repel(aes(label=sigtxt), size=2) +
     #geom_hline(yintercept = 1, alpha= .5, linetype='dotted') +
     scale_x_discrete(expand = expand_scale(mult=c(.01,.01))) +
-    scale_y_continuous(name = 'Fold Enrichment', expand = c(.05,0)) +
+    scale_y_continuous(name = 'log2 Fold Enrichment', expand = c(.05,0)) +
     coord_flip() +
     facet_grid(.~ctag, scale='free') +
-    scale_fill_npg() +
     scale_color_npg() +
+    scale_shape_manual(values=c(2,1)) +
     scale_alpha(range = c(.4,1), breaks=c(0,1), labels=c("pval > 0.05", "pval < 0.05")) +
     otheme(legend.pos='top.center.out', legend.dir='h', legend.title=T,
            strip.size = 8,
-           xtitle=T, xtext=T, ytext=T, ygrid=T, xtick=T) +
-    theme(axis.text.y = element_text(color = rev(th$col))) +
+           xtitle=T, xtext=T, ytext=T, ygrid=T, xtick=T, ytick=T) +
+    theme(axis.text.y = element_text(color=rev(nid_cols))) +
     theme(legend.box = "horizontal") +
     theme(legend.position = c(.5,1), legend.justification = c(.5,-.3)) +
     guides(color = guide_legend("network size:", nrow=1, order=1),
            shape = guide_legend("network size:", nrow=1, order=1),
            alpha = guide_legend("signifance:", nrow=1, order=2))
     #theme(axis.text.x = element_text(size = 8, angle = 30, hjust = 1))
-fo = file.path(dirw, "14.go.pdf")
-ggsave(p1, filename = fo, width = 10, height = 10)
+fo = file.path(dirw, "09.go.eQTL.pdf")
+ggsave(p1, filename = fo, width = 8, height = 8)
 #}}}
 
 #{{{ GO heatmap
@@ -249,12 +262,13 @@ goname = gs$fun_ann %>% filter(ctag==gotag) %>% distinct(grp,note) %>%
 tx = ev_go %>% select(nid,enrich_term) %>%
     unnest() %>%
     filter(net_size==50000,ctag==gotag) %>%
+    filter(nid %in% nids) %>%
     select(-net_size, -ctag) %>%
     filter(n>=50, pval<.05, fc>=2) %>%
     mutate(fc = log2(fc))
 
-tx %>% inner_join(th, by = 'nid') %>%
-    count(grp,net_type) %>% spread(net_type,nn) %>%
+tx %>% inner_join(ncfg, by = 'nid') %>%
+    count(grp,net_type) %>% spread(net_type,n) %>%
     select(-ril,-liftover) %>% inner_join(goname, by='grp') %>%
     print(n=40)
 
@@ -273,22 +287,11 @@ ggsave(p, file=fo, width=6, height=4)
 
 require(cluster)
 require(ape)
-grps = tx %>% count(grp) %>% filter(nn>=5) %>% pull(grp)
-tp = tx %>% filter(grp %in% grps)
+grps = tx %>% count(grp) %>% filter(n>=8) %>% pull(grp)
+length(grps)
+tp = tx %>% filter(grp %in% grps) %>%
+    inner_join(ncfg, by = 'nid')
 
-#{{{ GRN order
-e = tp %>% select(nid,grp,fc) %>% spread(nid, fc) %>% select(-grp)
-e[is.na(e)] = NA
-dim(e)
-#
-cor_opt = "pearson"
-hc_opt = "ward.D"
-#edist <- as.dist(1-cor(e, method = cor_opt))
-edist = daisy(t(e), metric = 'gower')
-ehc <- hclust(edist, method = hc_opt)
-tree = as.phylo(ehc)
-net_names = ehc$labels[ehc$order]
-#}}}
 #{{{ GO term order
 e = tp %>% select(nid,grp,fc) %>% spread(grp, fc) %>% select(-nid)
 e[is.na(e)] = NA
@@ -303,51 +306,77 @@ ehc <- hclust(edist, method = hc_opt)
 tree = as.phylo(ehc)
 go_names = ehc$labels[ehc$order]
 #}}}
+#{{{ GRN order
+e = tp %>% select(nid,grp,fc) %>% spread(nid, fc) %>% select(-grp)
+e[is.na(e)] = NA
+dim(e)
+#
+cor_opt = "pearson"
+hc_opt = "ward.D"
+#edist <- as.dist(1-cor(e, method = cor_opt))
+edist = daisy(t(e), metric = 'gower')
+ehc <- hclust(edist, method = hc_opt)
+ntree = as.phylo(ehc)
+s_nids = ehc$labels[ehc$order]
+s_ncfg = ncfg %>% mutate(nid=factor(nid, levels=s_nids)) %>% arrange(nid)
+s_lgds = s_ncfg %>% pull(lgd)
+s_cols = s_ncfg %>% pull(col)
+#}}}
 
+#{{{
+tp = tp %>% mutate(lgd = factor(lgd, levels = s_lgds)) %>%
+    mutate(grp = factor(grp, levels = go_names))
 tpg = tp %>% distinct(grp) %>% inner_join(goname,by='grp') %>%
+    mutate(grp = factor(grp, levels = go_names)) %>%
     arrange(grp)
-tpn = th %>% mutate(nid=factor(nid,levels=lnames)) %>% arrange(nid) %>%
-    mutate(txt = factor(txt,levels=txt))
-tpf = tp %>% mutate(nid = factor(nid,levels=lnames)) %>%
-    mutate(grp = factor(grp, levels=go_names))
-p = ggplot(tpf) +
-    geom_tile(aes(x = nid, y = grp, fill = fc)) +
+tpn = tp %>% distinct(nid,lgd,col) %>% rename(taxa=nid) %>% arrange(lgd)
+p1 = ggplot(tp) +
+    geom_tile(aes(x = lgd, y = grp, fill = fc)) +
     #geom_segment(data = tpx, mapping = aes(x=xt,xend=xt,y=xmin,yend=xmax), size = 3) +
     #geom_segment(data = tpg, mapping = aes(x=xg,xend=xg,y=xmin,yend=xmax), color = tpg$col.gt, size = 1) +
     #geom_text(data=tpg, mapping=aes(x=xg-3.5, y = x, label = lab), color = tpg$col.gt, size = 2, hjust = 0) +
-    scale_x_discrete(breaks=tpn$nid, labels=tpn$txt, position='top', expand=c(0,0)) +
+    scale_x_discrete(position='bottom', expand=c(0,0)) +
     scale_y_discrete(breaks=tpg$grp, labels=tpg$note, expand = c(0,0)) +
-    #scale_fill_gradientn(name='log2FC', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
     scale_fill_viridis(name='log2FC', direction=-1) +
-    otheme(legend.pos='right', legend.dir='v',
-           xtick=T,ytick=T,ytext = T) +
-    theme(plot.margin = unit(c(2,.2,.2,.2), "lines")) +
+    otheme(legend.pos='right', legend.dir='v', margin=c(.2,.2,.2,.2),
+           xtick=T,ytick=T,ytext = T, xgrid=T,ygrid=T) +
     theme(panel.border = element_blank()) +
-    theme(axis.text.x=element_text(color=tpn$col,angle=45,size=7,hjust=0,vjust=0)) +
+    theme(axis.text.x=element_text(color=s_cols,angle=45,size=7,hjust=1,vjust=1)) +
     theme(legend.title = element_text())
-fo = sprintf("%s/14.go.heat.pdf", dirw)
-ggsave(p, file = fo, width = 10, height = 12)
+#
+require(ggdendro)
+margin = c(0,3.2,0,16.5)
+p2 = ggdendrogram(ehc, labels=F, leaf_labels=F, theme_dendro=F) +
+    theme_void() +
+    theme(plot.margin = unit(margin, "lines"))
+fo = file.path(dirw, '09.go.heat.pdf')
+ggpubr::ggarrange(p2, p1,
+    nrow=2, ncol=1, heights = c(1,11)) %>%
+    ggpubr::ggexport(filename = fo, width = 10, height = 12)
+#}}}
 
-tp = th %>% mutate(taxa = nid, lab = txt) %>%
-    select(taxa, everything())
-cols1 = c('gray80','black','red','seagreen3', pal_d3()(5))
-p1 = ggtree(tree, layout = 'rectangular') +
-    #geom_tiplab(size = labsize, color = 'black') +
+fo = file.path(dirw, "09.gotree.pdf")
+pdf(fo, width=7, height=3)
+dev.off()
+
+p1 = ggtree(ntree, layout = 'rectangular') +
+    #geom_tiplab(color = 'black') +
     scale_x_continuous(expand = expand_scale(.9,.03)) +
     scale_y_discrete(expand = c(.01,0)) +
     theme_tree2()
-p1 = p1 %<+% tp + geom_tiplab(aes(label = lab, color=net_type), family='mono') +
+p1 = p1 %<+% tpn + geom_tiplab(aes(label=txt)) +
     scale_color_aaas()
-fo = file.path(dirw, "gotree.pdf")
+fo = file.path(dirw, "09.gotree.pdf")
 ggsave(p1, filename = fo, width=7, height=8)
 #}}}
 #}}}
 
+#{{{ case study # obsolete
+t_link = gs$tf %>% filter(reg.gid == gid) %>% select(reg.gid,tgt.gid,binding)
+
 t_link_sup = t_net %>% unnest() %>%
     right_join(t_link, by = c("reg.gid",'tgt.gid'))
 
-t_link = gs$tf %>% filter(reg.gid == gid) %>% select(reg.gid,tgt.gid,binding)
-#{{{ case study
 gs = read_gs()
 gid = gs$tfs %>% filter(ctag=='O2') %>% pull(reg.gid)
 tgts = gs$tf %>% filter(reg.gid==gid) %>% pull(tgt.gid)
@@ -400,60 +429,139 @@ ggsave(p, file = fo, width = 8, height = 15)
 #
 #}}}
 
-#{{{ evaluate briggs data
-#{{{ filter GRN using briggs DE info
-fi = file.path(dirw, '01.br.rds')
-ev_br = readRDS(fi)
-ev_br_filt = ev_br %>%
-    mutate(tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE')) %>%
-    filter(!reg.DE %in% c('non_DE','DE1-2','DE2-4'), tgt.DE == 'DE') %>%
-    mutate(drc = ifelse(reg.DEdir==tgt.DEdir, 1, -1)) %>%
-    group_by(nid, reg.gid, tgt.gid) %>%
-    summarise(n.tissue = n(), m.drc = sum(drc)/n.tissue)  %>%
+#{{{ cross-network consistency
+tp9 = ev_tf %>%
+    filter(!str_detect(nid, '^np')) %>%
+    select(nid, tn) %>% unnest() %>%
+    mutate(p.drc = ifelse(pcc < 0, -1, 1)) %>%
+    distinct(nid,reg.gid,tgt.gid,p.drc) %>%
+    group_by(reg.gid,tgt.gid) %>%
+    summarise(nnet = n(), m.p.drc=mean(p.drc)) %>%
     ungroup()
-ev_br_filt %>% count(nid, n.tissue)
 
-ev_br_sum = ev_br %>%
+tp = tp9 %>%
+    filter(nnet >= 2) %>%
+    mutate(x = ifelse(nnet >= 10, 10, nnet)) %>%
+    mutate(xlab = ifelse(x==10, '10+', x))
+tps = tp %>% count(x, xlab) %>%
+    mutate(lab=sprintf("N=%d",n)) %>% arrange(x)
+p1 = ggplot(tps, aes(x=x, y=n)) +
+    geom_bar(aes(fill=xlab), stat='identity', alpha=.5) +
+    scale_x_continuous(name='# shared networks', breaks=tps$x, labels=tps$lab,
+                       expand=expand_scale(mult=c(.01,.01))) +
+    scale_y_continuous(name='# predicted TF-target pairs', expand=expand_scale(mult=c(0,.05))) +
+    scale_fill_futurama() +
+    otheme(ytitle=T, xtext=T, ytext=T, ytick=T, ygrid=F,
+           legend.pos = 'none', legend.dir = 'v')
+p2 = ggplot(tp, aes(x=x, y=m.p.drc)) +
+    geom_violin(aes(fill=xlab), alpha=.5) +
+    scale_x_continuous(name='# shared networks', breaks=tps$x, labels=tps$xlab,
+                       expand=expand_scale(mult=c(.01,.01))) +
+                       #sec.axis=sec_axis(trans=~.,breaks=tps$x,labels=tps$lab)) +
+    scale_y_continuous(name='mean predicted effect', expand=expand_scale(mult=c(.01,.01))) +
+    scale_fill_futurama() +
+    otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
+           legend.pos = 'none', legend.dir = 'v')
+fo = file.path(dirw, '10.cross.net.pdf')
+ggpubr::ggarrange(p1, p2,
+    nrow=2, ncol=1, heights = c(2,2),
+    align='v') %>%
+    ggpubr::ggexport(filename = fo, width = 6, height = 4)
+#}}}
+
+#{{{ evaluate using briggs data
+#{{{ read in
+#fi = file.path(dirw, "../13_eval/n17a_br.rds")
+#x=readRDS(fi)
+fi = file.path(dirw, '01.br.rds')
+ev_br = readRDS(fi) %>%
+    mutate(p.drc = ifelse(is.na(p.drc), b.drc, p.drc)) %>%
+    mutate(tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE'))
+des = c("non_DE","DE1-2","DE2-4","DE4+","SPE")
+#
+br = read_briggs()
+tiss = br$tissues
+tiss_exc = c("seedlingroot_11DAS","tasselstem_0DAP","endosperm_14DAP",
+    "internode_v12","husk_0DAP","seedlingmeristem_11DAS")
+tiss_inc = c('seedlingleaf_11DAS','ear_v14','embryo_27DAP','kernel_14DAP','root_0DAP')
+tiss1 = tiss[! tiss %in% tiss_exc]
+nids_hc = c('nc03',
+            'n13c','n14a','n15a','n16a','n18d','n19a',
+            'n17a','n18a_1','n18a_2','n18a_3','n18a_4','n18a_5','n18a_6',
+            'n99c',
+            'nc04')
+#}}}
+
+#{{{ show SPE is better than DE in predicting target DE
+tp0 = ev_br %>%
+    filter(tissue %in% tiss_inc) %>%
     group_by(nid, tissue, reg.DE) %>%
     summarise(nl = n(), n.reg = length(unique(reg.gid)),
-              nl.tgt.de = sum(tgt.DE != 'non_DE'),
+              nl.tgt.de = sum(tgt.DE != 'non_DE' & p.drc == b.drc),
               pl.tgt.de = nl.tgt.de / nl) %>%
     ungroup()
 
-fo = file.path(dirw, '01.br.filt.rds')
-saveRDS(ev_br_filt, ev_br_sum, file = fo)
-#}}}
-
-br = read_briggs()
-tissues = c('auricle_v12','ear_v14','embryo_27DAP','kernel_14DAP','root_0DAP',
-            'seedlingmeristem_11DAS')
-tissues = br$tissues
-#
-fi = file.path(dirw, '01.br.filt.rds')
-ev_br_filt = readRDS(fi)
-net_sizes = c(1e4, 5e4, 1e5)
-net_size_map = c('1e4'=1e4, '5e4'=5e4, '1e5'=1e5)
-net_size = 5e4
-des = c("non_DE","DE1-2","DE2-4","DE4+","SPE")
-
-#{{{ show support in Briggs dataset
-th2 = th %>% transmute(nid=nid, lgd=txt)
-tags = c("DE",'SPE')
-tags = c("non_DE", "DE1-2",'DE2-4','DE4+','SPE')
-tp = ev_br_filt$sum %>%
-    mutate(txt = sprintf("%d", n.reg)) %>%
+tp = tp0 %>%
+    mutate(txt = sprintf("%d", nl)) %>%
     mutate(lab = str_remove(sprintf("%.02f", pl.tgt.de), '^0+')) %>%
     rename(tag = reg.DE) %>%
-    mutate(tag = factor(tag, levels = tags)) %>%
-    #mutate(net_size = factor(net_size_map[as.character(net_size)], levels = net_sizes)) %>%
-    inner_join(br$des, by = c("tissue"="Tissue")) %>%
-    mutate(fc = pl.tgt.de/propDE) %>%
-    mutate(tissue = factor(tissue, levels = tissues)) %>%
-    inner_join(th2, by='nid') %>%
-    mutate(nid = factor(nid, levels=th2$nid)) %>%
-    mutate(lgd = factor(lgd, levels=th2$lgd))
+    mutate(tag = factor(tag, levels = des)) %>%
+    inner_join(ncfg, by='nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts)))
+p1 = ggplot(tp, aes(tag, lgd)) +
+    geom_tile(aes(fill = pl.tgt.de)) +
+    geom_text(aes(label = txt), color = 'white', size=2) +
+    scale_x_discrete(name = 'TF change', expand = expand_scale(mult=c(0,0))) +
+    scale_y_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
+    scale_fill_viridis(name='Prop. TF/target pairs showing predicted direction of changes', direction=1) +
+    facet_wrap(~tissue, nrow=1) +
+    otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
+           strip.size = 8, margin = c(1.3, .1, .1, .1),
+           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,0)) +
+    theme(axis.text.x = element_text(angle = 35, hjust=1, vjust=1)) +
+    theme(axis.text.y = element_text(color = rev(nid_cols))) +
+    guides(direction = 'horizontal')
+fp = sprintf("%s/11.de.spe.pdf", dirw)
+ggsave(p1, filename = fp, width = 10, height = 8)
+#}}}
 
-#{{{ all
+#{{{ SPE fold change - heatmap
+tp0 = ev_br %>%
+    filter(!tissue %in% tiss_exc) %>%
+#    filter(!str_detect(nid, '^np')) %>%
+    group_by(nid, tissue, reg.DE) %>%
+    summarise(nl = n(), pl.tgt.de = sum(tgt.DE=='DE' & p.drc==b.drc)/nl) %>%
+    ungroup() %>%
+    inner_join(br$des, by = c("tissue"="Tissue")) %>%
+    mutate(fc = pl.tgt.de / propDE)
+
+tp = tp0 %>%
+    filter(reg.DE == 'SPE') %>%
+    #mutate(fc = ifelse(nl.s >= 10, fc, NA)) %>%
+    mutate(txt = sprintf("%d", nl)) %>%
+    mutate(lab = str_remove(sprintf("%.02f", pl.tgt.de), '^0+')) %>%
+    mutate(tissue = factor(tissue, levels = tiss1)) %>%
+    inner_join(ncfg, by='nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts)))
+p1 = ggplot(tp, aes(x=tissue, y=lgd)) +
+    geom_tile(aes(fill = fc)) +
+    geom_text(aes(label = txt), size=2, color='black') +
+    scale_x_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
+    scale_y_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
+    #scale_fill_viridis(name='Fold Change', direction=1) +
+    scale_fill_gradientn(name = 'Fold Enrichment in Prop. Target DE', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
+           margin = c(1.3, .1, .1, .1),
+           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
+    theme(axis.text.x = element_text(angle = 35, hjust=1, vjust=1)) +
+    theme(axis.text.y = element_text(color = rev(nid_cols))) +
+    guides(direction = 'horizontal', fill=guide_legend(nrow=1),
+        shape=guide_legend(nrow=1))
+fp = sprintf("%s/12.br.heat.pdf", dirw)
+ggsave(p1, filename = fp, width = 8, height = 8)
+
 tp0 = tp %>%
     mutate(lgd = factor(lgd, levels=rev(th2$lgd)))
 p1 = ggplot(tp0, aes(x=lgd)) +
@@ -479,201 +587,521 @@ p1 = ggplot(tp0, aes(x=lgd)) +
 fp = sprintf("%s/12.br.1.pdf", dirw)
 ggsave(p1, filename = fp, width = 12, height = 12)
 #}}}
-#{{{ all 2
-tp0 = tp %>%
-    mutate(tissue = factor(tissue, levels=rev(tissues)))
-p1 = ggplot(tp0, aes(x=tissue)) +
-    geom_point(aes(y=fc, color=tag, shape=tag), size=1.5) +
-    #scale_x_discrete(breaks=th$nid, labels=th$txt, expand = c(.01,0)) +
-    scale_y_continuous(name = 'Enrichment (fold change) in Target DE',
-                       breaks = c(1,2,4),
-                       expand = expand_scale(mult=c(.1,.1))) +
-    scale_fill_d3() +
-    scale_shape_manual(values=pal_shapes()) +
-    scale_color_d3() +
-    coord_flip() +
-    facet_wrap(~lgd, ncol=10) +
-    otheme(legend.pos = 'top.center.out',
-           strip.size = 7,
-           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
-    theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
+
+#{{{ #compare subsets of networks
+nids1 = ncfg %>% filter(net_type == 'tissue') %>% pull(nid)
+nids2a = ncfg %>% filter(str_detect(nid, '^n17a')) %>% pull(nid)
+nids2b = ncfg %>% filter(str_detect(nid, '^n18a')) %>% pull(nid)
+nids2c = ncfg %>% filter(str_detect(nid, '^n99a')) %>% pull(nid)
+nids2d = ncfg %>% filter(str_detect(nid, '^n99c')) %>% pull(nid)
+nids3 = ncfg %>% filter(net_type =='genotype', !str_detect(nid, '_[1-9]$')) %>% pull(nid)
+nids4 = ncfg %>% filter(net_type == 'liftover') %>% pull(nid)
+tz = tibble(pid = c('1.tissue',
+                    '2a.lin2017','2b.kremling','2c.kaeppler','2d.biomap',
+                    '3.geno', '4.liftover'),
+    nids = list(nids1, nids2a, nids2b, nids2c, nids2d, nids3, nids4))
+
+for (i in 1:7) {
+pid = tz$pid[i]
+nids = tz$nids[[i]]
+tp1 = tp0 %>% filter(nid %in% nids) %>%
+    mutate(tag = factor(reg.DE, levels=rev(des))) %>%
+    mutate(tissue = factor(tissue, levels=tiss1)) %>%
+    mutate(lab = sprintf("%.02f", fc)) %>%
+    inner_join(ncfg, by='nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts)))
+tps = tp1 %>% distinct(lgd,col) %>% arrange(lgd)
+p1 = ggplot(tp1) +
+    #geom_jitter(aes(y=fc, color=lgd, shape=lgd), width=.4, size=1.5) +
+    geom_tile(aes(tissue,lgd,fill=fc)) +
+    geom_text(aes(tissue,lgd,label=lab), size=2, color='black') +
+    scale_x_discrete(expand = expand_scale(mult=c(0,0))) +
+    scale_y_discrete(expand = expand_scale(mult=c(0,0))) +
+    #scale_fill_viridis(name='Fold Change', direction=1) +
+    scale_fill_gradientn(name = 'Fold Enrichment in Prop. Target DE', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    facet_grid(tag~.) +
+    otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
+           margin = c(1.3, .1, .1, .1), strip.size=8,
+           xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,0)) +
+    theme(axis.text.x = element_text(angle = 35, hjust=1, vjust=1)) +
+    theme(axis.text.y = element_text(color = tps$col)) +
     guides(direction = 'horizontal', color=guide_legend(nrow=1),
         shape=guide_legend(nrow=1))
-fp = sprintf("%s/12.br.2.pdf", dirw)
-ggsave(p1, filename = fp, width = 10, height = 14)
+fp = sprintf("%s/12_br/%s.pdf", dirw, pid)
+ggsave(p1, filename = fp, width = 6, height = 8)
+}
 #}}}
 
-#{{{ tissue network
-nid = 'n99a_1' # kaeppler endosperm
-nid = 'n15a' # leiboff SAM
-nid = 'n14a' # hirsch seedling
-nid = 'n16a' # jin kernel
-txt = th %>% filter(nid==!!nid) %>% pull(txt)
-tp0 = tp %>% filter(nid == !!nid)
-p1 = ggplot(tp0, aes(x=tissue)) +
-    geom_point(aes(y=pl.tgt.de, color=tag, shape=tag), size=2) +
-    #geom_text(aes(y=pl.tgt.de+.01, group=tag, label=lab), hjust=0, position=position_dodge(width=1), size=2) +
-    #geom_text(aes(y=.01, group=tag, label=txt), hjust=0, position=position_dodge(width=1), size=2) +
-    #geom_hline(data=tpl, aes(yintercept=prop.de), size=.3, alpha=.5) +
-    #scale_x_discrete(breaks=th$nid, labels=th$txt, expand = c(.01,0)) +
-    scale_y_continuous(name = 'Proportion DE Targets', expand = expand_scale(mult=c(0,.1))) +
-    scale_shape_manual(name = txt, values=pal_shapes()) +
-    scale_color_d3(name = txt) +
-    otheme(legend.pos = 'top.center.out', legend.title = T,
-           margin = c(.5,.2,.2,1),
-           ytitle=T, xtext=T, ytick=T, ytext=T, xgrid=T, ygrid=F) +
-    theme(axis.text.x=element_text(angle=30,hjust=1,vjust=1)) +
-    #theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
-    guides(direction='horizontal',
-           color=guide_legend(title.position='left',nrow=1),
-           shape=guide_legend(title.position='left',nrow=1))
-fp = sprintf("%s/13.br.%s.pdf", dirw, nid)
-ggsave(p1, filename = fp, width = 9, height = 4)
+#{{{ #root/endosperm/sam networks
+tiss1 = c('endosperm_27DAP','kernel_14DAP')
+tiss2 = c("root_0DAP","radicle_root")
+tiss3 = c('seedlingmeristem_11DAS','seedlingleaf_11DAS','coleoptile_tip')
+tiss3 = c('seedlingleaf_11DAS','coleoptile_tip')
+tiss0 = c(tiss1, tiss2, tiss3)
 
-#}}}
-#}}}
-
-
-#{{{ how often is a link observed in multiple tissues? is it consistent?
-tp = ev_br_filt %>% filter(n.tissue >= 5) %>%
-    inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
-    mutate(txt = factor(txt, levels=rev(th$txt))) #%>%
-    #mutate(reg.DE = factor(reg.DE, levels = rev(des)))
-tps = tp %>% count(nid) %>% inner_join(th, by='nid') %>%
-    mutate(txt = factor(txt, levels=th$txt))
-p = ggplot(tp, aes(x=txt,y=m.drc)) +
-    geom_violin() +
-    geom_text(data=tps, aes(x=txt, y=0, label=n), hjust=.5, size=2.5) +
-    scale_y_continuous(limits=c(-1,1), expand=expand_scale(mult=c(.01,.01))) +
-    scale_color_aaas() +
-    coord_flip() +
-    otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
-           legend.pos = 'top.right', legend.dir = 'v')
-fo = file.path(dirw, '12.br.2.dir.tissue.pdf')
-ggsave(p, file=fo, width=6, height=8)
+tp = tp0 %>% filter(tissue %in% tiss0) %>%
+    mutate(tag = factor(reg.DE, levels = des)) %>%
+    mutate(tissue = factor(tissue, levels = tiss0)) %>%
+    mutate(lab = sprintf("%.02f", fc)) %>%
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts)))
+tps = tp %>% distinct(lgd,col) %>% arrange(lgd)
+p1 = ggplot(tp) +
+    geom_tile(aes(tag,lgd,fill=fc)) +
+    geom_text(aes(tag,lgd,label=lab), size=2, color='black') +
+    scale_x_discrete(expand = expand_scale(mult=c(0,0))) +
+    scale_y_discrete(expand = expand_scale(mult=c(0,0))) +
+    #scale_fill_viridis(name='Fold Change', direction=1) +
+    scale_fill_gradientn(name = 'Fold Enrichment in Prop. Target DE', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    facet_grid(.~tissue) +
+    otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
+           margin = c(1.3, .1, .1, .1), strip.size=8,
+           xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,0)) +
+    theme(axis.text.x = element_text(angle = 35, hjust=1, vjust=1)) +
+    theme(axis.text.y = element_text(color = tps$col)) +
+    guides(direction = 'horizontal', color=guide_legend(nrow=1),
+        shape=guide_legend(nrow=1))
+fp = sprintf("%s/12.br.tis.pdf", dirw, pid)
+ggsave(p1, filename = fp, width = 9, height = 7)
 #}}}
 
-#{{{ if a TF has multiple targets, does it show consistent +/- effect?
-tp = ev_br_filt %>% group_by(nid, reg.gid) %>%
-    summarise(n.tissues=sum(n.tissue), ntgt = n(),
-              m.drc = sum(n.tissue*m.drc)/sum(n.tissue)) %>%
+
+#{{{ #how often is a link observed in multiple tissues? is it consistent?
+de_map = des
+names(de_map) = 1:length(des)
+tp1 = ev_br %>%
+    filter(!tissue %in% tiss_exc) %>%
+    filter(nid %in% ncfg$nid) %>%
+    filter(reg.DE != 'non_DE', tgt.DE != 'non_DE') %>%
+    mutate(tag = as.numeric(factor(reg.DE, levels = des))) %>%
+    group_by(nid, reg.gid, tgt.gid) %>%
+    summarise(nt = n(),
+              tag = max(tag),
+              p.drc = mean(p.drc),
+              m.drc = mean(b.drc)) %>%
     ungroup() %>%
-    filter(n.tissues >= 10) %>%
-    inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
-    mutate(txt = factor(txt, levels=rev(th$txt)))
-tps = tp %>% count(nid) %>% inner_join(th, by='nid') %>%
-    mutate(txt = factor(txt, levels=th$txt))
-p = ggplot(tp, aes(x=txt,y=m.drc)) +
-    geom_violin() +
-    geom_text(data=tps, aes(x=txt, y=0, label=n), hjust=.5, size=2.5) +
-    scale_y_continuous(limits=c(-1,1), expand=expand_scale(mult=c(.01,.01))) +
-    scale_color_aaas() +
-    coord_flip() +
-    otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
-           legend.pos = 'top.right', legend.dir = 'v')
-fo = file.path(dirw, '12.br.2b.dir.tissue.pdf')
-ggsave(p, file=fo, width=6, height=8)
+    mutate(tag = de_map[tag]) %>%
+    filter(nt >= 5)
 
-gid0 = 'Zm00001d004230'
-br$de %>% filter(gid==gid0) %>% print(n=23)
-
-ev_br %>% filter(reg.gid==gid0, tgt.DE != 'non_DE', nid == 'n17a') %>%
-    group_by(nid,tissue,tgt.DEdir) %>%
-    summarise(nt = n())
-
-tx %>% filter(reg.gid==gid0) %>%
-    mutate(drc = ifelse(nt1<nt2, 'B<M', 'B>M')) %>%
-    group_by(nid) %>%
-    summarise(p.tgt = sum(drc=='B<M')/n()) %>% ungroup()
+tp = tp1 %>%
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=nid_txts))
+tps = tp %>% count(lgd, tag)
+p = ggplot(tp) +
+    geom_violin(aes(x=tag,y=m.drc,fill=tag), position='dodge') +
+    geom_text(data=tps, aes(x=tag, y=1.05, label=n), vjust=0, size=2.5) +
+    scale_y_continuous(name = 'TF-target regulatory direction', expand=expand_scale(mult=c(.05,.15))) +
+    scale_fill_npg(name = 'TF DE class') +
+    facet_wrap(~lgd, scale='free', ncol=5) +
+    otheme(ytitle=T, ytext=T, xtick=F, ytick=T, ygrid=T,
+           legend.pos='bottom.right', legend.dir='v', legend.title=T,
+           strip.size=7)
+fo = file.path(dirw, '16.drc.tissue.pdf')
+ggsave(p, file=fo, width=8, height=10)
 #}}}
 
-#{{{ if a link is observed in multiple networks, is it consistent?
-tp = ev_br_filt %>% group_by(reg.gid,tgt.gid) %>%
-    summarise(nnet = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
-    filter(nnet >= 3)
-p = ggplot(tp, aes(x=0, y=m.drc)) +
-    geom_violin() +
-    #geom_text(data=tps, aes(x=reg.DE, y=0, label=n), hjust=.5, size=3) +
-    geom_text(x=0, y=0, label=nrow(tp), hjust=.5, size=3) +
-    scale_y_continuous(limits=c(-1,1), expand=expand_scale(mult=c(.01,.01))) +
-    scale_color_aaas() +
+#{{{ #consis. +/- TF-target pairs for SPE TFs
+tags = c("consis. +", "mixed", "consis. -")
+tp = tp1 %>% filter(tag == 'SPE') %>%
+    mutate(tag = ifelse(m.drc >= .8, 'consis. +',
+                        ifelse(m.drc <= -.8, 'consis. -', 'mixed'))) %>%
+    mutate(tag = factor(tag, levels=tags))
+tp %>% distinct(reg.gid, tgt.gid, tag) %>% count(tag)
+tp %>% distinct(reg.gid, tgt.gid, tag) %>% count(0)
+tp %>% count(nid, tag) %>% group_by(tag) %>% summarise(nl.min=min(n), nl.max=max(n), nl.avg=mean(n), nl.sum=sum(n))
+tp %>% filter(nid=='n99a') %>% count(tag) %>% mutate(prop=n/sum(n))
+#
+tp = tp %>%
+    count(nid, tag) %>% mutate(nl = n) %>%
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts))) %>%
+    mutate(x = as.numeric(lgd))
+tps = tp %>% group_by(nid) %>% summarise(lab=sprintf("N=%d",sum(nl))) %>%
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts))) %>%
+    mutate(x = as.numeric(lgd)) %>%
+    arrange(x)
+p = ggplot(tp) +
+    geom_bar(aes(x=x,y=nl,fill=tag), alpha=.5,stat='identity', position='fill') +
+    #geom_text(data=tps, aes(x=lgd, y=1.01, label=nl), hjust=0, size=2.5) +
+    scale_x_continuous(breaks=tps$x, labels=tps$lgd, expand=c(0,0),
+                       sec.axis=sec_axis(trans=~.,breaks=tps$x,labels=tps$lab)) +
+    scale_y_continuous(expand=expand_scale(mult=c(.0,.0))) +
+    scale_fill_aaas() +
     coord_flip() +
-    otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
-           legend.pos = 'top.right', legend.dir = 'v')
-fo = file.path(dirw, '12.br.3.dir.net.pdf')
-ggsave(p, file=fo, width=6, height=5)
+    otheme(xtext=T, ytext=T, xtick=T, ytick=T,
+           legend.pos = 'top.center.out', legend.dir = 'h') +
+    theme(axis.text.y = element_text(color=rev(nid_cols)))
+fo = file.path(dirw, '16.spe.pdf')
+ggsave(p, file=fo, width=6, height=6)
 #}}}
 
-#{{{ if a TF is observed in multiple networks, is it consistent?
-tg = ev_br_filt %>% group_by(reg.gid, tgt.gid) %>%
-    summarise(nnet = n(), m.drc = mean(m.drc),
-              nn1 = sum(nid %in% nids_geno),
-              nn2 = sum(nid %in% nids_dev)) %>%
+#{{{ if a TF has multiple targets, does it show consis. +/- effect?
+de_map = des
+names(de_map) = 1:length(des)
+tp1 = ev_br %>%
+    filter(!tissue %in% tiss_exc) %>%
+    filter(reg.DE != 'non_DE', tgt.DE != 'non_DE') %>%
+    filter(p.drc==b.drc) %>%
+    mutate(tag = as.numeric(factor(reg.DE, levels = des))) %>%
+    group_by(nid, reg.gid, tgt.gid) %>%
+    summarise(n.tiss = n(),
+              tag = max(tag),
+              m.drc = mean(b.drc)) %>%
     ungroup() %>%
-    filter(nn1 >= 1, nn2 >= 1, nnet >= 2) %>%
-    filter(abs(m.drc) > .5)
-tg %>% count(nnet)
+    mutate(m.drc = ifelse(m.drc < 0, -1, 1)) %>%  #trick for liftover nets only
+    mutate(tag = de_map[tag]) %>%
+    ungroup()
+tp1 %>% count(m.drc)
+tp1 %>% count(n.tiss)
 
-tp = tg %>% group_by(reg.gid) %>%
+tp2 = tp1 %>%
+    filter(nid %in% nids_hc) %>%
+    filter(tag %in% c('SPE')) %>%
+    filter(n.tiss >= 3) %>%
+    group_by(nid, reg.gid) %>%
     summarise(n.tgt = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
-    filter(n.tgt >= 3)
-tp %>% arrange(desc(n.tgt)) %>% print(n=40)
-p = ggplot(tp, aes(x=m.drc)) +
-    geom_histogram() +
-    scale_x_continuous(name = 'effect on target (positive or negative)', expand=expand_scale(mult=c(.01,.01))) +
-    scale_y_continuous(name = '# TFs', expand=expand_scale(mult=c(0,.05))) +
-    scale_color_aaas() +
-    otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
-           legend.pos = 'top.right', legend.dir = 'v')
-fo = file.path(dirw, '12.br.2b.dir.tissue.pdf')
-ggsave(p, file=fo, width=6, height=4)
+    mutate(tf.type=ifelse(m.drc>=.8,'acti',ifelse(m.drc<=-.8,'repr','mix')))
+tp2 %>% count(nid, tf.type)
+tp2 %>% filter(n.tgt >= 3) %>% count(nid, tf.type)
+#
+tp3 = tp1 %>%
+    filter(nid %in% nids_hc, tag %in% c("SPE"), n.tiss >= 3) %>%
+    group_by(reg.gid, tgt.gid) %>%
+    summarise(n.net = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
+    mutate(pair.type=ifelse(m.drc>=.8,'+',ifelse(m.drc<=-.8,'-','mix')))
+tp3 %>% count(m.drc)
+tp3 %>% filter(n.net >= 2) %>% count(m.drc)
+tp3 %>% group_by(n.net) %>%
+    summarise(n.link = n(), p.neg=sum(pair.type=='-')/n()) %>% ungroup()
+
+tp4 = tp3 %>% filter(n.net >= 2) %>%
+    group_by(reg.gid) %>%
+    summarise(n.tgt = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
+    mutate(tf.type=ifelse(m.drc>=.8,'acti',ifelse(m.drc<=-.8,'repr','mix')))
+tp4 %>% filter(n.tgt >= 3) %>% count(tf.type)
 #}}}
 
-#{{{ obtain high quality edges
-tg = ev_br_filt %>% group_by(reg.gid, tgt.gid) %>%
-    summarise(nnet = n(), m.drc = mean(m.drc)) %>% ungroup() %>%
-    filter(nnet >= 3) %>%
-    filter(abs(m.drc) > .5)
-tg %>% count(nnet)
+val.br = list(tf.tgt=tp3, tf=tp4)
+fo = file.path(dirw, '02.valid.br.rds')
+saveRDS(val.br, file=fo)
+
+#{{{ #multi-tgt plot
+tp4 = tp3 %>%
+    filter(n.tgt >= 3) %>%
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts))) %>%
+    mutate(x = as.numeric(lgd))
+tp2 %>% distinct(reg.gid) %>% count()
+tp2 %>% count(nid) %>% group_by(0) %>% summarise(n.min=min(n), n.max=max(n))
+
+tp = tp2
+tps = tp %>% group_by(nid) %>% summarise(lab=sprintf("N=%d",n())) %>%
+    inner_join(ncfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts))) %>%
+    mutate(x = as.numeric(lgd)) %>%
+    arrange(x)
+tpz = tibble(xb=c(-Inf,-Inf), xe=c(Inf,Inf), yb=c(-Inf,.8), ye=c(-.8,Inf),
+    type=c('repressor','activator'))
+p = ggplot() +
+#    geom_text(data=tps, aes(x=lgd, y=1.05, label=n.tf), hjust=0, size=2.5) +
+    geom_rect(data=tpz, aes(xmin=xb,xmax=xe,ymin=yb,ymax=ye,fill=type),alpha=.5) +
+    geom_jitter(data=tp, aes(x=x,y=m.drc), height=0,width=.4, size=1, shape=4) +
+    scale_x_continuous(breaks=tps$x, labels=tps$lgd, expand=c(.02,0),
+                       sec.axis=sec_axis(trans=~.,breaks=tps$x,labels=tps$lab)) +
+    scale_y_continuous(expand=expand_scale(mult=c(.02,.02))) +
+    scale_fill_tron() +
+    coord_flip() +
+    otheme(xtext=T, ytext=T, xtick=T, ytick=T, xgrid=T, ygrid=T,
+           legend.pos = 'top.center.out', legend.dir = 'h') +
+    theme(axis.text.y = element_text(color=rev(nid_cols)))
+fo = file.path(dirw, '17.drc.tgt.pdf')
+ggsave(p, file=fo, width=6, height=8)
+#}}}
 #}}}
 
-#}}}
-
-#{{{ eval using biomap data - correlation
+#{{{ eval using biomap data
+#{{{ read
+ncfg = th %>% filter(!str_detect(nid, "^n99[abc]")) %>%
+   select(nid, net_type, sample_size, col, lgd)
+nids = ncfg$nid
+nid_txts = ncfg$lgd
+nid_cols = ncfg$col
+#
 fi = file.path(dirw, '01.bm.rds')
 ev_bm = readRDS(fi)
+tiss1 = c("Seedling","Root","Internode","Leaf","Endosperm")
+ev_bm0 = ev_bm
 
-ev_bm_nr = ev_bm %>% distinct(reg.gid,tgt.gid,Tissue,pcc)
-
-tp = tg %>% inner_join(ev_bm_nr, by=c('reg.gid','tgt.gid')) 
-p = ggplot(tp, aes(x = pcc)) +
-    geom_histogram() +
-    facet_wrap(~Tissue, ncol=1)+
-    scale_fill_futurama() +
-    otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
-           legend.pos = 'top.right', legend.dir = 'v') +
-    theme(strip.text.y = element_text(angle=0))
-fo = file.path(dirw, '15.biomap.1.pcc.pdf')
-ggsave(p, file=fo, width=6, height=8)
-
-tp = ev_br_filt %>% inner_join(ev_bm, by = c('nid','reg.gid','tgt.gid')) %>%
-    inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
-    mutate(txt = factor(txt, levels=rev(th$txt)))
-tps = tp %>% count(nid,Tissue) %>%
-    inner_join(th[,c('nid','txt','col')], by = 'nid') %>%
-    mutate(txt = factor(txt, levels=th$txt))
-
-p = ggplot(tp, aes(x = txt, y = pcc)) +
-    geom_violin() +
-    geom_text(data=tps, aes(x=txt, y=0, label=n), hjust=.5, size=3) +
-    coord_flip() +
-    facet_wrap(~Tissue, ncol=5) +
-    scale_fill_futurama() +
-    otheme(xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
-           legend.pos = 'top.right', legend.dir = 'v') +
-    theme(strip.text.y = element_text(angle=0))
-fo = file.path(dirw, '15.biomap.1.pcc.pdf')
-ggsave(p, file=fo, width=10, height=8)
+adjustp <- function(td)
+    td %>%
+        mutate(bm.pval.spc = p.adjust(bm.pval.spc, 'bonferroni')) %>%
+        mutate(bm.pval.spe = p.adjust(bm.pval.spe, 'BH'))
+ev_bm = ev_bm0 %>%
+    group_by(nid, Tissue, simu) %>%
+    nest() %>%
+    mutate(data = map(data, adjustp)) %>%
+    unnest() %>%
+    mutate(bm.spc=ifelse(is.na(bm.pval.spc),NA, ifelse(bm.pval.spc<.05,T,F)),
+           bm.spe=ifelse(is.na(bm.pval.spe),NA, ifelse(bm.pval.spc<.05,T,F)))
+#
+nids_hc = c('nc03',
+            'n13c','n14a','n15a','n16a','n18d','n19a',
+            'n17a','n18a_1','n18a_2','n18a_3','n18a_4','n18a_5','n18a_6',
+            'nc04')
+tz = tibble(
+    tissue=tiss1,
+    nids = list(
+                c('nc03','n13c','n14a','n15a','n18a_5','n19a'), #seedling
+                c('nc03','nc04','n15a','n17a','n18a_1','n18d','np18_3'), #root
+                c('nc03','n15a','n17a','n18a_2','n18a_4'), #internode
+                c('nc01','nc03','n14a','n15a','n17a','n18a_2','n19a'), #leaf
+                c('nc02','nc03','n14a','n16a','n18a_3','np18_4') #endosperm
+    )
+)
 #}}}
 
+#{{{ GRN eval
+tp0 = ev_bm %>% rename(tissue=Tissue) %>%
+    group_by(nid, tissue, simu) %>%
+    summarise(size.spc = sum(!is.na(bm.spc)),
+              p.sig.spc = sum(bm.spc, na.rm=T)/size.spc,
+              size.spe = sum(!is.na(bm.spe)),
+              p.sig.spe = sum(bm.spe,na.rm=T)/size.spe) %>%
+    ungroup() %>%
+    mutate(size = size.spe, p.sig = p.sig.spe) %>%
+    mutate(size = size.spc, p.sig = p.sig.spc) %>%
+    group_by(nid, tissue) %>%
+    summarise(size = size[which(!simu)],
+              p = p.sig[which(!simu)],
+              fc = p.sig[which(!simu)]/p.sig[which(simu)]) %>%
+              #fc = p.sig[which(!simu)]) %>%
+    ungroup()
 
+tp = tp0 %>%
+    mutate(txt = sprintf("%d", size)) %>%
+    mutate(lab = str_remove(sprintf("%.02f", fc), '^0+')) %>%
+    mutate(lab = str_remove(sprintf("%d %.02f %.02f", size, p, fc), '^0+')) %>%
+    mutate(tissue = factor(tissue, levels = tiss1)) %>%
+    inner_join(ncfg, by='nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(nid_txts)))
+#tp %>% print(n=20)
+p1 = ggplot(tp, aes(x=tissue, y=lgd)) +
+    geom_tile(aes(fill = fc)) +
+    geom_text(aes(label = lab), size=2.5, color='black') +
+    scale_x_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
+    scale_y_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
+    #scale_fill_viridis(name='Fold Change', direction=1) +
+    scale_fill_gradientn(name = 'Fold Enrich. in Prop. Target Sig. Corr.', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
+           margin = c(1.3, .1, .1, .1),
+           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
+    #theme(axis.text.x = element_text(angle = 35, hjust=1, vjust=1)) +
+    theme(axis.text.y = element_text(color = rev(nid_cols))) +
+    guides(direction = 'horizontal', fill=guide_legend(nrow=1),
+        shape=guide_legend(nrow=1))
+fo = file.path(dirw, '21.bm.heat.pdf')
+ggsave(p1, file=fo, width=6, height=7)
+#}}}
+
+#{{{ how often is a link observed in multiple networks
+tp1 = ev_bm %>%
+    mutate(supp = bm.spc) %>%
+    #inner_join(unnest(tz), by=c('nid'='nids','Tissue'='tissue')) %>%
+    filter(nid %in% nids_hc) %>%
+    filter(simu==F, !is.na(supp)) %>%
+    group_by(nid,reg.gid,tgt.gid) %>%
+    summarise(n.tis = n(),
+              tag = ifelse(sum(supp)>=1, 'yes','no'),
+              m.drc = mean(p.drc)) %>%
+    ungroup()
+tp1 %>% count(nid, m.drc)
+#
+tp2 = tp1 %>%
+    filter(n.tis >= 2) %>%
+    group_by(reg.gid, tgt.gid) %>%
+    summarise(n.net = n(),
+              tag = ifelse(sum(tag=='yes')>=1, 'yes', 'no'),
+              m.drc = mean(m.drc)) %>%
+    #mutate(m.drc = ifelse(m.drc < 0, -1, 1)) %>%
+    ungroup() %>%
+    mutate(pair.type=ifelse(m.drc>=.8,'+',ifelse(m.drc<=-.8,'-','mix')))
+tp2 %>% group_by(tag) %>%
+    summarise(p.sigleton = sum(n.net==1)/n()) %>%
+    ungroup() %>% print(n=50)
+# negative regulation is network specific
+tp2 %>% group_by(tag, n.net) %>%
+    summarise(p.neg = sum(m.drc<=.8)/n(),
+              p.pos = sum(m.drc>=.8)/n()) %>%
+    ungroup() %>% print(n=50)
+#
+tp3 = tp2 %>% filter(tag=='yes') %>% select(-tag)
+tp3 %>% count(pair.type)
+tp3 %>% filter(n.net>=3) %>% count(pair.type)
+#
+# TF level
+tp4 = tp3 %>% filter(n.net >= 3) %>%
+    group_by(reg.gid) %>%
+    summarise(n.tgt = n(), m.drc = mean(m.drc)) %>%
+    ungroup() %>%
+    mutate(tf.type=ifelse(m.drc>=.8,'acti',ifelse(m.drc<=-.8,'repr','mix')))
+tp4 %>% count(tf.type)
+tp4 %>% filter(n.tgt >= 3) %>% count(tf.type)
+
+#{{{ GO enrich
+go = get_go()
+
+go_pos = go$go %>% filter(ctag=='aggregate') %>% filter(str_detect(goname, 'positive regulation of transcription'))
+go_neg = go$go %>% filter(ctag=='aggregate') %>% filter(str_detect(goname, 'negative regulation of transcription'))
+
+reg.gids.pos = tp2 %>% filter(m.drc==1) %>% distinct(reg.gid) %>% pull(reg.gid)
+reg.gids.neg = tp2 %>% filter(m.drc==-1) %>% distinct(reg.gid) %>% pull(reg.gid)
+go_enrich(reg.gids.pos, go_pos)
+
+reg.gids.neg = tp3 %>% filter(tag.spc=='spc',nnet>=3,m.drc==-1) %>% distinct(reg.gid) %>% pull(reg.gid)
+reg.gids.neg = tp4 %>% filter(n.tgt>=3,m.drc<=0) %>% distinct(reg.gid) %>% pull(reg.gid)
+go_enrich(reg.gids.neg, go_neg)
+#}}}
+#}}}
+
+val.bm.spc = list(tf.tgt = tp3, tf = tp4)
+val.bm.spe = list(tf.tgt = tp3, tf = tp4)
+
+fo = file.path(dirw, '02.valid.bm.spc.rds')
+saveRDS(val.bm.spc, file=fo)
+fo = file.path(dirw, '02.valid.bm.spe.rds')
+saveRDS(val.bm.spe, file=fo)
+#}}}
+
+fo = file.path(dirw, '02.valid.br.rds')
+val.br=readRDS(fo)
+fo = file.path(dirw, '02.valid.bm.spc.rds')
+val.bm.spc=readRDS(fo)
+fo = file.path(dirw, '02.valid.bm.spe.rds')
+val.bm.spe=readRDS(fo)
+
+
+#{{{ check & plot high-conf TF-target pairs
+tf1 = val.br$tf %>% filter(n.tgt>=3) %>% pull(reg.gid)
+tf2 = val.bm.spc$tf %>% filter(n.tgt>=3) %>% pull(reg.gid)
+tf3 = val.bm.spe$tf %>% filter(n.tgt>=3) %>% pull(reg.gid)
+length(tf1)
+length(tf2)
+length(tf3)
+sum(tf1 %in% tf2)
+sum(tf1 %in% tf3)
+sum(tf2 %in% tf3)
+
+val = val.bm.spe; pre = 'bm.spe'
+val = val.bm.spc; pre = 'bm.spc'
+val = val.br; pre = 'br'
+tp = val$tf.tgt %>%
+    count(n.net, pair.type)
+tps = tp %>% mutate(n.pair = n) %>% group_by(n.net) %>%
+    summarise(lab=sprintf("%d [N=%d]", n.net[1], sum(n.pair))) %>% ungroup()
+p1 = ggplot(tp) +
+    geom_bar(aes(x=n.net,y=n,fill=pair.type), stat='identity',position='fill', width=.8) +
+    scale_x_continuous(name='# shared networks', breaks=tps$n.net, labels=tps$lab, expand=expand_scale(mult=c(.02,.02))) +
+    scale_y_continuous(expand=expand_scale(mult=c(0,0))) +
+    scale_fill_npg(name='regulatory direction') +
+    otheme(xtext=T, ytext=T, xtick=T, ytick=T, xgrid=T, ygrid=T,
+           legend.pos = 'top.center.out', legend.dir = 'h', legend.title=T) +
+    theme(axis.text.x = element_text(angle=30,hjust=1,vjust=1))
+#
+tp = val$tf %>% filter(n.tgt >=3)
+xlab = sprintf("Mean regulatory direction [N=%d TFs]",nrow(tp))
+tpz = tibble(xb=c(-Inf,-Inf), xe=c(Inf,Inf), yb=c(-Inf,.8), ye=c(-.8,Inf),
+    type=c('repressor','activator'))
+p2 = ggplot() +
+#    geom_text(data=tps, aes(x=lgd, y=1.05, label=n.tf), hjust=0, size=2.5) +
+    geom_rect(data=tpz, aes(xmin=xb,xmax=xe,ymin=yb,ymax=ye,fill=type),alpha=.5) +
+    geom_point(data=tp, aes(x=reg.gid,y=m.drc,size=n.tgt), shape=1) +
+    scale_x_discrete(expand=c(.02,0)) +
+    scale_y_continuous(name=xlab,limits=c(-1,1),expand=expand_scale(mult=c(.02,.02))) +
+    scale_size('# targets') +
+    scale_fill_tron(name='direction') +
+    coord_flip() +
+    otheme(xtext=T, ytext=F, xtitle=T, xtick=T, ytick=F, xgrid=T, ygrid=F,
+           legend.pos = 'top.center.out', legend.dir = 'h', legend.title=T,
+           margin=c(3,.1,.1,.1)) +
+    guides(size=guide_legend(direction='horizontal',title.position='left'))
+#
+fo = sprintf("%s/23.%s.pdf", dirw, pre)
+ggpubr::ggarrange(p1, p2,
+    nrow=1, ncol=2, widths = c(2,2), heights = c(1),
+    labels=LETTERS[1:2]) %>%
+    ggpubr::ggexport(filename = fo, width = 8, height = 5)
+#}}}
+
+#{{{ check for overlap w. trans- hotspots
+t_gl = gcfg$loc.gene %>% group_by(gid) %>%
+    summarise(chrom=chrom[1], start=min(start), end=max(end)) %>%
+    ungroup() %>%
+    mutate(pos=(start+end)/2) %>% select(gid,chrom,pos)
+
+t_hs0 = read_tsv(fi)
+t_hs = t_hs0 %>% distinct(chr,beg,end,mid) %>% rename(chrom=chr)
+
+fi = '~/projects/genomes/data/li2013/10.rds'
+fi = '~/projects/genomes/data/liu2017/10.rds'
+res = readRDS(fi)
+hs = res$hs %>% rename(chrom=qchrom,start=qstart,end=qend)
+
+nid = 'n99c'
+tnl = ev_tf %>% filter(nid==!!nid) %>% pull(tn)
+tx0 = tnl[[1]] %>%
+    count(reg.gid) %>% rename(n.tgt=n)
+gid = 'Zm00001d023987' #RBP
+gid = 'Zm00001d028842' #p1
+gid = 'Zm00001d028851'
+tx0 %>% filter(reg.gid == gid)
+
+tx1 = val.br$tf %>% mutate(ctag='br')
+tx2 = val.bm.spe$tf %>% mutate(ctag='bm.spe')
+tx3 = val.bm.spc$tf %>% mutate(ctag='bm.spc')
+tp = rbind(tx1,tx2,tx3) %>% filter(n.tgt>=10) %>% inner_join(t_gl, by=c('reg.gid'='gid'))
+#
+p1 = ggplot() +
+    geom_rect(data=hs, aes(xmin=start,xmax=end,ymin=0,ymax=1), fill='steelblue') +
+    geom_point(data=hs, aes(x=qpos,y=.5),shape=3,col='steelblue') +
+    geom_point(data=tp, aes(x=pos,y=.5,size=n.tgt),shape=4) +
+    scale_x_continuous(expand=c(0,0)) +
+    scale_y_continuous(expand=expand_scale(mult=c(0,.05))) +
+    facet_grid(chrom~.) +
+    otheme(xtitle=T,xtext=T,xgrid=T)
+fo = file.path(dirw, '25.pdf')
+ggsave(p1, file=fo, width=8,height=6)
+
+chrom='B10'
+t_hs %>% filter(chrom==!!chrom)
+tp %>% filter(chrom==!!chrom) %>% print(n=30)
+hs='hs65'
+hs.tgts = t_hs0 %>% filter(mid==hs, type=='trans') %>% pull(gid)
+reg.gid = 'Zm00001d024894'
+br.tgts = val.br$tf.tgt %>% filter(n.net>=2) %>% filter(reg.gid == !!reg.gid) %>% pull(tgt.gid)
+net.tgts = tnl[[1]] %>% filter(reg.gid == !!reg.gid) %>% pull(tgt.gid)
+
+sum(hs.tgts %in% net.tgts)
+#}}}
+
+fun_ann = gs$fun_ann %>% distinct(ctag, grp, note)
+gotag = 'CornCyc'
+gotag = 'GO_arabidopsis'
+gotag = 'GO_uniprot.plants'
+gotag = 'li2013'
+
+nid='n13a'
+te = ev_go %>% filter(nid==!!nid) %>% pull(enrich_term)
+te = te[[1]]
+te %>% filter(net_size==50000, ctag==!!gotag, pval<.05,n>=10) %>%
+    inner_join(fun_ann, by=c('ctag','grp')) %>%
+    distinct(n,fc,pval,note,grp) %>% arrange(desc(fc)) %>% print(n=20)
+
+grp='qtl2862'
+gs$fun_ann %>% filter(ctag==!!gotag, grp==!!grp)
+
+
+res$hs %>% filter(qid==!!grp)

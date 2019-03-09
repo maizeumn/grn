@@ -210,7 +210,15 @@ ppic = ppi %>% mutate(grp = sprintf('ppi%d', 1:nrow(ppi))) %>%
     gather(tag, gid, -grp) %>%
     transmute(ctag='PPIM', grp=grp, gid=gid, note='')
 
-fun_ann = rbind(go_hc, go, cc, y1h)
+ctags = c('li2013','liu2017','wang2018')
+hs = tibble(ctag=ctags) %>%
+    mutate(fi=file.path('~/projects/genomes/data',ctag,'10.rds')) %>%
+    mutate(data = map(fi, readRDS)) %>%
+    mutate(hs = map(data, 'hs.tgt')) %>%
+    select(ctag, hs) %>% unnest() %>%
+    select(ctag,grp=qid,gid) %>% mutate(note=NA)
+
+fun_ann = rbind(go_hc, go, cc, hs, y1h)
 fun_ann %>% distinct(ctag,grp) %>% count(ctag)
 #}}}
 
@@ -228,9 +236,50 @@ for (ctag in ctags) {
 tf = tf %>%
     filter(! ctag %in% c("KN1_any","KN1_ear","KN1_tassel","KN1_leaf")) %>%
     mutate(ctag = ifelse(ctag=='KN1_all', 'KN1', ctag)) %>%
-    mutate(binding = 1)
+    filter(ctag != 'HDA101')
+ctags_tf5 = tf %>% count(ctag) %>% arrange(n) %>% pull(ctag)
+tf2 = tf %>% mutate(ctag = 'known_TFs') %>% distinct(ctag, reg.gid, tgt.gid)
+tf = tf %>% bind_rows(tf2)
 tf %>% count(ctag)
-tfs = tf %>% distinct(ctag, reg.gid)
+#}}}
+
+#{{{ FunTFBS regulations
+fi = file.path(dird, '03_tfbs', 'regulation_merged.txt')
+ti = read_tsv(fi, col_names=c("o.reg.gid",'relation','o.tgt.gid','org','evi'))
+ti %>% count(relation, org, evi)
+ti %>% count(o.reg.gid)
+
+to = ti %>% select(o.reg.gid, o.tgt.gid, evi) %>%
+    inner_join(tm, by=c("o.reg.gid"="ogid")) %>%
+    rename(reg.gid=gid, reg.type=type) %>%
+    inner_join(tm, by=c("o.tgt.gid"="ogid")) %>%
+    rename(tgt.gid=gid, tgt.type=type) %>%
+    filter(reg.gid %in% genome_cfg$size.gene$gid, tgt.gid %in% genome_cfg$size.gene$gid) %>%
+    distinct(reg.gid, tgt.gid, reg.type, tgt.type, evi)
+to %>% count(reg.type,tgt.type)
+to %>% count(reg.gid) %>% arrange(n)
+
+tfbs = to %>% distinct(reg.gid, tgt.gid, evi) %>%
+    transmute(ctag=evi, reg.gid=reg.gid, tgt.gid=tgt.gid)
+ctags_tfbs = tfbs %>% count(ctag) %>% arrange(n) %>% pull(ctag)
+tfbs %>% count(ctag)
+tnk = tf %>% bind_rows(tfbs)
+tnk %>% count(ctag)
+#}}}
+
+#{{{ FunTFBS (no use)
+fi = file.path(dird, '03_tfbs', 'TFBS_from_FunTFBS_inProm.gff')
+ti = read_tsv(fi, col_names=c('chr','src','type','beg','end','score','srd','phase','note'), col_types='cccdddccc')
+ti %>% count(src,type)
+
+to = ti %>% select(chr,beg,end,score,note) %>%
+    separate(note, c('gid','tid','corr','pval','seq'), sep=';', extra='drop') %>%
+    separate(gid, c('tag','gid'), sep='=', extra='drop') %>%
+    separate(tid, c('tag','tid'), sep='=', extra='drop') %>%
+    separate(corr, c('tag','corr'), sep='=', extra='drop') %>%
+    separate(pval, c('tag','pval'), sep='=', extra='drop') %>%
+    mutate(corr=as.numeric(corr), pval=as.numeric(pval)) %>%
+    select(chr,beg,end,score,tid,gid,corr,pval)
 #}}}
 
 #{{{ TF IDs
@@ -251,7 +300,8 @@ length(tf_ids)
 # optional: run grn.91.tf45.R
 
 # build GRN gold-standard dataset
-res = list(tf=tf, tfs=tfs, all_tf=all_tf, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
+res = list(tnk=tnk, ctags_tf5=ctags_tf5, ctags_tfbs=ctags_tfbs,
+           all_tf=all_tf, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
 fo = file.path(dird, '09.gs.rds')
 saveRDS(res, file=fo)
 ft = file.path(dird, '09.tf.txt')

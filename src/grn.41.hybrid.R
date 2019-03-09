@@ -1,4 +1,4 @@
-source(file.path(dirr, "grn.fun.r"))
+source("functions.R")
 require(PRROC)
 #source("enrich.R")
 diri = '~/projects/maize.expression'
