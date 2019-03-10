@@ -209,7 +209,8 @@ net_size_map = c('1e4'=1e4, '5e4'=5e4, '1e5'=1e5)
 
 #{{{ enrichment
 tp1 = ev_go %>% select(nid, enrich) %>% unnest()
-tp2 = ev_go %>% select(nid, enrich_term) %>% unnest() %>%
+tp2 = ev_go %>% select(nid, enrich_grp) %>% unnest() %>%
+    filter(n >= 10) %>%
     group_by(nid, net_size, ctag) %>%
     summarise(n_grp=length(grp), n_grp_sig=sum(pval<.05)) %>%
     ungroup() %>%
@@ -217,6 +218,8 @@ tp2 = ev_go %>% select(nid, enrich_term) %>% unnest() %>%
     select(nid,net_size,ctag,sigtxt)
 ctags = c("GO_HC", "GO_arabidopsis","CornCyc")
 ctags = c("li2013","liu2017","wang2018")
+fo = file.path(dirw, "09.go.pdf")
+fo = file.path(dirw, "09.go.eQTL.pdf")
 tp = tp1 %>% left_join(tp2, by=c('nid','net_size','ctag')) %>%
     mutate(sig = ifelse(pval<.05, 1, 0)) %>%
     filter(ctag %in% ctags) %>%
@@ -251,7 +254,6 @@ p1 = ggplot(tp, aes(lgd, fc)) +
            shape = guide_legend("network size:", nrow=1, order=1),
            alpha = guide_legend("signifance:", nrow=1, order=2))
     #theme(axis.text.x = element_text(size = 8, angle = 30, hjust = 1))
-fo = file.path(dirw, "09.go.eQTL.pdf")
 ggsave(p1, filename = fo, width = 8, height = 8)
 #}}}
 
@@ -259,12 +261,12 @@ ggsave(p1, filename = fo, width = 8, height = 8)
 gotag = 'GO_uniprot.plants'
 goname = gs$fun_ann %>% filter(ctag==gotag) %>% distinct(grp,note) %>%
     mutate(note = str_sub(note, 1, 65))
-tx = ev_go %>% select(nid,enrich_term) %>%
+tx = ev_go %>% select(nid,enrich_grp) %>%
     unnest() %>%
     filter(net_size==50000,ctag==gotag) %>%
     filter(nid %in% nids) %>%
     select(-net_size, -ctag) %>%
-    filter(n>=50, pval<.05, fc>=2) %>%
+    filter(n>=50, pval<.01, fc>=2) %>%
     mutate(fc = log2(fc))
 
 tx %>% inner_join(ncfg, by = 'nid') %>%
@@ -355,7 +357,7 @@ ggpubr::ggarrange(p2, p1,
     ggpubr::ggexport(filename = fo, width = 10, height = 12)
 #}}}
 
-fo = file.path(dirw, "09.gotree.pdf")
+fo = file.path(dirw, "09.gotree.1.pdf")
 pdf(fo, width=7, height=3)
 dev.off()
 
@@ -366,7 +368,7 @@ p1 = ggtree(ntree, layout = 'rectangular') +
     theme_tree2()
 p1 = p1 %<+% tpn + geom_tiplab(aes(label=txt)) +
     scale_color_aaas()
-fo = file.path(dirw, "09.gotree.pdf")
+fo = file.path(dirw, "09.gotree.1.pdf")
 ggsave(p1, filename = fo, width=7, height=8)
 #}}}
 #}}}
@@ -1036,21 +1038,65 @@ ggpubr::ggarrange(p1, p2,
     ggpubr::ggexport(filename = fo, width = 8, height = 5)
 #}}}
 
+t_size = gcfg$chrom %>% select(chrom,size=end)
+tx = gcfg$chrom
+gstart = flattern_gcoord(tx %>% select(chrom,pos=start), t_size)
+gend = flattern_gcoord(tx %>% select(chrom,pos=end), t_size)
+tx = tx %>% mutate(start=gstart, end=gend, pos=(start+end)/2)
+
 #{{{ check for overlap w. trans- hotspots
 t_gl = gcfg$loc.gene %>% group_by(gid) %>%
     summarise(chrom=chrom[1], start=min(start), end=max(end)) %>%
     ungroup() %>%
     mutate(pos=(start+end)/2) %>% select(gid,chrom,pos)
 
-t_hs0 = read_tsv(fi)
-t_hs = t_hs0 %>% distinct(chr,beg,end,mid) %>% rename(chrom=chr)
-
-fi = '~/projects/genomes/data/li2013/10.rds'
-fi = '~/projects/genomes/data/liu2017/10.rds'
+qtag = 'liu2017'
+qtag = 'li2013'
+fi = sprintf('~/projects/genomes/data/%s/10.rds', qtag)
 res = readRDS(fi)
-hs = res$hs %>% rename(chrom=qchrom,start=qstart,end=qend)
+hs = res$hs %>% select(qid,qchrom,qpos,n.tgt)
 
-nid = 'n99c'
+nid = 'n18a_6'
+tz = ev_go %>% filter(nid==!!nid) %>%
+    select(enrich_reg) %>% unnest() %>%
+    filter(ctag == qtag, n >=10, net_size==50000, pval < .01) %>%
+    select(reg.gid, n, fc, grp=max.grp, max.grp.size) %>%
+    arrange(grp,desc(fc)) %>%
+    left_join(t_gl, by=c('reg.gid'='gid')) %>% rename(gchrom=chrom,gpos=pos) %>%
+    left_join(hs, by=c('grp'='qid'))
+tz %>% select(-grp,-max.grp.size) %>% print(n=50)
+
+#{{{ plot
+ti = tz
+gpos = flattern_gcoord(ti %>% select(chrom=gchrom, pos=gpos), t_size)
+qpos = flattern_gcoord(ti %>% select(chrom=qchrom, pos=qpos), t_size)
+tp = ti %>% mutate(gpos=!!gpos, qpos=!!qpos)
+
+p1 = ggplot(tp) +
+    geom_point(aes(x = qpos, y = gpos), size=.4) +
+    geom_vline(xintercept = tx$start, alpha=.1) +
+    geom_vline(xintercept = tx$end, alpha=.1) +
+    geom_hline(yintercept = tx$start, alpha=.1) +
+    geom_hline(yintercept = tx$end, alpha=.1) +
+    #geom_abline(intercept = 0, slope = 1, alpha=.1) +
+    scale_x_continuous(name='trans-eQTL hotsplot position', breaks=tx$pos, labels=tx$chrom, expand=c(0,0)) +
+    scale_y_continuous(name='enriched TF position', breaks=tx$pos, labels=tx$chrom, expand=c(0,0)) +
+    scale_color_brewer(palette = "Set1") +
+    otheme(xtitle=T, ytitle=T, xtext=T, ytext=T,
+         legend.pos='top.center.out', legend.dir='h')
+fp = sprintf("%s/32.hs.pdf", dirw)
+ggsave(p1, filename = fp, width = 8, height = 8)
+#}}}
+
+tz = ev_go %>% filter(nid==!!nid) %>%
+    select(enrich_grp) %>% unnest() %>%
+    filter(ctag == 'li2013', n >=10, net_size==50000, pval < .01) %>%
+    select(grp, n, fc, reg.gid=max.reg.gid, max.reg.size) %>%
+    arrange(desc(fc)) %>%
+    left_join(hs, by=c('grp'='qid')) %>%
+    left_join(t_gl, by=c('reg.gid'='gid')) %>% rename(gchrom=chrom,gpos=pos)
+tz %>% select(-grp,-max.reg.size) %>% print(n=50)
+
 tnl = ev_tf %>% filter(nid==!!nid) %>% pull(tn)
 tx0 = tnl[[1]] %>%
     count(reg.gid) %>% rename(n.tgt=n)
