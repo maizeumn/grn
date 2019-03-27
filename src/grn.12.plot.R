@@ -107,6 +107,9 @@ gs = read_gs()
 levs = c("AUROC", "AUPR")
 ctags = c(gs$ctags_tf5, 'known_TFs', gs$ctags_tfbs)
 ctags = c(gs$ctags_tf5, gs$ctags_tfbs)
+ctags = gs$ctags_tf5; pre = 'tf'
+ctags =gs$ctags_tfbs; pre = 'tfbs'
+fp = sprintf("%s/05.auc.%s.pdf", dirw, pre)
 tp0 = ev_tf %>% select(nid, tfstat) %>%
     unnest() %>%
     filter(nid %in% nids, ctag != 'HDA101')
@@ -155,9 +158,9 @@ ggpubr::ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>%
 #}}}
 
 #{{{ aupr/auroc bar-plot
-tp0 = ev_tf %>% select(nid, tfstat) %>% unnest()
+tp0 = ev_tf %>% select(nid, tfstat) %>% unnest() %>% filter(ctag %in% ctags)
 tp = tp0 %>% select(nid,ctag,auroc,auprc) %>%
-    mutate(auprc = auprc/max(auprc), auroc = auroc/max(auroc)) %>%
+    mutate(auroc = as.numeric(scale(auroc)), auprc = as.numeric(scale(auprc))) %>%
     rename(AUPR = auprc, AUROC = auroc) %>%
     gather(type, auc, -nid,  -ctag) %>%
     mutate(auc = as.numeric(auc)) %>% filter(!is.na(auc)) %>%
@@ -175,10 +178,11 @@ tpl = tp0 %>% select(nid,ctag,auroc,auprc) %>%
     inner_join(ncfg, by = 'nid') %>%
     mutate(lgd = factor(lgd, levels = rev(nid_txts)))
 lev = 'AUROC'
-tp = tp %>% filter(type == lev)
-tpl = tpl %>% filter(type == lev)
-
-tpx = gs$tnk %>% count(ctag) %>% mutate(lab=sprintf("%s (%d)",ctag,n)) %>%
+#tp = tp %>% filter(type == lev)
+#tpl = tpl %>% filter(type == lev)
+#
+tpx = gs$tnk %>% filter(ctag %in% ctags) %>%
+    count(ctag) %>% mutate(lab=sprintf("%s (%d)",ctag,n)) %>%
     mutate(ctag=factor(ctag, levels=ctags)) %>% arrange(ctag)
 tps = tp %>% distinct(nid) %>%
     inner_join(ncfg, by = 'nid') %>%
@@ -196,7 +200,6 @@ p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=auc)) +
            ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
     theme(axis.text.x = element_text(angle = 30, hjust=1, vjust=1, size=7)) +
     theme(axis.text.y = element_text(color=tps$col))
-fp = file.path(dirw, "05.auc.pdf")
 ggsave(p1, file = fp, width = 6, height = 6)
 #}}}
 #}}}
@@ -443,32 +446,31 @@ tp9 = ev_tf %>%
     summarise(nnet = n(), m.p.drc=mean(p.drc)) %>%
     ungroup()
 
+types = c("consis. +", "consis. -", "mix of +/-")
 tp = tp9 %>%
     filter(nnet >= 2) %>%
     mutate(x = ifelse(nnet >= 10, 10, nnet)) %>%
-    mutate(xlab = ifelse(x==10, '10+', x))
-tps = tp %>% count(x, xlab) %>%
+    mutate(type=ifelse(m.p.drc >= .8, 'consis. +', ifelse(m.p.drc <= -.8, 'consis. -', 'mix of +/-'))) %>%
+    mutate(xlab = ifelse(x==10, '10+', x)) %>%
+    mutate(type = factor(type, levels=types)) %>%
+    count(x, type, xlab)
+tps = tp %>% group_by(x, xlab) %>%
+    summarise(n = sum(n)) %>% ungroup() %>%
     mutate(lab=sprintf("N=%d",n)) %>% arrange(x)
-p1 = ggplot(tps, aes(x=x, y=n)) +
-    geom_bar(aes(fill=xlab), stat='identity', alpha=.5) +
-    scale_x_continuous(name='# shared networks', breaks=tps$x, labels=tps$lab,
-                       expand=expand_scale(mult=c(.01,.01))) +
-    scale_y_continuous(name='# predicted TF-target pairs', expand=expand_scale(mult=c(0,.05))) +
-    scale_fill_futurama() +
+p1 = ggplot(tp, aes(x=x, y=n)) +
+    geom_bar(aes(fill=type), stat='identity', position='fill', alpha=.5, width=.75) +
+    scale_x_reverse(name='# shared networks', breaks=tps$x, labels=tps$xlab,
+                       sec.axis=sec_axis(trans=~.,breaks=tps$x,labels=tps$lab),
+                       expand = c(0,0)) +
+    scale_y_continuous(name='# predicted TF-target pairs', expand=expand_scale(mult=c(0,0))) +
+    #scale_fill_futurama() +
+    scale_fill_aaas() +
+    coord_flip() +
     otheme(ytitle=T, xtext=T, ytext=T, ytick=T, ygrid=F,
-           legend.pos = 'none', legend.dir = 'v')
-p2 = ggplot(tp, aes(x=x, y=m.p.drc)) +
-    geom_violin(aes(fill=xlab), alpha=.5) +
-    scale_x_continuous(name='# shared networks', breaks=tps$x, labels=tps$xlab,
-                       expand=expand_scale(mult=c(.01,.01))) +
-                       #sec.axis=sec_axis(trans=~.,breaks=tps$x,labels=tps$lab)) +
-    scale_y_continuous(name='mean predicted effect', expand=expand_scale(mult=c(.01,.01))) +
-    scale_fill_futurama() +
-    otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, xtick=T, ytick=T, ygrid=T,
-           legend.pos = 'none', legend.dir = 'v')
+           legend.pos = 'top.center.out', legend.dir = 'h')
 fo = file.path(dirw, '10.cross.net.pdf')
-ggpubr::ggarrange(p1, p2,
-    nrow=2, ncol=1, heights = c(2,2),
+ggpubr::ggarrange(p1,
+    nrow=1, ncol=1, heights = c(2,2),
     align='v') %>%
     ggpubr::ggexport(filename = fo, width = 6, height = 4)
 #}}}
@@ -504,30 +506,48 @@ tp0 = ev_br %>%
               nl.tgt.de = sum(tgt.DE != 'non_DE' & p.drc == b.drc),
               pl.tgt.de = nl.tgt.de / nl) %>%
     ungroup()
-
+#
 tp = tp0 %>%
     mutate(txt = sprintf("%d", nl)) %>%
+    mutate(txt = sprintf("%d\n%.0f%%", nl, pl.tgt.de*100)) %>%
     mutate(lab = str_remove(sprintf("%.02f", pl.tgt.de), '^0+')) %>%
     rename(tag = reg.DE) %>%
     mutate(tag = factor(tag, levels = des)) %>%
     inner_join(ncfg, by='nid') %>%
     mutate(lgd = factor(lgd, levels=rev(nid_txts)))
+leg = 'Prop. TF-target pairs showing predicted direction of change'
 p1 = ggplot(tp, aes(tag, lgd)) +
     geom_tile(aes(fill = pl.tgt.de)) +
-    geom_text(aes(label = txt), color = 'white', size=2) +
+    geom_text(aes(label = txt), size=2) +
     scale_x_discrete(name = 'TF change', expand = expand_scale(mult=c(0,0))) +
     scale_y_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
-    scale_fill_viridis(name='Prop. TF/target pairs showing predicted direction of changes', direction=1) +
+    scale_fill_gradientn(name=leg, colors=pal_gradient(reverse=T)) +
     facet_wrap(~tissue, nrow=1) +
     otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
            strip.size = 8, margin = c(1.3, .1, .1, .1),
-           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+           xtitle=T, xtext=T, xtick=T, ytext=T) +
     theme(legend.position = c(.5,1), legend.justification = c(.5,0)) +
     theme(axis.text.x = element_text(angle = 35, hjust=1, vjust=1)) +
     theme(axis.text.y = element_text(color = rev(nid_cols))) +
     guides(direction = 'horizontal')
+p2 = ggplot(tp, aes(lgd, pl.tgt.de)) +
+    geom_point(aes(color=tissue, shape=tissue), size = 1.5) +
+    scale_x_discrete(name = '', expand = expand_scale(mult=c(.02,.02))) +
+    scale_y_continuous(name = leg, breaks=c(.25,.5,.75), expand = expand_scale(mult=c(0,.02))) +
+    scale_color_aaas() +
+    scale_shape_manual(values = c(0,1,2,3,6)) +
+    coord_flip() +
+    facet_wrap(~tag, nrow=1) +
+    otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
+           strip.size = 8, margin = c(.8, .1, .1, .1),
+           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,0)) +
+    theme(axis.text.y = element_text(color = rev(nid_cols))) +
+    guides(direction = 'horizontal')
 fp = sprintf("%s/11.de.spe.pdf", dirw)
 ggsave(p1, filename = fp, width = 10, height = 8)
+fp = sprintf("%s/11.de.spe.2.pdf", dirw)
+ggsave(p2, filename = fp, width = 10, height = 8)
 #}}}
 
 #{{{ SPE fold change - heatmap
@@ -543,28 +563,28 @@ tp0 = ev_br %>%
 tp = tp0 %>%
     filter(reg.DE == 'SPE') %>%
     #mutate(fc = ifelse(nl.s >= 10, fc, NA)) %>%
-    mutate(txt = sprintf("%d", nl)) %>%
+    mutate(txt = sprintf("%d\n%.0f%%", nl, pl.tgt.de*100)) %>%
     mutate(lab = str_remove(sprintf("%.02f", pl.tgt.de), '^0+')) %>%
     mutate(tissue = factor(tissue, levels = tiss1)) %>%
     inner_join(ncfg, by='nid') %>%
     mutate(lgd = factor(lgd, levels=rev(nid_txts)))
+leg = 'Fold Enrichment in Prop. Target DE'
 p1 = ggplot(tp, aes(x=tissue, y=lgd)) +
     geom_tile(aes(fill = fc)) +
     geom_text(aes(label = txt), size=2, color='black') +
     scale_x_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
     scale_y_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
-    #scale_fill_viridis(name='Fold Change', direction=1) +
-    scale_fill_gradientn(name = 'Fold Enrichment in Prop. Target DE', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    scale_fill_gradientn(name=leg, colors = pal_gradient(reverse=T)) +
     otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
            margin = c(1.3, .1, .1, .1),
-           xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
+           xtitle=T, xtext=T, xtick=T, ytext=T) +
     theme(legend.position = c(.5,1), legend.justification = c(.5,-.4)) +
     theme(axis.text.x = element_text(angle = 35, hjust=1, vjust=1)) +
     theme(axis.text.y = element_text(color = rev(nid_cols))) +
     guides(direction = 'horizontal', fill=guide_legend(nrow=1),
         shape=guide_legend(nrow=1))
 fp = sprintf("%s/12.br.heat.pdf", dirw)
-ggsave(p1, filename = fp, width = 8, height = 8)
+ggsave(p1, filename = fp, width = 8, height = 9)
 
 tp0 = tp %>%
     mutate(lgd = factor(lgd, levels=rev(th2$lgd)))
@@ -875,15 +895,17 @@ tp0 = ev_bm %>% rename(tissue=Tissue) %>%
               size.spe = sum(!is.na(bm.spe)),
               p.sig.spe = sum(bm.spe,na.rm=T)/size.spe) %>%
     ungroup() %>%
-    mutate(size = size.spe, p.sig = p.sig.spe) %>%
     mutate(size = size.spc, p.sig = p.sig.spc) %>%
+    mutate(size = size.spe, p.sig = p.sig.spe) %>%
     group_by(nid, tissue) %>%
     summarise(size = size[which(!simu)],
               p = p.sig[which(!simu)],
               fc = p.sig[which(!simu)]/p.sig[which(simu)]) %>%
               #fc = p.sig[which(!simu)]) %>%
     ungroup()
-
+fo = file.path(dirw, '21.bm.heat.spc.pdf')
+fo = file.path(dirw, '21.bm.heat.spe.pdf')
+#
 tp = tp0 %>%
     mutate(txt = sprintf("%d", size)) %>%
     mutate(lab = str_remove(sprintf("%.02f", fc), '^0+')) %>%
@@ -892,13 +914,14 @@ tp = tp0 %>%
     inner_join(ncfg, by='nid') %>%
     mutate(lgd = factor(lgd, levels=rev(nid_txts)))
 #tp %>% print(n=20)
+leg = 'Fold Enrich. in Prop. Target Sig. Corr.'
 p1 = ggplot(tp, aes(x=tissue, y=lgd)) +
     geom_tile(aes(fill = fc)) +
     geom_text(aes(label = lab), size=2.5, color='black') +
     scale_x_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
     scale_y_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
     #scale_fill_viridis(name='Fold Change', direction=1) +
-    scale_fill_gradientn(name = 'Fold Enrich. in Prop. Target Sig. Corr.', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
+    scale_fill_gradientn(name = leg, colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
     otheme(legend.pos='top.center.out', legend.title=T, legend.dir='h',
            margin = c(1.3, .1, .1, .1),
            xtitle=T, xtext=T, xtick=T, ytext=T, xgrid=T, ygrid=T) +
@@ -907,7 +930,6 @@ p1 = ggplot(tp, aes(x=tissue, y=lgd)) +
     theme(axis.text.y = element_text(color = rev(nid_cols))) +
     guides(direction = 'horizontal', fill=guide_legend(nrow=1),
         shape=guide_legend(nrow=1))
-fo = file.path(dirw, '21.bm.heat.pdf')
 ggsave(p1, file=fo, width=6, height=7)
 #}}}
 
@@ -1059,10 +1081,10 @@ t_gl = gcfg$loc.gene %>% group_by(gid) %>%
     ungroup() %>%
     mutate(pos=(start+end)/2) %>% select(gid,chrom,pos)
 
+qtag = 'li2013'
 qtag = 'liu2017'
 qtag = 'wang2018'
-qtag = 'li2013'
-fi = sprintf('~/projects/genomes/data/%s/10.rds', qtag)
+fi = sprintf('~/projects/genome/data2/%s/10.rds', qtag)
 res = readRDS(fi)
 hs = res$hs %>% select(qid,qchrom,qpos,n.tgt)
 
