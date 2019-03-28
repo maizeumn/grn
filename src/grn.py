@@ -28,13 +28,6 @@ SKLEARN_REGRESSOR_FACTORY = {
     'GBM': GradientBoostingRegressor
 }
 
-# dir_genie3 = '/home/springer/zhoux379/source/git/GENIE3/GENIE3_python'
-# sys.path.insert(0, dir_genie3)
-# from GENIE3 import *
-#dir_dyngenie3 = '/home/springer/zhoux379/source/git/dynGENIE3/dynGENIE3_python'
-#sys.path.insert(0, dir_dyngenie3)
-#from dynGENIE3 import *
-
 def compute_feature_importances(estimator):
     """Computes variable importances from a trained tree-based model.
     """
@@ -43,8 +36,8 @@ def compute_feature_importances(estimator):
     else:
         importances = [e.tree_.compute_feature_importances(normalize=False)
                        for e in estimator.estimators_]
-        importances = asarray(importances)
-        return sum(importances,axis=0) / len(estimator)
+        importances = np.asarray(importances)
+        return np.sum(importances,axis=0) / len(estimator)
 
 def get_link_list(VIM,gene_names=None,regulators='all',maxcount='all',file_name=None):
     """Gets the ranked list of (directed) regulatory links.
@@ -82,7 +75,7 @@ def get_link_list(VIM,gene_names=None,regulators='all',maxcount='all',file_name=
     """
     
     # Check input arguments      
-    if not isinstance(VIM,ndarray):
+    if not isinstance(VIM,np.ndarray):
         raise ValueError('VIM must be a square array')
     elif VIM.shape[0] != VIM.shape[1]:
         raise ValueError('VIM must be a square array')
@@ -182,39 +175,7 @@ def get_link_list(VIM,gene_names=None,regulators='all',maxcount='all',file_name=
                 target_idx = int(target_idx)
                 print('G%d\tG%d\t%.6f' % (TF_idx+1,target_idx+1,score))
 
-def check_genie3_input(exp_mat,gids,rids,tree_method,K,ntrees,max_depth,nthreads):
-    if not isinstance(exp_mat,ndarray):
-        raise ValueError('exp_mat must be an array in which each row corresponds to a condition/sample and each column corresponds to a gene')
-    ngenes = exp_mat.shape[1]
-    if gids is not None:
-        if not isinstance(gids,(list,tuple)):
-            raise ValueError('input argument gene_names must be a list of gene names')
-        elif len(gids) != ngenes:
-            raise ValueError('input argument gene_names must be a list of length p, where p is the number of columns/genes in the expr_data')
-    if rids != 'all':
-        if not isinstance(rids,(list,tuple)):
-            raise ValueError('input argument regulators must be a list of gene names')
-        if gids is None:
-            raise ValueError('the gene names must be specified (in input argument gene_names)')
-        else:
-            sIntersection = set(gids).intersection(set(rids))
-            if not sIntersection:
-                raise ValueError('the genes must contain at least one candidate regulator')
-    if tree_method not in ['RF','ET']:
-        raise ValueError('input argument tree_method must be "RF" (Random Forests) or "ET" (Extra-Trees)')
-    if K not in ['sqrt', 'all'] and not isinstance(K,int):
-        raise ValueError('input argument K must be "sqrt", "all" or a stricly positive integer')
-    if isinstance(K,int) and K <= 0:
-        raise ValueError('input argument K must be "sqrt", "all" or a stricly positive integer')
-    if not isinstance(ntrees,int) or ntrees <= 0:
-        raise ValueError('input argument ntrees must be a stricly positive integer')
-    if not isinstance(nthreads,int) or nthreads <= 0:
-        raise ValueError('input argument nthreads must be a stricly positive integer')
-    print('Tree method: ' + str(tree_method))
-    print('K: ' + str(K))
-    print('Number of trees: ' + str(ntrees))
-
-def GENIE3(exp_mat,odir,gids,rids,tree_method='RF',K='sqrt',ntrees=1000,max_depth=100,nthreads=1):
+def GENIE3(em,odir,gids,rids,tree_method='RF',K='sqrt',ntrees=1000,max_depth=100,nthreads=1):
     '''Computation of tree-based scores for all putative regulatory links.
 
     Parameters
@@ -254,65 +215,70 @@ def GENIE3(exp_mat,odir,gids,rids,tree_method='RF',K='sqrt',ntrees=1000,max_dept
     '''
 
     time_start = time.time()
-    check_genie3_input(exp_mat,gids,rids,tree_method,K,ntrees,max_depth,nthreads)
-    ngenes = exp_mat.shape[1]
-    input_idx = [i for i, gid in enumerate(gids) if gid in rids]
+    ngenes = em.shape[1]
+    if gids is not None:
+        if not isinstance(gids,(list,tuple)):
+            raise ValueError('input argument gene_names must be a list of gene names')
+        elif len(gids) != ngenes:
+            raise ValueError('input argument gene_names must be a list of length p, where p is the number of columns/genes in the expr_data')
+    if K not in ['sqrt', 'all'] and not isinstance(K,int):
+        raise ValueError('input argument K must be "sqrt", "all" or a stricly positive integer')
+    if isinstance(K,int) and K <= 0:
+        raise ValueError('input argument K must be "sqrt", "all" or a stricly positive integer')
+    if not isinstance(ntrees,int) or ntrees <= 0:
+        raise ValueError('input argument ntrees must be a stricly positive integer')
+    if not isinstance(nthreads,int) or nthreads <= 0:
+        raise ValueError('input argument nthreads must be a stricly positive integer')
+    print('Tree method: ' + str(tree_method))
+    print('K: ' + str(K))
+    print('Number of trees: ' + str(ntrees))
+    rids = sorted(list(set(rids) & set(gids)))
 
     if not op.isdir(odir): os.makedirs(odir)
     # Learn an ensemble of trees for each target gene, and compute scores for candidate regulators
-    VIM = zeros((ngenes,ngenes))
-    oob_scores = zeros(ngenes)
+    #VIM = np.zeros((ngenes,ngenes))
+    VIM = pd.DataFrame()
+    oob_scores = np.zeros(ngenes)
     if nthreads > 1:
         print('running jobs on %d threads' % nthreads)
         input_data = list()
-        for i in range(ngenes):
-            fo = "%s/%s.pkl" % (odir, gids[i])
-            input_data.append( [exp_mat,i,input_idx,tree_method,K,ntrees,max_depth,fo] )
+        for gid in gids:
+            fo = "%s/%s.pkl" % (odir, gid)
+            input_data.append( [em,gid,rids,tree_method,K,ntrees,max_depth,fo] )
 
         pool = Pool(nthreads)
         alloutput = pool.map(wr_GENIE3_single, input_data)
         for (i,res) in alloutput:
             oob_score, vi = res
             oob_scores[i] = oob_score
-            VIM[i,:] = vi
+            VIM.append(vi)
     else:
         print('running single threaded jobs')
-        for i in range(ngenes):
-            print('Gene %d/%d...' % (i+1,ngenes))
-            fo = "%s/%s.pkl" % (odir, gids[i])
-            oob_score, vi, reg = GENIE3_single(exp_mat,i,input_idx,tree_method,K,ntrees,max_depth,fo)
-            oob_scores[i] = oob_score
-            VIM[i,:] = vi
-
-    VIM = transpose(VIM)
+        for gid in gids:
+            fo = "%s/%s.pkl" % (odir, gid)
+            oob_score, vi, reg = GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo)
+            oob_scores.append(oob_score)
+            VIM.append(vi)
 
     time_end = time.time()
     print("Elapsed time: %.2f seconds" % (time_end - time_start))
-
     return (oob_scores, VIM)
 
 def wr_GENIE3_single(args):
     return([args[1], GENIE3_single(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])])
 
-def GENIE3_single(expr_data,output_idx,input_idx,tree_method,K,ntrees,max_depth,fo):
-
-    ngenes = expr_data.shape[1]
-
+def GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo):
     # Expression of target gene
-    output = expr_data[:,output_idx]
-
+    em_o = em[gid].values.tolist()
     # Normalize output data
-    output = output / std(output)
+    #em_o = em_o / np.std(em_o)
 
-    # Remove target gene from candidate regulators
-    input_idx = input_idx[:]
-    if output_idx in input_idx:
-        input_idx.remove(output_idx)
-
-    expr_data_input = expr_data[:,input_idx]
+    if gid in rids:
+        rids.remove(gid)
+    em_i = em[rids]
 
     # Parameter K of the tree-based method
-    if (K == 'all') or (isinstance(K,int) and K >= len(input_idx)):
+    if (K == 'all') or (isinstance(K,int) and K >= len(rids)):
         max_features = "auto"
     else:
         max_features = K
@@ -323,24 +289,24 @@ def GENIE3_single(expr_data,output_idx,input_idx,tree_method,K,ntrees,max_depth,
                                                  max_features=max_features,
                                                  max_depth=max_depth,
                                                  oob_score=True)
-    reg.fit(expr_data_input,output)
+    reg.fit(em_i, em_o)
 
     # Compute importance scores
-    vi = zeros(ngenes)
-    vi[input_idx] = compute_feature_importances(reg)
+    vis = {'rid':rids, 'tid': [gid]*len(rids), 'score': reg.feature_importances_}
     oob_score = reg.oob_score_
+    res = [rids, reg]
     with open(fo, 'wb') as fho:
-        _pickle.dump(reg, fho, protocol=4)
+        _pickle.dump(res, fho, protocol=4)
 
-    return (oob_score, vi)
+    return (oob_score, vis)
 
 def eval_genie3(reg, exp_mat,gids,rids, mdir):
     ngenes = exp_mat.shape[1]
     input_idx = [i for i, gid in enumerate(gids) if gid in rids]
 
     # Learn an ensemble of trees for each target gene, and compute scores for candidate regulators
-    VIM = zeros((ngenes,ngenes))
-    oob_scores = zeros(ngenes)
+    VIM = np.zeros((ngenes,ngenes))
+    oob_scores = np.zeros(ngenes)
 
     if nthreads > 1:
         print('running jobs on %d threads' % nthreads)
@@ -390,7 +356,7 @@ def estimate_degradation_rates(TS_data,time_points):
         for current_timeseries in TS_data[1:]:
             C_min = min(C_min,current_timeseries.min())
     
-    alphas = zeros((nexp,ngenes))
+    alphas = np.zeros((nexp,ngenes))
     
     for (i,current_timeseries) in enumerate(TS_data):
         current_time_points = time_points[i]
@@ -500,7 +466,7 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
         raise ValueError('TS_data must be a list of arrays, where each row of an array corresponds to a time point/sample and each column corresponds to a gene')
     
     for expr_data in TS_data:
-        if not isinstance(expr_data,ndarray):
+        if not isinstance(expr_data,np.ndarray):
             raise ValueError('TS_data must be a list of arrays, where each row of an array corresponds to a time point/sample and each column corresponds to a gene')
     
     ngenes = TS_data[0].shape[1]
@@ -518,7 +484,7 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
         raise ValueError('time_points must be a list of n one-dimensional arrays, where n is the number of time series experiments in TS_data')
     
     for tp in time_points:
-        if (not isinstance(tp,(list,tuple,ndarray))) or (isinstance(tp,ndarray) and tp.ndim > 1):
+        if (not isinstance(tp,(list,tuple,np.ndarray))) or (isinstance(tp,np.ndarray) and tp.ndim > 1):
             raise ValueError('time_points must be a list of n one-dimensional arrays, where n is the number of time series in TS_data')
         
     for (i,expr_data) in enumerate(TS_data):
@@ -526,14 +492,14 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
             raise ValueError('The length of the i-th vector of time_points must be equal to the number of rows in the i-th array of TS_data')
 
     if alpha is not 'from_data':
-        if not isinstance(alpha,(list,tuple,ndarray,int,float)):
+        if not isinstance(alpha,(list,tuple,np.ndarray,int,float)):
             raise ValueError("input argument alpha must be either 'from_data', a positive number or a vector of positive numbers")
         
         if isinstance(alpha,(int,float)) and alpha < 0:
             raise ValueError("the degradation rate(s) specified in input argument alpha must be positive")
         
-        if isinstance(alpha,(list,tuple,ndarray)):
-            if isinstance(alpha,ndarray) and alpha.ndim > 1:
+        if isinstance(alpha,(list,tuple,np.ndarray)):
+            if isinstance(alpha,np.ndarray) and alpha.ndim > 1:
                 raise ValueError("input argument alpha must be either 'from_data', a positive number or a vector of positive numbers")
             if len(alpha) != ngenes:
                 raise ValueError('when input argument alpha is a vector, this must be a vector of length p, where p is the number of genes')
@@ -542,7 +508,7 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
                     raise ValueError("the degradation rate(s) specified in input argument alpha must be positive")
 
     if SS_data is not None:
-        if not isinstance(SS_data,ndarray):
+        if not isinstance(SS_data,np.ndarray):
             raise ValueError('SS_data must be an array in which each row corresponds to a steady-state condition/sample and each column corresponds to a gene')
         
         if SS_data.ndim != 2:
@@ -608,7 +574,7 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
     if alpha is 'from_data':
         alphas = estimate_degradation_rates(TS_data,time_points)
     elif isinstance(alpha,(int,float)):
-        alphas = zeros(ngenes) + float(alpha)    
+        alphas = np.zeros(ngenes) + float(alpha)    
     else:
         alphas = [float(a) for a in alpha]
 
@@ -629,14 +595,14 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
 
 
     # Learn an ensemble of trees for each target gene and compute scores for candidate regulators
-    VIM = zeros((ngenes,ngenes))
+    VIM = np.zeros((ngenes,ngenes))
 
     if compute_quality_scores:
         if tree_method == 'RF':
-            prediction_score = zeros(ngenes)
+            prediction_score = np.zeros(ngenes)
         else:
             prediction_score = []
-        stability_score = zeros(ngenes)
+        stability_score = np.zeros(ngenes)
     else:
         prediction_score = []
         stability_score = []
@@ -684,7 +650,7 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
             if save_models:
                 treeEstimators[i] = treeEstimator
 
-    VIM = transpose(VIM)
+    VIM = np.transpose(VIM)
     if compute_quality_scores:
         if tree_method == 'RF':
             prediction_score = mean(prediction_score)
@@ -705,19 +671,19 @@ def dynGENIE3_single(TS_data,time_points,SS_data,output_idx,alpha,input_idx,tree
 
     ngenes = TS_data[0].shape[1]
     nexp = len(TS_data)
-    nsamples_time = sum([expr_data.shape[0] for expr_data in TS_data]) 
+    nsamples_time = np.sum([expr_data.shape[0] for expr_data in TS_data]) 
     ninputs = len(input_idx)
 
     # Construct learning sample 
 
     # Time-series data
-    input_matrix_time = zeros((nsamples_time-h*nexp,ninputs))
-    output_vect_time = zeros(nsamples_time-h*nexp)
+    input_matrix_time = np.zeros((nsamples_time-h*nexp,ninputs))
+    output_vect_time = np.zeros(nsamples_time-h*nexp)
     
     # Data for the computation of the prediction score on out-of-bag samples
-    output_vect_time_present = zeros(nsamples_time-h*nexp)
-    output_vect_time_future = zeros(nsamples_time-h*nexp)
-    time_diff = zeros(nsamples_time-h*nexp)
+    output_vect_time_present = np.zeros(nsamples_time-h*nexp)
+    output_vect_time_future = np.zeros(nsamples_time-h*nexp)
+    time_diff = np.zeros(nsamples_time-h*nexp)
 
     nsamples_count = 0
 
@@ -783,7 +749,7 @@ def dynGENIE3_single(TS_data,time_points,SS_data,output_idx,alpha,input_idx,tree
 
     # Compute importance scores
     feature_importances = compute_feature_importances(treeEstimator)
-    vi = zeros(ngenes)
+    vi = np.zeros(ngenes)
     vi[input_idx] = feature_importances
     vi[output_idx] = 0
 
@@ -830,7 +796,7 @@ def dynGENIE3_single(TS_data,time_points,SS_data,output_idx,alpha,input_idx,tree
         # Stability score
    
         # Importances returned by each tree
-        importances_by_tree = asarray([e.tree_.compute_feature_importances(normalize=False) for e in treeEstimator.estimators_])
+        importances_by_tree = np.asarray([e.tree_.compute_feature_importances(normalize=False) for e in treeEstimator.estimators_])
         if output_idx in input_idx:
             idx = input_idx.index(output_idx)
             # Remove importances of target gene
@@ -849,7 +815,7 @@ def dynGENIE3_single(TS_data,time_points,SS_data,output_idx,alpha,input_idx,tree
             stability_score = mean([len(top_by_tree[i].intersection(top_by_tree[j])) for (i,j) in combinations(range(ntrees),2)]) / float(ntop)
             
                 
-        # Variance of output is too small --> no forest was built and all the importances are zero    
+        # Variance of output is too small --> no forest was built and all the importances are np.zero    
         else:
             stability_score = 0.0
             
@@ -906,7 +872,7 @@ def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulator
     time_start = time.time()
     
     # Check input arguments
-    if not isinstance(expr_WT,ndarray) or expr_WT.ndim > 1:
+    if not isinstance(expr_WT,np.ndarray) or expr_WT.ndim > 1:
         raise ValueError("input argument expr_WT must be a vector of numbers")
         
     ngenes = len(expr_WT)
@@ -914,14 +880,14 @@ def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulator
     if len(treeEstimators) != ngenes:
         raise ValueError("input argument treeEstimators must contain p tree models, where p is the number of genes in expr_WT")
     
-    if not isinstance(alpha,(list,tuple,ndarray,int,float)):
+    if not isinstance(alpha,(list,tuple,np.ndarray,int,float)):
         raise ValueError("input argument alpha must be a positive number or a vector of positive numbers")
         
     if isinstance(alpha,(int,float)) and alpha < 0:
         raise ValueError("the degradation rate(s) specified in input argument alpha must be positive")
         
-    if isinstance(alpha,(list,tuple,ndarray)):
-        if isinstance(alpha,ndarray) and alpha.ndim > 1:
+    if isinstance(alpha,(list,tuple,np.ndarray)):
+        if isinstance(alpha,np.ndarray) and alpha.ndim > 1:
             raise ValueError("input argument alpha must be a positive number or a vector of positive numbers")
         if len(alpha) != ngenes:
             raise ValueError('when input argument alpha is a vector, this must be a vector of length p, where p is the number of genes')
@@ -962,7 +928,7 @@ def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulator
     geneidx.remove(KO2_idx)
     
     if isinstance(alpha,(int,float)):
-        alphas = zeros(ngenes) + float(alpha)    
+        alphas = np.zeros(ngenes) + float(alpha)
     else:
         alphas = [float(a) for a in alpha]
     
@@ -977,7 +943,7 @@ def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulator
     
     print('Predicting time series...')
        
-    TS_predict = zeros((nTimePoints+1,ngenes))
+    TS_predict = np.zeros((nTimePoints+1,ngenes))
     TS_predict[0,:] = expr_WT
     TS_predict[0,KO1_idx] = 0
     TS_predict[0,KO2_idx] = 0
@@ -1048,15 +1014,14 @@ def run_GENIE3(args):
     tree_method, K, ntrees = args.tree_method, args.K, args.ntrees
     max_depth = args.max_depth
 
-    x = pd.read_csv(fi, sep='\t')
-    sids = x.columns.values.tolist()[1:]
-    gids = x['gid'].tolist()
-    exp_mat = x.drop('gid',axis=1).T.values
+    em = pd.read_csv(fi, index_col=0, sep='\t').T
+    sids = em.index.tolist()
+    gids = em.columns.values.tolist()
 
     rids = pd.read_csv(ft, sep='\t', names=['rid'])['rid'].tolist()
-    rids = list(set(rids) & set(gids))
+    rids = sorted(list(set(rids) & set(gids)))
 
-    oob_scores, VIM = GENIE3(exp_mat, odir, gids = gids, rids = rids,
+    oob_scores, VIM = GENIE3(em, odir, gids = gids, rids = rids,
                              tree_method = tree_method,
                              K = K, max_depth = max_depth,
                              ntrees = ntrees,

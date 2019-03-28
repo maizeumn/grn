@@ -6,7 +6,7 @@ p$add_argument("fi", nargs=1, help="Input file with expression matrix (cpm.rds)"
 p$add_argument("fo", nargs=1, help="output file (*.tsv)")
 p$add_argument("--subid", default='z',
                help="subset ID used to filter expression matrix [default: %(default)s]")
-p$add_argument("--num_sam_on", type='integer', default=1,
+p$add_argument("--num_sam_on", type='integer', default=0,
                help="a gene needs to be expressed in at least XX samples [default: %(default)s]")
 p$add_argument("--pct_sam_on", type='double', default=0,
                help="a gene needs to be expressed in at least XX%% of samples [default: %(default)s]")
@@ -65,7 +65,7 @@ gids = tis %>%
 
 tis2 = tis %>% filter(gid %in% gids)
 min_sd = quantile(tis2$val_sd, args$min_var_p)
-gids = tis2 %>% filter(val_sd > as.numeric(min_sd)) %>% pull(gid)
+gids = tis2 %>% filter(val_sd >= as.numeric(min_sd)) %>% pull(gid)
 
 to = ti %>% filter(gid %in% gids) %>%
     spread(SampleID, val)

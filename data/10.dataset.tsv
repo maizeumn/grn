@@ -12,7 +12,6 @@ n17a_2	me17a	lin2017	root	root	genotype	27
 n17a_3	me17a	lin2017	shoot	shoot	genotype	27
 n17a_4	me17a	lin2017	tassel	tassel	genotype	26
 n17a_5	me17a	lin2017	SAM	SAM	genotype	27
-n18a	me18a	kremling2018	7*306	z	tissue*genotype	1781
 n18a_1	me18a	kremling2018	GRoot	GRoot	genotype	274
 n18a_2	me18a	kremling2018	GShoot	GShoot	genotype	280
 n18a_3	me18a	kremling2018	Kern	Kern	genotype	231
@@ -22,6 +21,10 @@ n18a_6	me18a	kremling2018	LMAD	LMAD	genotype	204
 n18a_7	me18a	kremling2018	LMAN	LMAN	genotype	262
 n18c	me18c	wang2018	seedling_v2	z	ril	617
 n18d	me18d	shaefer2018	root_GCN	z	genotype	48
+n18e_1	me18e	huang2018	leaf	leaf	genotype	394
+n18e_2	me18e	huang2018	root	root	genotype	176
+n18e_3	me18e	huang2018	SAM	SAM	genotype	406
+n18e_4	me18e	huang2018	seed	seed	genotype	159
 n19a	me19a	mazaheri2019	seedling	z	genotype	453
 n99a	me99a	kaeppler2018	5*96	z	tissue*genotype	447
 n99a_1	me99a	kaeppler2018	endosperm	endosperm	genotype	89
@@ -43,8 +46,3 @@ nc01	mec01	leaf dev	leaf	z	tissue	40
 nc02	mec02	seed dev	embryo_endpsperm	z	tissue	61
 nc03	mec03	dev atlas	combined	z	tissue	139
 nc04	mec04	root dev	3*15	z	tissue*genotype	50
-np16_1	np16_1	walley2016	mRNA	z	liftover	23
-np18_1	np18_1	huang2018	leaf	z	liftover	394
-np18_2	np18_2	huang2018	root	z	liftover	176
-np18_3	np18_3	huang2018	SAM	z	liftover	406
-np18_4	np18_4	huang2018	seed	z	liftover	159
