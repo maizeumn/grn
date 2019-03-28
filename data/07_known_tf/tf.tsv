@@ -6,4 +6,4 @@ Year	TF	Study	Tissues	Targets	Reference
 2015	Opaque2 (O2)	ChIP-seq	ear	204	Eveland2014
 2016	HDA101	ChIP-seq	seed, kernel	108	Yang2016
 2018	ZmbZIP22	ChIP-seq	endosperm	33 (26)	Li2018
-2018	Auxin Response Ractors (ARF)	DAP-seq	in vitro	>100,000 cis-regulatory regions	Galli2018
+2018	Auxin Response Ractors (ARF) family (14)	DAP-seq	in vitro	>100,000 cis-regulatory regions	Galli2018
