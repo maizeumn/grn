@@ -238,19 +238,19 @@ def GENIE3(em,odir,gids,rids,tree_method='RF',K='sqrt',ntrees=1000,max_depth=100
     # Learn an ensemble of trees for each target gene, and compute scores for candidate regulators
     #VIM = np.zeros((ngenes,ngenes))
     VIM = pd.DataFrame()
-    oob_scores = np.zeros(ngenes)
+    oob_scores = []
     if nthreads > 1:
         print('running jobs on %d threads' % nthreads)
         input_data = list()
         for gid in gids:
             fo = "%s/%s.pkl" % (odir, gid)
-            input_data.append( [em,gid,rids,tree_method,K,ntrees,max_depth,fo] )
+            input_data.append([em,gid,rids,tree_method,K,ntrees,max_depth,fo])
 
         pool = Pool(nthreads)
         alloutput = pool.map(wr_GENIE3_single, input_data)
-        for (i,res) in alloutput:
+        for res in alloutput:
             oob_score, vi = res
-            oob_scores[i] = oob_score
+            oob_scores.append(oob_score)
             VIM.append(vi)
     else:
         print('running single threaded jobs')
@@ -293,6 +293,7 @@ def GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo):
 
     # Compute importance scores
     vis = {'rid':rids, 'tid': [gid]*len(rids), 'score': reg.feature_importances_}
+    vis = pd.DataFrame(data=vis)
     oob_score = reg.oob_score_
     res = [rids, reg]
     with open(fo, 'wb') as fho:
@@ -300,44 +301,38 @@ def GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo):
 
     return (oob_score, vis)
 
-def eval_genie3(reg, exp_mat,gids,rids, mdir):
-    ngenes = exp_mat.shape[1]
-    input_idx = [i for i, gid in enumerate(gids) if gid in rids]
+def eval_model(a_fi_filt, a_mdir, b_fi_filt, b_fi_raw, fo):
+    em = pd.read_csv(a_fi_filt, index_col=0, sep='\t')
+    gids_a = em.index.tolist()
+    em = pd.read_csv(b_fi_filt, index_col=0, sep='\t')
+    gids_b = em.index.tolist()
+    gids = list(set(gids_a) & set(gids_b))
 
-    # Learn an ensemble of trees for each target gene, and compute scores for candidate regulators
-    VIM = np.zeros((ngenes,ngenes))
-    oob_scores = np.zeros(ngenes)
+    em = pd.read_csv(b_fi_raw, index_col=0, sep='\t').T
+    sids = em.index.tolist()
+    nsamples = em.shape[0]
+    em['default'] = np.zeros(nsamples)
 
-    if nthreads > 1:
-        print('running jobs on %d threads' % nthreads)
-        input_data = list()
-        for i in range(ngenes):
-            fo = "%s/%s.pkl" % (odir, gids[i])
-            input_data.append( [exp_mat,i,input_idx,tree_method,K,ntrees,max_depth,fo] )
+    fho = open(fo, 'w')
+    for gid in gids:
+        fm = '%s/%s.pkl' % (a_mdir, gid)
+        rids, reg = _pickle.load(open(fm, 'rb'))
+        for i, rid in enumerate(rids):
+            if rid not in em.columns.values:
+                rids[i] = 'default'
+        if gid in rids:
+            em_i = em[rids].drop(rid, axis=1)
+        else:
+            em_i = em[rids]
 
-        pool = Pool(nthreads)
-        alloutput = pool.map(wr_GENIE3_single, input_data)
-
-        for (i,res) in alloutput:
-            oob_score, vi = res
-            oob_scores[i] = oob_score
-            VIM[i,:] = vi
-
-    else:
-        print('running single threaded jobs')
-        for i in range(ngenes):
-            print('Gene %d/%d...' % (i+1,ngenes))
-            fo = "%s/%s.pkl" % (odir, gids[i])
-            oob_score, vi, reg = GENIE3_single(exp_mat,i,input_idx,tree_method,K,ntrees,max_depth,fo)
-            oob_scores[i] = oob_score
-            VIM[i,:] = vi
-
-    VIM = transpose(VIM)
-
-    time_end = time.time()
-    print("Elapsed time: %.2f seconds" % (time_end - time_start))
-
-    return (oob_scores, VIM)
+        em_o = em[gid].values.tolist()
+        #em_o = em_o / np.std(em_o)
+        assert(len(rids) == reg.n_features_)
+        assert(em_i.shape[1] == reg.n_features_)
+        #reg.oob_score_
+        score = reg.score(em_i, em_o)
+        fho.write("\t".join([gid, str(score)]) + "\n")
+    fho.close()
 
 def estimate_degradation_rates(TS_data,time_points):
     
@@ -1000,6 +995,15 @@ def main():
     sp1.add_argument('-p', '--thread', type=int, default=1, help='threads')
     sp1.add_argument('--ntrees', type=int, default=1000, help='number trees to grow')
     sp1.set_defaults(func = run_xgboost)
+
+    sp1 = sp.add_parser('eval_model', help='Evaluate model performance',
+            formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    sp1.add_argument('a_fi_filt', help='[A] filtered expression matrix (*.tsv)')
+    sp1.add_argument('a_mdir', help='[A] model directory')
+    sp1.add_argument('b_fi_filt', help='[B] filtered expression matrix (*.tsv)')
+    sp1.add_argument('b_fi_raw', help='[B] raw expression matrix (*.tsv)')
+    sp1.add_argument('fo', help='output file (*.tsv)')
+    sp1.set_defaults(func = eval_model)
 
     args = parser.parse_args()
     if args.command:
