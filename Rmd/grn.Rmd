@@ -42,7 +42,7 @@ header-includes:
 source("../src/functions.R")
 options(knitr.table.format = "latex")
 tp = th %>% select(net_type,nid,study,note,sample_size,col) %>%
-    filter(! str_detect(nid, "^n99b")) %>%
+#    filter(! str_detect(nid, "^n99b")) %>%
     mutate(reference=str_to_title(study)) %>%
     mutate(reference=str_replace(reference, '(\\d+)$', ' et al. \\1')) %>%
     arrange(net_type, nid) %>%

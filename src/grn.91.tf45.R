@@ -116,4 +116,50 @@ fo = file.path(dirw, '15.targets.cpm.tsv')
 write_tsv(tot, fo)
 #}}}
 
+#{{{ process W22 expression
+fi1 = file.path('~/projects/genome/data2/uniformmu', 'Samples_B73_Ref_HTseq.txt')
+fi2 = file.path(dirw, 'Samples_W22_Ref_HTseq.txt')
+ti = read_tsv(fi1) %>% gather(cond, counts, -Genes) %>%
+    rename(gid=Genes) %>%
+    filter(!str_detect(gid, '^_'))
+#
+ti2 = ti %>% mutate(cond = str_replace(cond, "_Ref_counts.txt", "")) %>%
+    separate(cond, c('cond','ref'), sep='_') %>%
+    separate(cond, c('Genotype',"Tissue",'Rep'), sep='-') %>%
+    group_by(gid,Genotype,Tissue) %>%
+    summarize(counts = sum(counts)) %>% ungroup() %>%
+    group_by(Genotype, Tissue) %>%
+    mutate(rpm = counts/sum(counts) * 1000000) %>%
+    ungroup()
+#
+tis_map = c('A'='Anther','En'='Endosperm','Em'='Embryo','I'='Internode',
+'IE'='Ear', 'L'='Leaf','L10'='Leaf10', 'R'='Root', 'SC'='Shoot', 'T'='Tassel')
+ti3 = ti2 %>% filter(Genotype %in% c("B","W")) %>%
+    #filter(Tissue %in% c("En","Em","L10","SC","R","I")) %>%
+    mutate(Tissue=tis_map[Tissue]) %>%
+    mutate(cond = sprintf("%s_%s", Genotype, Tissue)) %>%
+    select(gid,cond,rpm) %>%
+    mutate(rpm = sprintf("%.01f", rpm)) %>%
+    spread(cond, rpm)
+te = ti3
+#}}}
+
+#{{{ expression in patric's W22 table
+fi = file.path(dirw, '01.rds')
+res = readRDS(fi)
+t_reg = res$t_reg
+t_tgt = res$t_tgt %>% select(gid, gid_v3)
+
+tor = te %>% filter(gid %in% t_reg$gid) %>%
+    inner_join(t_reg, by = 'gid') %>%
+    select(gid,gid_v3, everything())
+fo = file.path(dirw, '18.W22.tf.tsv')
+write_tsv(tor, fo)
+
+tot = te %>% filter(gid %in% t_tgt$gid) %>%
+    inner_join(t_tgt, by = 'gid') %>%
+    select(gid,gid_v3, everything())
+fo = file.path(dirw, '18.W22.targets.tsv')
+write_tsv(tot, fo)
+#}}}
 

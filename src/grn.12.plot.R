@@ -4,17 +4,53 @@ ncfg = th %>% filter(!str_detect(nid, "^n99[b]")) %>%
 nids = ncfg$nid
 nid_txts = ncfg$lgd
 nid_cols = ncfg$col
+nids0 = th$nid
+nid_txts0 = th$lgd
+nid_cols0 = th$col
 dirw = file.path(dird, '14_eval_sum')
 diri = '~/projects/rnaseq'
 gcfg = read_genome_conf()
 #
-fi = file.path(dirw, '01.tf.rds')
-ev_tf = readRDS(fi)
+fi_em = file.path(dirr, '01.meval.rds')
+fi_tf = file.path(dirr, '01.tf.rds')
+fi_br = file.path(dirr, '01.br.rds')
+fi_go = file.path(dirr, '01.go.rds')
+fi_bm = file.path(dirr, '01.bm.rds')
+ev_tf = readRDS(fi_tf)
 
 #{{{ general stats
 tp0 = ev_tf %>%
     select(nid, nstat) %>% unnest() %>%
     filter(net_size == 5e4) %>% select(-net_size)
+
+tp = ev_tf %>% select(nid, oob) %>% unnest() %>%
+    inner_join(th, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts0)))
+tps = tp %>% group_by(nid) %>%
+    summarise(n=n(), n_hq = sum(oob >= .8),
+              q25=quantile(oob,.25),
+              q50=quantile(oob,.5),
+              q75=quantile(oob,.75)) %>% ungroup() %>%
+    mutate(lgd2 = sprintf("N=%d", n)) %>%
+    inner_join(th, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels = rev(nid_txts0)))
+
+p1 = ggplot(tp) +
+    geom_violin(aes(x=lgd, y=oob)) +
+    geom_errorbar(data=tps, aes(x=lgd, ymin=q25, ymax=q75), width=.2) +
+    geom_point(data=tps, aes(x=lgd, y=q50)) +
+    coord_flip() +
+    scale_x_discrete(name = '# TFs in network') +
+    scale_y_continuous(name = '# Targets in network') +
+    scale_color_aaas(name = 'Network type') +
+    scale_size(name = 'Median degree per TF') +
+    otheme(legend.pos = 'top.left', legend.dir = 'v', legend.title = T,
+        xtick=T, ytick=T,
+        xtitle=T, ytitle=T, xtext=T, ytext=T) +
+    theme(axis.text.y = element_text(color=rev(nid_cols0)))
+fo = file.path(dirw, '03.test.pdf')
+ggsave(p1, file=fo, width=6, height=8)
+
 #{{{ topology stats
 tp1 = tp0 %>%
     mutate(deg.reg.q50 = map_dbl(deg.reg, .f <- function(x) median(x$n))) %>%
@@ -107,8 +143,8 @@ gs = read_gs()
 levs = c("AUROC", "AUPR")
 ctags = c(gs$ctags_tf5, 'known_TFs', gs$ctags_tfbs)
 ctags = c(gs$ctags_tf5, gs$ctags_tfbs)
-ctags = gs$ctags_tf5; pre = 'tf'
 ctags =gs$ctags_tfbs; pre = 'tfbs'
+ctags = gs$ctags_tf5; pre = 'tf'
 fp = sprintf("%s/05.auc.%s.pdf", dirw, pre)
 tp0 = ev_tf %>% select(nid, tfstat) %>%
     unnest() %>%
@@ -206,8 +242,7 @@ ggsave(p1, file = fp, width = 6, height = 6)
 
 #{{{ evaluate using GO/CornCyc
 gs = read_gs()
-fi = file.path(dirw, '01.go.rds')
-ev_go = readRDS(fi)
+ev_go = readRDS(fi_go)
 net_sizes = c(1e4,5e4,1e5,5e5)
 net_sizes = c(5e4,5e5)
 net_size_map = c('1e4'=1e4, '5e4'=5e4, '1e5'=1e5)
@@ -221,10 +256,10 @@ tp2 = ev_go %>% select(nid, enrich_grp) %>% unnest() %>%
     ungroup() %>%
     mutate(sigtxt = str_c(n_grp_sig,n_grp,sep='/')) %>%
     select(nid,net_size,ctag,sigtxt)
-ctags = c("li2013","liu2017","wang2018")
 ctags = c("GO_HC", "GO_arabidopsis","CornCyc")
-fo = file.path(dirw, "09.go.eQTL.pdf")
+ctags = c("li2013","liu2017","wang2018")
 fo = file.path(dirw, "09.go.pdf")
+fo = file.path(dirw, "09.go.eQTL.pdf")
 tp = tp1 %>% left_join(tp2, by=c('nid','net_size','ctag')) %>%
     mutate(sig = ifelse(pval<.05, 1, 0)) %>%
     filter(ctag %in% ctags) %>%
@@ -479,8 +514,7 @@ ggpubr::ggarrange(p1,
 #{{{ read in
 #fi = file.path(dirw, "../13_eval/n17a_br.rds")
 #x=readRDS(fi)
-fi = file.path(dirw, '01.br.rds')
-ev_br = readRDS(fi) %>%
+ev_br = readRDS(fi_br) %>%
     mutate(p.drc = ifelse(is.na(p.drc), b.drc, p.drc)) %>%
     mutate(tgt.DE = ifelse(tgt.DE == 'non_DE', 'non_DE', 'DE'))
 des = c("non_DE","DE1-2","DE2-4","DE4+","SPE")
@@ -516,9 +550,10 @@ tp = tp0 %>%
     inner_join(ncfg, by='nid') %>%
     mutate(lgd = factor(lgd, levels=rev(nid_txts)))
 leg = 'Prop. TF-target pairs showing predicted direction of change'
+#
 p1 = ggplot(tp, aes(tag, lgd)) +
     geom_tile(aes(fill = pl.tgt.de)) +
-    geom_text(aes(label = txt), size=2) +
+    geom_text(aes(label = txt), size=2, lineheight=.8) +
     scale_x_discrete(name = 'TF change', expand = expand_scale(mult=c(0,0))) +
     scale_y_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
     scale_fill_gradientn(name=leg, colors=pal_gradient(reverse=T)) +
@@ -571,7 +606,7 @@ tp = tp0 %>%
 leg = 'Fold Enrichment in Prop. Target DE'
 p1 = ggplot(tp, aes(x=tissue, y=lgd)) +
     geom_tile(aes(fill = fc)) +
-    geom_text(aes(label = txt), size=2, color='black') +
+    geom_text(aes(label = txt), size=2, lineheight=.8, color='black') +
     scale_x_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
     scale_y_discrete(name = '', expand = expand_scale(mult=c(0,0))) +
     scale_fill_gradientn(name=leg, colors = pal_gradient(reverse=T)) +
@@ -854,8 +889,7 @@ nids = ncfg$nid
 nid_txts = ncfg$lgd
 nid_cols = ncfg$col
 #
-fi = file.path(dirw, '01.bm.rds')
-ev_bm = readRDS(fi)
+ev_bm = readRDS(fi_bm)
 tiss1 = c("Seedling","Root","Internode","Leaf","Endosperm")
 ev_bm0 = ev_bm
 
@@ -874,6 +908,7 @@ ev_bm = ev_bm0 %>%
 nids_hc = c('nc03',
             'n13c','n14a','n15a','n16a','n18d','n19a',
             'n17a','n18a_1','n18a_2','n18a_3','n18a_4','n18a_5','n18a_6',
+            'n18d', 'n19a',
             'nc04')
 tz = tibble(
     tissue=tiss1,
@@ -895,16 +930,16 @@ tp0 = ev_bm %>% rename(tissue=Tissue) %>%
               size.spe = sum(!is.na(bm.spe)),
               p.sig.spe = sum(bm.spe,na.rm=T)/size.spe) %>%
     ungroup() %>%
-    mutate(size = size.spc, p.sig = p.sig.spc) %>%
     mutate(size = size.spe, p.sig = p.sig.spe) %>%
+    mutate(size = size.spc, p.sig = p.sig.spc) %>%
     group_by(nid, tissue) %>%
     summarise(size = size[which(!simu)],
               p = p.sig[which(!simu)],
               fc = p.sig[which(!simu)]/p.sig[which(simu)]) %>%
               #fc = p.sig[which(!simu)]) %>%
     ungroup()
-fo = file.path(dirw, '21.bm.heat.spc.pdf')
 fo = file.path(dirw, '21.bm.heat.spe.pdf')
+fo = file.path(dirw, '21.bm.heat.spc.pdf')
 #
 tp = tp0 %>%
     mutate(txt = sprintf("%d", size)) %>%
@@ -969,7 +1004,7 @@ tp3 %>% count(pair.type)
 tp3 %>% filter(n.net>=3) %>% count(pair.type)
 #
 # TF level
-tp4 = tp3 %>% filter(n.net >= 3) %>%
+tp4 = tp3 %>%  filter(n.net >= 3) %>%
     group_by(reg.gid) %>%
     summarise(n.tgt = n(), m.drc = mean(m.drc)) %>%
     ungroup() %>%
@@ -1003,15 +1038,7 @@ fo = file.path(dirw, '02.valid.bm.spe.rds')
 saveRDS(val.bm.spe, file=fo)
 #}}}
 
-fo = file.path(dirw, '02.valid.br.rds')
-val.br=readRDS(fo)
-fo = file.path(dirw, '02.valid.bm.spc.rds')
-val.bm.spc=readRDS(fo)
-fo = file.path(dirw, '02.valid.bm.spe.rds')
-val.bm.spe=readRDS(fo)
-
-
-#{{{ check & plot high-conf TF-target pairs
+#{{{ # check & plot high-conf TF-target pairs
 tf1 = val.br$tf %>% filter(n.tgt>=3) %>% pull(reg.gid)
 tf2 = val.bm.spc$tf %>% filter(n.tgt>=3) %>% pull(reg.gid)
 tf3 = val.bm.spe$tf %>% filter(n.tgt>=3) %>% pull(reg.gid)
@@ -1081,17 +1108,15 @@ t_gl = gcfg$loc.gene %>% group_by(gid) %>%
     ungroup() %>%
     mutate(pos=(start+end)/2) %>% select(gid,chrom,pos)
 
-qtag = 'li2013'
-qtag = 'liu2017'
-qtag = 'wang2018'
-fi = sprintf('~/projects/genome/data2/%s/10.rds', qtag)
-res = readRDS(fi)
-hs = res$hs %>% select(qid,qchrom,qpos,n.tgt)
+qtags = c('li2013','liu2017','wang2018')
+hs = tibble(qtag=qtags) %>%
+    mutate(fi=sprintf('~/projects/genome/data2/%s/10.rds', qtag)) %>%
+    mutate(data=map(fi, readRDS)) %>%
+    mutate(data=map(data, 'hs')) %>%
+    select(qtag, data) %>% unnest() %>%
+    select(qtag,qid,qchrom,qpos,n.tgt)
 
-nid = 'n18a_5'
-nid = 'nc03'
 nid = 'n18a_6'
-nid = 'n18c'
 nid = 'n13a'
 
 #{{{
@@ -1144,18 +1169,15 @@ cor.test(as.numeric(tem[tem$gid==tfid,]), as.numeric(tem[tem$gid==tgid,]))
 nids_hc = nid
 tz = ev_go %>% filter(nid %in% nids_hc) %>%
     select(nid, enrich_reg) %>% unnest() %>%
-    filter(ctag == qtag, n >= 10, net_size==50000, pval < .05) %>%
-    select(nid, reg.gid, n, fc, grp=max.grp, max.grp.size) %>%
+    filter(ctag %in% qtags, n >= 10, net_size==50000, pval < .05) %>%
+    select(ctag, nid, reg.gid, n, fc, grp=max.grp, max.grp.size) %>%
     #count(reg.gid, grp) %>% filter(n>=1) %>%
-    arrange(grp,desc(fc)) %>%
+    arrange(ctag,grp,desc(fc)) %>%
     left_join(t_gl, by=c('reg.gid'='gid')) %>% rename(gchrom=chrom,gpos=pos) %>%
-    left_join(hs, by=c('grp'='qid'))
+    left_join(hs, by=c('ctag'='qtag','grp'='qid')) %>%
+    mutate(hit=ifelse(gchrom==qchrom & abs(gpos-qpos)<=5e7,'hit','non-hit'))
 #tz %>% select(-grp,-max.grp.size) %>% print(n=50)
 tz0 = tz
-
-j = rbind(tz0,tz1,tz2) %>% filter(gchrom==qchrom)
-j %>% count(grp)
-j %>% count(reg.gid)
 
 #{{{ plot
 ti = tz
@@ -1166,7 +1188,7 @@ tps = tibble(reg.gid='Zm00001d026147', gname='R1')
 tps = tps %>% inner_join(tp, by = 'reg.gid')
 #
 p1 = ggplot(tp) +
-    geom_point(aes(x = qpos, y = gpos, color=max.grp.size), size=1) +
+    geom_point(aes(x=qpos, y=gpos, color=max.grp.size, shape=hit), size=1) +
     geom_text_repel(data=tps, aes(qpos,gpos,label=gname), nudge_x=-150000000, direction='y', segment.size=.2, size=3) +
     geom_vline(xintercept = tx$start, alpha=.1) +
     geom_vline(xintercept = tx$end, alpha=.1) +
@@ -1175,13 +1197,21 @@ p1 = ggplot(tp) +
     #geom_abline(intercept = 0, slope = 1, alpha=.1) +
     scale_x_continuous(name='trans-eQTL hotsplot position', breaks=tx$pos, labels=tx$chrom, expand=c(0,0)) +
     scale_y_continuous(name='enriched TF position', breaks=tx$pos, labels=tx$chrom, expand=c(0,0)) +
-    scale_size(name = 'N_targets') +
+    scale_shape_manual(values=c(16,4), guide=F) +
+    facet_wrap(~ctag,nrow=1) +
     scale_color_viridis(name='N_targets',option = "plasma") +
     otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, legend.title=T,
          legend.pos='top.center.out', legend.dir='h')
-fp = sprintf("%s/32.hs.%s.pdf", dirw, qtag)
-ggsave(p1, filename = fp, width = 5, height = 5)
+fp = sprintf("%s/32.hs.pdf", dirw, qtag)
+ggsave(p1, filename = fp, width = 12, height = 4.5)
 #}}}
+
+# save to file
+to = tz %>% filter(hit == 'hit') %>%
+    group_by(reg.gid) %>%
+    summarise(qtags = paste(ctag, collapse=',')) %>% ungroup()
+fo = file.path(dirw, '02.hs.tsv')
+write_tsv(to, fo)
 
 tz = ev_go %>% filter(nid==!!nid) %>%
     select(enrich_grp) %>% unnest() %>%
@@ -1200,9 +1230,9 @@ gid = 'Zm00001d028842' #p1
 gid = 'Zm00001d028851'
 tx0 %>% filter(reg.gid == gid)
 
-tx1 = val.br$tf %>% mutate(ctag='br')
-tx2 = val.bm.spe$tf %>% mutate(ctag='bm.spe')
-tx3 = val.bm.spc$tf %>% mutate(ctag='bm.spc')
+#tx1 = val.br$tf %>% mutate(ctag='br')
+#tx2 = val.bm.spe$tf %>% mutate(ctag='bm.spe')
+#tx3 = val.bm.spc$tf %>% mutate(ctag='bm.spc')
 tp = rbind(tx1,tx2,tx3) %>% filter(n.tgt>=10) %>% inner_join(t_gl, by=c('reg.gid'='gid'))
 #
 p1 = ggplot() +

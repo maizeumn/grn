@@ -18,7 +18,8 @@ if( file.access(f_net) == -1 )
     stop(sprintf("file ( %s ) cannot be accessed", f_net))
 
 source("~/projects/grn/src/functions.R")
-x = load(f_net)
+y = readRDS(f_net)
+rids=y$rids; tids=y$tids; t_oob=y$oob; tn=y$tn
 
 eval_netstat <- function(net_size=1e4, tn) {
 #{{{
@@ -49,26 +50,19 @@ eval_tf0 <- function(rid, tf, tids, reg.mat) {
     list(roc=roc, prc=prc, auroc=auroc, auprc=auprc)
     #}}}
 }
-eval_tf <- function(ctag, tnk, rids, tids, reg.mat, net_size=1e6) {
+eval_tf <- function(ctag, tnk, rids, tids, tn, net_size=1e6) {
     #{{{
     tnk0 = tnk %>% filter(ctag == !!ctag) %>% select(-ctag) %>%
         mutate(categ = 1)
     rids0 = rids[rids %in% tnk0$reg.gid]
-    if(length(rids0) == 1) {
-        tt = tibble(reg.gid = rids0[1], tgt.gid = colnames(reg.mat),
-                    score = as.numeric(reg.mat[rids0[1],]))
-    } else {
-        tt = as_tibble(reg.mat[rids0,]) %>% mutate(reg.gid = rids0) %>%
-            gather(tgt.gid, score, -reg.gid)
-    }
-    tn = tt %>%
+    tt = tn %>% filter(reg.gid %in% rids0) %>%
         filter(reg.gid != tgt.gid) %>%
         mutate(score = as.numeric(score)) %>%
         mutate(score = ifelse(is.na(score), 0, score)) %>%
         arrange(desc(score)) %>%
         filter(row_number() <= net_size)
-    if(max(tn$score) == 0) tn$score[1] = 0.1
-    to = tn %>%
+    if(max(tt$score) == 0) tt$score[1] = 0.1
+    to = tt %>%
         left_join(tnk0, by = c('reg.gid','tgt.gid')) %>%
         mutate(categ = ifelse(is.na(categ), 0, 1))
     resR = roc.curve(scores.class0=to$score, weights.class0=to$categ, curve=T)
@@ -94,10 +88,11 @@ eval_y1h <- function(net_size=1e4, tn, reg.gids, tgt.gids) {
 eval_gs <- function(f_net, gs, y1h, net_sizes=c(1e4,5e4,1e5,5e5)) {
     #{{{
     tnk = gs$tnk; ctags_tf5 = gs$ctags_tf5; ctags_tfbs = gs$ctags_tfbs
-    y = load(f_net)
+    y = readRDS(f_net)
+    rids=y$rids; tids=y$tids; t_oob=y$oob; tn=y$tn
     tfstat = tnk %>% filter(reg.gid %in% rids) %>%
         distinct(ctag) %>%
-        mutate(res=map(ctag, eval_tf, tnk=tnk, rids=rids, tids=tids, reg.mat=reg.mat)) %>%
+        mutate(res=map(ctag, eval_tf, tnk=tnk, rids=rids, tids=tids, tn=tn)) %>%
         mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc')) %>%
         select(-res)
     # network properties
@@ -108,7 +103,7 @@ eval_gs <- function(f_net, gs, y1h, net_sizes=c(1e4,5e4,1e5,5e5)) {
         select(-res)
     ystat = tibble(net_size = net_sizes) %>%
         mutate(res = map(net_size, eval_y1h, tn, y1h$reg.gids, y1h$tgt.gids))
-    list(tfstat=tfstat, nstat=nstat, ystat=ystat, tn=tn[1:5e4,])
+    list(tfstat=tfstat, nstat=nstat, ystat=ystat, tn=tn[1:5e4,], oob=t_oob)
     #}}}
 }
 
@@ -178,7 +173,8 @@ eval_fun_ann <- function(f_net, gs, n_permut=permut, net_sizes=c(1e4,5e4,1e5,5e5
     #{{{
     fun_ann = gs$fun_ann
     #ctags = fun_ann %>% distinct(ctag) %>% pull(ctag)
-    y = load(f_net)
+    y = readRDS(f_net)
+    rids=y$rids; tids=y$tids; t_oob=y$oob; tn=y$tn
     #ptm <- proc.time()
     #x = proc.time() - ptm
     #cat(x[3], '\n')
@@ -215,7 +211,8 @@ eval_fun_ann <- function(f_net, gs, n_permut=permut, net_sizes=c(1e4,5e4,1e5,5e5
 #' evaluate briggs dataset
 eval_briggs <- function(f_net, br, net_size=5e4) {
     #{{{
-    y = load(f_net)
+    y = readRDS(f_net)
+    rids=y$rids; tids=y$tids; t_oob=y$oob; tn=y$tn
     res = tibble()
     for (tissue in br$tissues) {
         t_de = br$de %>% filter(Tissue == tissue, gid %in% tids) %>% select(-Tissue)
@@ -247,7 +244,8 @@ eval_biomap <- function(f_net, bm, net_size=5e4) {
         arrange(gid, Tissue, Genotype) %>%
         group_by(gid, Tissue) %>%
         summarise(v = list(CPM)) %>% ungroup()
-    x = load(f_net)
+    y = readRDS(f_net)
+    rids=y$rids; tids=y$tids; t_oob=y$oob; tn=y$tn
     if(!'pcc' %in% colnames(tn)) tn = tn %>% mutate(pcc = 1)
     tn1 = tn %>%
         filter(row_number() <= net_size) %>%

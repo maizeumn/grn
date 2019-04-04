@@ -3,7 +3,7 @@ load_all('~/git/rmaize')
 dirg = '~/data/genome'
 dirp = '~/projects/grn'
 dird = file.path(dirp, 'data')
-#dirr = file.path(dirp, 'Rmd')
+dirr = file.path(dird, 'raw_output')
 #
 f_cfg = file.path(dird, '10.dataset.xlsx')
 t_cfg = read_xlsx(f_cfg) %>% fill(mid, study)

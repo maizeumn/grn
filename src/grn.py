@@ -14,11 +14,12 @@ import time
 import _pickle
 from operator import itemgetter
 from itertools import combinations
+from functools import partial
 import pandas as pd
 import numpy as np
 from numpy.random import permutation, uniform
 from scipy.stats import pearsonr
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
 from sklearn.tree.tree import BaseDecisionTree
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor, ExtraTreesRegressor
 
@@ -236,36 +237,22 @@ def GENIE3(em,odir,gids,rids,tree_method='RF',K='sqrt',ntrees=1000,max_depth=100
 
     if not op.isdir(odir): os.makedirs(odir)
     # Learn an ensemble of trees for each target gene, and compute scores for candidate regulators
-    #VIM = np.zeros((ngenes,ngenes))
-    VIM = pd.DataFrame()
-    oob_scores = []
+    dico = {gid: '%s/%s.pkl' % (odir, gid) for gid in gids}
     if nthreads > 1:
         print('running jobs on %d threads' % nthreads)
-        input_data = list()
-        for gid in gids:
-            fo = "%s/%s.pkl" % (odir, gid)
-            input_data.append([em,gid,rids,tree_method,K,ntrees,max_depth,fo])
-
+        input_data = [(em,gid,rids,tree_method,K,ntrees,max_depth,fo) for gid,fo in dico.items()]
         pool = Pool(nthreads)
-        alloutput = pool.map(wr_GENIE3_single, input_data)
-        for res in alloutput:
-            oob_score, vi = res
-            oob_scores.append(oob_score)
-            VIM.append(vi)
+        allout = pool.starmap(GENIE3_single, input_data)
     else:
         print('running single threaded jobs')
-        for gid in gids:
-            fo = "%s/%s.pkl" % (odir, gid)
-            oob_score, vi, reg = GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo)
-            oob_scores.append(oob_score)
-            VIM.append(vi)
+        allout = [GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo) for gid,fo in dico.items()]
+
+    oob_scores = [i for i, vi in allout]
+    VIM = pd.concat([vi for i, vi in allout], ignore_index=True)
 
     time_end = time.time()
     print("Elapsed time: %.2f seconds" % (time_end - time_start))
-    return (oob_scores, VIM)
-
-def wr_GENIE3_single(args):
-    return([args[1], GENIE3_single(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])])
+    return [oob_scores, VIM]
 
 def GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo):
     # Expression of target gene
@@ -299,27 +286,78 @@ def GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo):
     with open(fo, 'wb') as fho:
         _pickle.dump(res, fho, protocol=4)
 
-    return (oob_score, vis)
+    return [oob_score, vis]
 
-def eval_model(a_fi_filt, a_mdir, b_fi_filt, b_fi_raw, fo):
-    em = pd.read_csv(a_fi_filt, index_col=0, sep='\t')
-    gids_a = em.index.tolist()
-    em = pd.read_csv(b_fi_filt, index_col=0, sep='\t')
-    gids_b = em.index.tolist()
-    gids = list(set(gids_a) & set(gids_b))
+def read_all_em(f_cfg, dir_filt, dir_raw):
+    df = pd.read_excel(f_cfg, sheet_name=0, header=0)
+    nids = df['nid']
 
-    em = pd.read_csv(b_fi_raw, index_col=0, sep='\t').T
-    sids = em.index.tolist()
-    nsamples = em.shape[0]
-    em['default'] = np.zeros(nsamples)
+    dic_gid, dic_em = dict(), dict()
+    for nid  in nids:
+        fi_filt = op.join(dir_filt, "%s.tsv" % nid)
+        em = pd.read_csv(fi_filt, index_col=0, sep='\t')
+        gids = em.index.tolist()
+        dic_gid[nid] = gids
+
+        fi_raw = op.join(dir_raw, "%s.tsv" % nid)
+        em = pd.read_csv(fi_raw, index_col=0, sep='\t').T
+        nsamples = em.shape[0]
+        dic_em[nid] = em
+        em['default'] = np.zeros(nsamples)
+        print(nid)
+
+    return [dic_gid, dic_em]
+
+def eval_model(args):
+    nid, fo = args.nid, args.fo
+    f_cfg, dir_filt, dir_raw, dir_model = args.f_cfg, args.dir_filt, args.dir_raw, args.dir_model
+    thread = args.thread
+    fi_filt = "%s/%s.tsv" % (dir_filt, nid)
+    em = pd.read_csv(fi_filt, index_col=0, sep='\t')
+    gids = em.index.tolist()
+    #gids = list(set(gids_a) & set(gids_b))
+    mdir = op.join(dir_model, nid)
+
+    dic_gid, dic_em = read_all_em(f_cfg, dir_filt, dir_raw)
+    globals()['dic_gid'] = dic_gid
+    globals()['dic_em'] = dic_em
+
+    pfunc = partial(eval_model_1, mdir = mdir)
+    if thread > 1:
+        print('running jobs on %d threads' % thread)
+        pool = Pool(thread)
+        #allout = pool.starmap(eval_model_1, input_data)
+        allout = pool.imap_unordered(pfunc, gids)
+    else:
+        print('running single threaded jobs')
+        allout = [eval_model_1(gid, mdir) for gid in gids]
 
     fho = open(fo, 'w')
-    for gid in gids:
-        fm = '%s/%s.pkl' % (a_mdir, gid)
-        rids, reg = _pickle.load(open(fm, 'rb'))
-        for i, rid in enumerate(rids):
-            if rid not in em.columns.values:
-                rids[i] = 'default'
+    for gid, res in allout:
+        print(gid)
+        for nid_b, score in res:
+            if score is not None:
+                fho.write("\t".join([gid, nid_b, str(score)]) + "\n")
+    fho.close()
+
+def eval_model_1(gid, mdir):
+    fm = '%s/%s.pkl' % (mdir, gid)
+    if not op.isfile(fm):
+        print("%s not there" % fm)
+        sys.exit(1)
+    rids, reg = _pickle.load(open(fm, 'rb'))
+
+    res = []
+    for nid_b in dic_gid.keys():
+        gids_b, em = dic_gid[nid_b], dic_em[nid_b]
+        if gid not in gids_b or gid not in em.columns.values.tolist():
+            res.append( [nid_b, None] )
+            continue
+
+        rids_a = rids
+        for i, rid in enumerate(rids_a):
+            if rid not in gids_b:
+                rids_a[i] = 'default'
         if gid in rids:
             em_i = em[rids].drop(rid, axis=1)
         else:
@@ -331,52 +369,54 @@ def eval_model(a_fi_filt, a_mdir, b_fi_filt, b_fi_raw, fo):
         assert(em_i.shape[1] == reg.n_features_)
         #reg.oob_score_
         score = reg.score(em_i, em_o)
-        fho.write("\t".join([gid, str(score)]) + "\n")
-    fho.close()
+        #print(gid, nid_b, score)
+        res.append( [nid_b, score] )
+
+    return [gid, res]
 
 def estimate_degradation_rates(TS_data,time_points):
-    
+
     """
     For each gene, the degradation rate is estimated by assuming that the gene expression x(t) follows:
     x(t) =  A exp(-alpha * t) + C_min,
     between the highest and lowest expression values.
     C_min is set to the minimum expression value over all genes and all samples.
     """
-    
+
     ngenes = TS_data[0].shape[1]
     nexp = len(TS_data)
-    
+
     C_min = TS_data[0].min()
     if nexp > 1:
         for current_timeseries in TS_data[1:]:
             C_min = min(C_min,current_timeseries.min())
-    
+
     alphas = np.zeros((nexp,ngenes))
-    
+
     for (i,current_timeseries) in enumerate(TS_data):
         current_time_points = time_points[i]
-        
+
         for j in range(ngenes):
-            
+
             idx_min = argmin(current_timeseries[:,j])
             idx_max = argmax(current_timeseries[:,j])
-            
+
             xmin = current_timeseries[idx_min,j]
             xmax = current_timeseries[idx_max,j]
-            
+
             tmin = current_time_points[idx_min]
             tmax = current_time_points[idx_max]
-            
+
             xmin = max(xmin-C_min,1e-6)
             xmax = max(xmax-C_min,1e-6)
-                
+
             xmin = log(xmin)
             xmax = log(xmax)
-            
+
             alphas[i,j] = (xmax - xmin) / abs(tmin - tmax)
-                
+
     alphas = alphas.max(axis=0)
- 
+
     return alphas
 
 def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None,regulators='all',tree_method='RF',K='sqrt',ntrees=1000,compute_quality_scores=False,save_models=False,nthreads=1):
@@ -388,17 +428,17 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
 
     TS_data: list of numpy arrays
         List of arrays, where each array contains the gene expression values of one time series experiment. Each row of an array corresponds to a time point and each column corresponds to a gene. The i-th column of each array must correspond to the same gene.
-    
+
     time_points: list of one-dimensional numpy arrays
         List of n vectors, where n is the number of time series (i.e. the number of arrays in TS_data), containing the time points of the different time series. The i-th vector specifies the time points of the i-th time series of TS_data.
-    
+
     alpha: either 'from_data', a positive number or a vector of positive numbers
-        Specifies the degradation rate of the different gene expressions. 
+        Specifies the degradation rate of the different gene expressions.
         When alpha = 'from_data', the degradation rate of each gene is estimated from the data, by assuming an exponential decay between the highest and lowest observed expression values.
         When alpha is a vector of positive numbers, the i-th element of the vector must specify the degradation rate of the i-th gene.
         When alpha is a positive number, all the genes are assumed to have the same degradation rate alpha.
         default: 'from_data'
-    
+
     SS_data: numpy array, optional
         Array containing steady-state gene expression values. Each row corresponds to a steady-state condition and each column corresponds to a gene. The i-th column/gene must correspond to the i-th column/gene of each array of TS_data.
         default: None
@@ -406,19 +446,19 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
     gene_names: list of strings, optional
         List of length p containing the names of the genes, where p is the number of columns/genes in each array of TS_data. The i-th item of gene_names must correspond to the i-th column of each array of TS_data (and the i-th column of SS_data when SS_data is not None).
         default: None
-    
+
     regulators: list of strings, optional
         List containing the names of the candidate regulators. When a list of regulators is provided, the names of all the genes must be provided (in gene_names). When regulators is set to 'all', any gene can be a candidate regulator.
         default: 'all'
-    
+
     tree-method: 'RF' or 'ET', optional
         Specifies which tree-based procedure is used: either Random Forest ('RF') or Extra-Trees ('ET')
         default: 'RF'
-    
+
     K: 'sqrt', 'all' or a positive integer, optional
         Specifies the number of selected attributes at each node of one tree: either the square root of the number of candidate regulators ('sqrt'), the number of candidate regulators ('all'), or any positive integer.
         default: 'sqrt'
-     
+
     ntrees: positive integer, optional
         Specifies the number of trees grown in an ensemble.
         default: 1000
@@ -435,8 +475,8 @@ def dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=None
     nthreads: positive integer, optional
         Number of threads used for parallel computing
         default: 1
-    
-    
+
+
     Returns
     -------
 
@@ -666,15 +706,15 @@ def dynGENIE3_single(TS_data,time_points,SS_data,output_idx,alpha,input_idx,tree
 
     ngenes = TS_data[0].shape[1]
     nexp = len(TS_data)
-    nsamples_time = np.sum([expr_data.shape[0] for expr_data in TS_data]) 
+    nsamples_time = np.sum([expr_data.shape[0] for expr_data in TS_data])
     ninputs = len(input_idx)
 
-    # Construct learning sample 
+    # Construct learning sample
 
     # Time-series data
     input_matrix_time = np.zeros((nsamples_time-h*nexp,ninputs))
     output_vect_time = np.zeros(nsamples_time-h*nexp)
-    
+
     # Data for the computation of the prediction score on out-of-bag samples
     output_vect_time_present = np.zeros(nsamples_time-h*nexp)
     output_vect_time_future = np.zeros(nsamples_time-h*nexp)
@@ -695,27 +735,27 @@ def dynGENIE3_single(TS_data,time_points,SS_data,output_idx,alpha,input_idx,tree
         output_vect_time_future[nsamples_count:nsamples_count+nsamples_current] = current_timeseries[h:,output_idx]
         time_diff[nsamples_count:nsamples_count+nsamples_current] = time_diff_current
         nsamples_count += nsamples_current
-    
+
     # Steady-state data (if any)
     if SS_data is not None:
 
         input_matrix_steady = SS_data[:,input_idx]
         output_vect_steady = SS_data[:,output_idx] * alpha
-    
+
         # Concatenation
         input_all = vstack([input_matrix_steady,input_matrix_time])
         output_all = concatenate((output_vect_steady,output_vect_time))
-        
+
         del input_matrix_time
         del output_vect_time
         del input_matrix_steady
         del output_vect_steady
-    
+
     else:
-  
+
         input_all = input_matrix_time
         output_all = output_vect_time
-        
+
         del input_matrix_time
         del output_vect_time
 
@@ -727,7 +767,7 @@ def dynGENIE3_single(TS_data,time_points,SS_data,output_idx,alpha,input_idx,tree
         oob_score = True
     else:
         oob_score = False
-    
+
     # Parameter K of the tree-based method
     if (K == 'all') or (isinstance(K,int) and K >= len(input_idx)):
         max_features = "auto"
@@ -752,109 +792,88 @@ def dynGENIE3_single(TS_data,time_points,SS_data,output_idx,alpha,input_idx,tree
     vi_sum = sum(vi)
     if vi_sum > 0:
         vi = vi / vi_sum
-        
-        
+
     # Ranking quality scores
     prediction_score_oob = []
     stability_score = []
-        
+
     if compute_quality_scores:
-        
         if tree_method == 'RF':
-            
             # Prediction of out-of-bag samples
-        
             if SS_data is not None:
-            
                 nsamples_SS = SS_data.shape[0]
-            
                 # Samples coming from the steady-state data
                 oob_prediction_SS = treeEstimator.oob_prediction_[:nsamples_SS]
                 output_pred_SS = oob_prediction_SS / alpha
-            
                 # Samples coming from the time series data
                 oob_prediction_TS = treeEstimator.oob_prediction_[nsamples_SS:]
                 output_pred_TS = (oob_prediction_TS - alpha*output_vect_time_present) * time_diff + output_vect_time_present
-            
                 output_pred = concatenate((output_pred_SS,output_pred_TS))
                 output_true = concatenate((SS_data[:,output_idx],output_vect_time_future))
-            
                 (prediction_score_oob,tmp) = pearsonr(output_pred,output_true)
-            
             else:
                 oob_prediction_TS = treeEstimator.oob_prediction_
                 output_pred_TS = (oob_prediction_TS - alpha*output_vect_time_present) * time_diff + output_vect_time_present
-   
                 (prediction_score_oob,tmp) = pearsonr(output_pred_TS,output_vect_time_future)
-            
-            
+
         # Stability score
-   
         # Importances returned by each tree
         importances_by_tree = np.asarray([e.tree_.compute_feature_importances(normalize=False) for e in treeEstimator.estimators_])
         if output_idx in input_idx:
             idx = input_idx.index(output_idx)
             # Remove importances of target gene
             importances_by_tree = delete(importances_by_tree,idx,1)
-            
+
         # Add some jitter to avoir numerical errors
         importances_by_tree = importances_by_tree + uniform(low=1e-12,high=1e-11,size=importances_by_tree.shape)
-            
         if sum(importances_by_tree) > 0:
-        
             # Ranking of candidate regulators
             ranking_by_tree = [importances_by_tree[i,:].argsort()[::-1] for i in range(ntrees)]
             top_by_tree = [set(r[:ntop]) for r in ranking_by_tree]
-    
             # Stability score computed over the top-ranked candidate regulators
             stability_score = mean([len(top_by_tree[i].intersection(top_by_tree[j])) for (i,j) in combinations(range(ntrees),2)]) / float(ntop)
-            
-                
-        # Variance of output is too small --> no forest was built and all the importances are np.zero    
+        # Variance of output is too small --> no forest was built and all the importances are np.zero
         else:
             stability_score = 0.0
-            
-    if save_models: 
+
+    if save_models:
         return vi, prediction_score_oob, stability_score, treeEstimator
     else:
         return vi, prediction_score_oob, stability_score, []
 
 def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulators,KO1_gene,KO2_gene,nTimePoints,deltaT):
-    
     '''Prediction of gene expressions in a double knockout experiment.
 
     Parameters
     ----------
 
     expr_WT: vector containing the gene expressions in the wild-type.
-    
+
     treeEstimators: list of tree models, as returned by the function dynGENIE3(), where the i-th model is the model predicting the expression of the i-th gene. 
         The i-th model must correspond to the i-th gene in expr_WT.
-    
+
     alpha: a positive number or a vector of positive numbers
-        Specifies the degradation rate of the different gene expressions. 
+        Specifies the degradation rate of the different gene expressions.
         When alpha is a vector of positives, the i-th element of the vector must specify the degradation rate of the i-th gene.
         When alpha is a positive number, all the genes are assumed to have the same degradation rate.
-    
+
     gene_names: list of strings
         List containing the names of the genes. The i-th item of gene_names must correspond to the i-th gene in expr_WT.
-    
+
     regulators: list of strings
         List containing the names of the candidate regulators. When regulators is set to 'all', any gene can be a candidate regulator.
         Note that the candidate regulators must be the same as the ones used when calling the function dynGENIE3().
-    
+
     KO1_gene: name of the first knocked-out gene.
-    
+
     KO2_gene: name of the second knocked-out gene.
-    
+
     nTimePoints: integer
         Specifies the number of time points for which to make a prediction.
-    
+
     deltaT: a positive number
         Specifies the (constant) time interval between two predictions.
-    
-    
-    
+
     Returns
     -------
 
@@ -862,25 +881,18 @@ def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulator
     The first row of the array contains the initial gene expressions (i.e. the expressions in expr_WT), where the expressions of the two knocked-out genes are set to 0.
 
     '''
-    
-    
+
     time_start = time.time()
-    
     # Check input arguments
     if not isinstance(expr_WT,np.ndarray) or expr_WT.ndim > 1:
         raise ValueError("input argument expr_WT must be a vector of numbers")
-        
     ngenes = len(expr_WT)
-    
     if len(treeEstimators) != ngenes:
         raise ValueError("input argument treeEstimators must contain p tree models, where p is the number of genes in expr_WT")
-    
     if not isinstance(alpha,(list,tuple,np.ndarray,int,float)):
         raise ValueError("input argument alpha must be a positive number or a vector of positive numbers")
-        
     if isinstance(alpha,(int,float)) and alpha < 0:
         raise ValueError("the degradation rate(s) specified in input argument alpha must be positive")
-        
     if isinstance(alpha,(list,tuple,np.ndarray)):
         if isinstance(alpha,np.ndarray) and alpha.ndim > 1:
             raise ValueError("input argument alpha must be a positive number or a vector of positive numbers")
@@ -889,7 +901,6 @@ def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulator
         for a in alpha:
             if a < 0:
                 raise ValueError("the degradation rate(s) specified in input argument alpha must be positive")
-     
     if not isinstance(gene_names,(list,tuple)):
         raise ValueError('input argument gene_names must be a list of gene names')
     elif len(gene_names) != ngenes:
@@ -902,49 +913,43 @@ def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulator
         sIntersection = set(gene_names).intersection(set(regulators))
         if not sIntersection:
             raise ValueError('The genes must contain at least one candidate regulator')
-            
+
     if not (KO1_gene in gene_names):
         raise ValueError('input argument KO1_gene was not found in gene_names')
-        
     if not (KO2_gene in gene_names):
         raise ValueError('input argument KO2_gene was not found in gene_names')
-
     if not isinstance(nTimePoints,int) or nTimePoints < 1:
         raise ValueError("input argument nTimePoints must be a strictly positive integer")
-                   
     if not isinstance(deltaT,(int,float)) or deltaT < 0:
         raise ValueError("input argument deltaT must be a positive number")
-        
+
     KO1_idx = gene_names.index(KO1_gene)
     KO2_idx = gene_names.index(KO2_gene)
 
     geneidx = list(range(ngenes))
     geneidx.remove(KO1_idx)
     geneidx.remove(KO2_idx)
-    
+
     if isinstance(alpha,(int,float)):
         alphas = np.zeros(ngenes) + float(alpha)
     else:
         alphas = [float(a) for a in alpha]
-    
+
     # Get the indices of the candidate regulators
     if regulators == 'all':
         input_idx = list(range(ngenes))
     else:
         input_idx = [i for i, gene in enumerate(gene_names) if gene in regulators]
-                
-        
+
     # Predict time series
-    
     print('Predicting time series...')
-       
     TS_predict = np.zeros((nTimePoints+1,ngenes))
     TS_predict[0,:] = expr_WT
     TS_predict[0,KO1_idx] = 0
     TS_predict[0,KO2_idx] = 0
-    
+
     for t in range(1,nTimePoints+1):
-        new_expr = [(treeEstimators[i].predict(TS_predict[t-1,input_idx].reshape(1,-1)) - alphas[i]*TS_predict[t-1,i]) * deltaT + TS_predict[t-1,i] for i in geneidx] 
+        new_expr = [(treeEstimators[i].predict(TS_predict[t-1,input_idx].reshape(1,-1)) - alphas[i]*TS_predict[t-1,i]) * deltaT + TS_predict[t-1,i] for i in geneidx]
         TS_predict[t,geneidx] = array(new_expr,float32).flatten()
 
     time_end = time.time()
@@ -998,11 +1003,13 @@ def main():
 
     sp1 = sp.add_parser('eval_model', help='Evaluate model performance',
             formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    sp1.add_argument('a_fi_filt', help='[A] filtered expression matrix (*.tsv)')
-    sp1.add_argument('a_mdir', help='[A] model directory')
-    sp1.add_argument('b_fi_filt', help='[B] filtered expression matrix (*.tsv)')
-    sp1.add_argument('b_fi_raw', help='[B] raw expression matrix (*.tsv)')
+    sp1.add_argument('nid', help='ID of the GRN to evaluate')
     sp1.add_argument('fo', help='output file (*.tsv)')
+    sp1.add_argument('--f_cfg', default='/home/springer/zhoux379/projects/grn/data/10.dataset.xlsx', help='Meta table of all expression datasets (*.tsv)')
+    sp1.add_argument('--dir_filt', default='/scratch.global/zhoux379/grn/12_em_filt', help='directory of filtered expression matrices')
+    sp1.add_argument('--dir_raw', default='/scratch.global/zhoux379/grn/11_em_raw', help='directory of raw expression matrices')
+    sp1.add_argument('--dir_model', default='/scratch.global/zhoux379/grn/14_grn', help='GRN model directory')
+    sp1.add_argument('-p', '--thread', type=int, default=1, help='threads')
     sp1.set_defaults(func = eval_model)
 
     args = parser.parse_args()
