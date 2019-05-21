@@ -81,7 +81,7 @@ ti = read_tsv(fi, col_names = F) %>%
     transmute(ogid = X1)
 ti3 = ti %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
-ti4 = ti3 %>% filter(type == '1-to-1') 
+ti4 = ti3 %>% filter(type == '1-to-1')
 sum(ti4$gid %in% tg$gid)
 
 tfid = 'Zm00001d018971'
@@ -116,7 +116,7 @@ ti2 = ti %>% transmute(ogid = X1)
 nrow(ti2)
 ti3 = ti2 %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
-ti4 = ti3 %>% filter(type == '1-to-1') 
+ti4 = ti3 %>% filter(type == '1-to-1')
 sum(ti4$gid %in% tg$gid)
 
 tfid = 'Zm00001d053595'
@@ -289,9 +289,14 @@ all_tf = ti
 tf_ids = ti$gid
 length(tf_ids)
 length(unique(tf_ids))
-#
-tf_ids_n = tf %>% distinct(reg.gid) %>% filter(!reg.gid %in% tf_ids) %>%
-    pull(reg.gid)
+
+fi= '~/projects/barn/data/01.cfg.xlsx'
+ti = read_xlsx(fi, sheet='mutants') %>%
+    select(yid,gene_id,gene_alias,gene_name)
+ti %>% print(n=40)
+
+tf_ids_n = ti %>% distinct(gene_id) %>% filter(str_detect(gene_id, '^Zm0')) %>%
+    filter(!gene_id %in% tf_ids) %>% pull(gene_id)
 tf_ids_n
 tf_ids = c(tf_ids, tf_ids_n)
 length(tf_ids)

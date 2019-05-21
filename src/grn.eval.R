@@ -2,7 +2,7 @@
 suppressPackageStartupMessages(library("argparse"))
 
 p <- ArgumentParser(description = 'GRN evaluation utilities')
-p$add_argument("net", nargs=1, help="GRN file (*.rda)")
+p$add_argument("net", nargs=1, help="GRN file (*.rds)")
 p$add_argument("out", nargs=1, help="output file (*.rds)")
 p$add_argument("--opt", default='tf',
                help="evaluation option [default: '%(default)s']")

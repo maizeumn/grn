@@ -1,24 +1,87 @@
-#{{{ head
 source("functions.R")
-#source("enrich.R")
-fi = file.path(dird, '05.previous.grns/10.RData')
-x = load(fi)
-fi = file.path(dird, '07.known.tf/10.RData')
-x = load(fi)
-# read RNA-Seq data
-dirw = file.path("~/projects/briggs/data", "49.coop")
-fi = file.path(dirw, "01.master.RData")
-x = load(fi)
-fd = file.path(dirw, "03.sharing.RData")
-x = load(fd)
-dirw = file.path(dira, "06_rna_de")
+gs = read_gs()
+
+run_deseq2 <- function(gene_alias, Tissue, tm, th) {
+    #{{{
+    require(DESeq2)
+    require(edgeR)
+    cat(sprintf('--> working on %s - %s\n', gene_alias, Tissue))
+    th1 = th %>% filter(gene_alias == !!gene_alias, Tissue == !!Tissue)
+    tm1 = tm %>% filter(SampleID %in% th1$SampleID)
+    #{{{ prepare data
+    vh = th1 %>% mutate(Genotype = factor(Genotype)) %>% arrange(SampleID)
+    vh.d = column_to_rownames(as.data.frame(vh), var = 'SampleID')
+    gids = tm1 %>% group_by(gid) %>% summarise(n.sam = sum(ReadCount >= 10)) %>%
+        filter(n.sam > .2 * nrow(vh)) %>% pull(gid)
+    vm = tm1 %>% filter(gid %in% gids) %>%
+        select(SampleID, gid, ReadCount)
+    x = readcount_norm(vm)
+    mean.lib.size = mean(x$tl$libSize)
+    vm = x$tm
+    vm.w = vm %>% select(SampleID, gid, ReadCount) %>% spread(SampleID, ReadCount)
+    vm.d = column_to_rownames(as.data.frame(vm.w), var = 'gid')
+    stopifnot(identical(rownames(vh.d), colnames(vm.d)))
+    #}}}
+    # DESeq2
+    dds = DESeqDataSetFromMatrix(countData=vm.d, colData=vh.d, design=~Genotype)
+    dds = estimateSizeFactors(dds)
+    dds = estimateDispersions(dds, fitType = 'parametric')
+    disp = dispersions(dds)
+    #dds = nbinomLRT(dds, reduced = ~ 1)
+    dds = nbinomWaldTest(dds)
+    resultsNames(dds)
+    res1 = results(dds, contrast=c("Genotype","WT",'mutant'), pAdjustMethod="fdr")
+    stopifnot(rownames(res1) == gids)
+    #
+    t_ds = tibble(gid = gids, disp = disp,
+                padj = res1$padj, log2fc = res1$log2FoldChange,
+                ) %>%
+        replace_na(list(padj = 1))
+    t_ds
+    #}}}
+}
+
+#{{{ call DEGs for mutant RNA-Seq
+fi= '~/projects/barn/data/01.cfg.xlsx'
+ti = read_xlsx(fi, sheet='mutants') %>%
+    select(yid,gene_id,gene_alias,gene_name)
+ti %>% print(n=40)
+#
+diri = '~/projects/rnaseq/data/raw'
+fi = file.path(diri, 'rn12a', 'cpm.rds')
+x = readRDS(fi)
+
+tm = x$tm
+th = x$th %>%
+    filter(! Treatment %in% c('mads47','o2_b')) %>%
+    filter(Genotype != 'kn1_het') %>%
+    filter(Genotype != 'sil') %>%
+    filter(Tissue != 'silk') %>%
+    filter(! Tissue %in% c("blade","ligule","sheath",'L1_blade','L1_ligule','L1_sheath'))
+# repeat ra2 & ra3
+th2 = th %>% filter(Treatment=='ra1',Genotype=='WT') %>% mutate(Treatment='ra2')
+th3 = th %>% filter(Treatment=='ra1',Genotype=='WT') %>% mutate(Treatment='ra3')
+th = rbind(th,th2,th3)
+th %>% dplyr::count(Treatment, Tissue, Genotype) %>% print(n=60)
+
+th = ti %>%
+    inner_join(th, by = c('gene_alias'='Treatment')) %>%
+    select(-MergeID,-paired,-spots,-avgLength) %>%
+    mutate(Genotype = ifelse(Genotype == 'WT', Genotype, 'mutant'))
+th %>% dplyr::count(gene_alias, Tissue, Genotype) %>% print(n=62)
+
+ds = th %>% distinct(gene_id, gene_alias, gene_name, Tissue) %>%
+    mutate(ds=map2(gene_alias,Tissue, run_deseq2, tm=tm, th=th))
+ds %>% unnest() %>% filter(padj < .01) %>% dplyr::count(gene_alias, Tissue) %>%
+    print(n=31)
+
+fo = file.path(dird, '07_mutants', 'degs.rds')
+saveRDS(ds, file=fo)
 #}}}
 
 #{{{ TF
-ff = '/home/springer/zhoux379/data/genome/Zmays_v4/TF/11.tsv'
-tf = read_tsv(ff)
-
-to = tt %>% 
+tf = gs$all_tf
+to = tt %>%
     left_join(tf, by = 'gid') %>%
     group_by(ctag, tag, tsTag) %>%
     summarise(ngene.total = n(),
@@ -26,7 +89,7 @@ to = tt %>%
               prop.tf = n.tf / ngene.total) %>%
     print(n=50)
 
-tt %>% 
+tt %>%
     inner_join(tf, by = 'gid') %>%
     filter(ctag == 'HC') %>%
     group_by(tag, fam) %>%
@@ -104,9 +167,9 @@ ctags
 
 for (grn in ctags) {
     #{{{
-tn = t_grn %>% filter(ctag == grn) %>% select(-ctag) %>% 
+tn = t_grn %>% filter(ctag == grn) %>% select(-ctag) %>%
     top_n(10000, score) %>%
-    transmute(r.gid = regulator, t.gid = target, r.fam = fam) 
+    transmute(r.gid = regulator, t.gid = target, r.fam  fam)
 #
 tm.reg = tm %>% filter(!is.na(pDE)) %>%
     transmute(Tissue = Tissue, r.gid = gid, r.DE = pDE, r.log2MB = log2MB, r.SPE = SPE)

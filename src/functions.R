@@ -1,9 +1,11 @@
 require(devtools)
 load_all('~/git/rmaize')
+require(ggpubr)
 dirg = '~/data/genome'
 dirp = '~/projects/grn'
 dird = file.path(dirp, 'data')
-dirr = file.path(dird, 'raw_output')
+dirr = file.path(dird, 'raw')
+gcfg = read_genome_conf()
 #
 f_cfg = file.path(dird, '10.dataset.xlsx')
 t_cfg = read_xlsx(f_cfg) %>% fill(mid, study)
@@ -30,6 +32,7 @@ nids22 = t_cfg %>%
     pull(nid)
 nids25 = t_cfg %>%
     filter(!str_detect(nid, '^n((17a)|(18a)|(99a)|(99c))_')) %>% pull(nid)
+tsyn = read_syn(gcfg)
 
 read_gs <- function(fi='~/projects/grn/data/09.gs.rds') {
     readRDS(fi)

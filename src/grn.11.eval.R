@@ -1,57 +1,129 @@
+#{{{
 source("functions.R")
+require(PRROC)
 dirw = file.path(dird, '14_eval_sum')
-
+tsyn = read_syn(gcfg)
+#
 gs = read_gs()
-#br = read_briggs()
-#bm = read_biomap()
+fi_tf = file.path(dirr, '01.tf.rds')
+fi_br = file.path(dirr, '01.br.rds')
+fi_go = file.path(dirr, '01.go.rds')
+fi_bm = file.path(dirr, '01.bm.rds')
+#}}}
 
-eval_pcc_briggs <- function(rids, tids, tn, tm3) {
-    #{{{ eval functions
-    to = tn %>%
-        filter(row_number() <= net_size) %>%
-        filter(reg.gid %in% gids, tgt.gid %in% gids) %>%
-        mutate(pcc = map2_dbl(reg.gid, tgt.gid, function(i,j,mat) mat[i,j], mat = tm3))
-    to$pcc
+ev_tf = readRDS(fi_tf)
+
+fd = file.path(dird, '07_mutants', 'degs.rds')
+ds = readRDS(fd) %>% filter(gene_alias != 'P1')
+dss = ds %>% unnest() %>% group_by(gene_alias, Tissue) %>%
+    summarise(n_tot=n(), n_de=sum(padj<.01), prop_de=n_de/n_tot) %>%
+    ungroup() %>%
+    mutate(ctag=sprintf("%s [%s] [%s] [%s]", gene_alias, Tissue, number(n_de), percent(prop_de)))
+ctags = dss$ctag
+
+eval_tf_1 <- function(gene_id,gene_alias,Tissue,t_ds, tids,tn) {
+    #{{{
+    rid = gene_id
+    gids = tids
+    #
+    if(! rid %in% tn$reg.gid) {
+        list(auroc=NA, auprc=NA, pval=NA)
+    } else {
+        tr = tn %>% filter(reg.gid == rid, reg.gid != tgt.gid) %>%
+            select(gid = tgt.gid, score) %>%
+            mutate(score = as.numeric(score)) %>%
+            replace_na(list(score=0))
+        if(max(tr$score) == 0) tr$score[1] = 0.1
+        tt = t_ds %>% mutate(weight=padj < .01) %>% select(gid, weight)
+        to = tt %>% filter(gid %in% gids) %>%
+            left_join(tr, by = 'gid') %>%
+            replace_na(list(score=0))
+        resR = roc.curve(scores.class0=to$score, weights.class0=to$weight)
+        resP = pr.curve(scores.class0=to$score, weights.class0=to$weight)
+        scores1 = to %>% filter(weight) %>% pull(score)
+        scores2 = to %>% filter(!weight) %>% pull(score)
+        res = wilcox.test(scores1, scores2, alternative='greater')
+        pval = res$p.value
+        auroc = resR$auc
+        auprc = resP$auc.integral
+        list(auroc=auroc, auprc=auprc, pval=pval)
+    }
+    #}}}
+}
+eval_tf <- function(tids,tn, ds) {
+    #{{{
+    ds %>%
+        mutate(res = pmap(list(gene_id,gene_alias,Tissue,ds), eval_tf_1,
+                          tids=!!tids,tn=!!tn)) %>%
+        mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc'),
+               pval=map_dbl(res,'pval')) %>%
+        select(-ds,-res)
     #}}}
 }
 
+tv = ev_tf %>% #filter(nid=='n18a') %>%
+    mutate(r=map2(tids,tn, eval_tf, ds=ds)) %>%
+    select(nid, r) %>% unnest() %>%
+    filter(!is.na(auroc))
 
-#{{{ # evaluate PCC
-if(FALSE) {
-ds = load_maize_dataset(id = 'nc03', opt = 'grn')
-
-tissues = unique(br$th$Tissue)
-net_size = 10000
-tissue = tissues[16]
-tm1 = br$tm %>%
-    select(-FPKM) %>%
-    inner_join(br$th, by = 'SampleID') %>%
-    filter(Tissue == tissue) %>%
-    select(Genotype, gid, CPM)
-gids = tm1 %>% group_by(gid) %>%
-    summarise(n.exp = sum(CPM >= 1)) %>% ungroup() %>%
-    filter(n.exp >= 2) %>% pull(gid)
-length(gids)
-tm2 = tm1 %>% filter(gid %in% gids) %>% spread(Genotype, CPM)
-em = t(as.matrix(tm2[,-1]))
-colnames(em) = tm2$gid
-tm3 = cor(em, method = 'pearson')
-
-nids = c('nc01','nc03')
-y = map(nids1, eval_pcc_briggs, tm3 = tm3, rids = rids, tids = tids)
-to = tibble(nid = rep(nids, map_int(y, length)), pcc = flattern_dbl(y))
-}
+#{{{ aupr/auroc bar-plot
+tv0 = tv %>% inner_join(dss, by=c('gene_alias','Tissue'))
+levs = c("AUROC","AUPR")
+cols100 = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)
+tps = th %>% filter(nid %in% tv0$nid)
+tp = tv0 %>%
+    select(nid,ctag,AUROC=auroc,AUPR=auprc) %>%
+    gather(type, auc, -nid, -ctag) %>%
+    group_by(type) %>%
+    mutate(auc.norm = as.numeric(scale(auc))) %>% ungroup() %>%
+    mutate(lab = str_remove(sprintf("%.03f", auc), '^0+')) %>%
+    mutate(type = factor(type, levels = levs)) %>%
+    mutate(ctag = factor(ctag, levels = ctags)) %>%
+    inner_join(th, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(tps$lgd)))
+#
+#tpx = gs$tnk %>% filter(ctag %in% ctags) %>%
+    #count(ctag) %>% mutate(lab=sprintf("%s (%d)",ctag,n)) %>%
+    #mutate(ctag=factor(ctag, levels=ctags)) %>% arrange(ctag)
+p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=auc.norm)) +
+    geom_tile() +
+    geom_text(aes(label=lab), hjust=.5, size=2) +
+    #scale_x_discrete(breaks=tpx$ctag, labels=tpx$lab, expand=expand_scale(mult=c(0,0))) +
+    scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
+    scale_y_discrete(expand=c(0,0)) +
+    #scale_fill_viridis(name="Area Under Curve (AUC)", begin = .4) +
+    scale_fill_gradientn(name = 'Area Under Curve (AUC)', colors = cols100) +
+    facet_wrap(~type, nrow = 1) +
+    otheme(strip.size=8, legend.pos='none', margin=c(.2,.2,.2,.2),
+           ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
+    theme(axis.text.x = element_text(angle = 90, hjust=1, vjust=.5, size=7)) +
+    theme(axis.text.y = element_text(color=rev(tps$col)))
+fo = file.path(dirw, '05.tf.auc.pdf')
+ggsave(p1, file = fo, width = 10, height = 8)
 #}}}
 
-f_net = '~/projects/grn/data/12_output/n99a_1.rda'
-y = load(f_net)
+#{{{ pval plot
+tv0 = tv %>% inner_join(dss, by=c('gene_alias','Tissue'))
+cols100 = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)
+tps = th %>% filter(nid %in% tv0$nid)
+tp = tv0 %>% mutate(lab = ifelse(pval < .05, scientific(pval,digits=2), 'ns')) %>%
+    select(nid,ctag,pval,lab) %>%
+    mutate(ctag = factor(ctag, levels = ctags)) %>%
+    inner_join(th, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(tps$lgd)))
+p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=-log(pval))) +
+    geom_tile() +
+    geom_text(aes(label=lab), hjust=.5, size=2) +
+    scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
+    scale_y_discrete(expand=c(0,0)) +
+    #scale_fill_viridis(name="Area Under Curve (AUC)", begin = .4) +
+    scale_fill_gradientn(name = '-log(pvalue)', colors = cols100) +
+    otheme(strip.size=8, legend.pos='none', margin=c(.2,.2,.2,.2),
+           ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
+    theme(axis.text.x = element_text(angle = 30, hjust=1, vjust=1, size=7)) +
+    theme(axis.text.y = element_text(color=rev(tps$col)))
+fo = file.path(dirw, '05.tf.pval.pdf')
+ggsave(p1, file = fo, width = 11, height = 8)
+#}}}
 
-res$enrich %>% select(-n_grp,-fc) %>% spread(net_size,pval)
-res$enrich %>% select(-n_grp,-pval) %>% spread(net_size,fc)
 
-res$enrich_term %>% group_by(net_size,ctag) %>%
-    summarise(n_grp=n(), n_grp_sig=sum(!is.na(fc) & fc>0 & pval<.05)) %>%
-    ungroup() %>%
-    mutate(txt=str_c(n_grp_sig,n_grp, sep="/")) %>%
-    select(net_size,ctag,txt) %>%
-    spread(net_size,txt)

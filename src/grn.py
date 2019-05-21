@@ -22,6 +22,9 @@ from scipy.stats import pearsonr
 from multiprocessing import Pool, Manager
 from sklearn.tree.tree import BaseDecisionTree
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor, ExtraTreesRegressor
+from sklearn.metrics import mean_squared_error
+from xgboost import XGBRegressor
+import random
 
 SKLEARN_REGRESSOR_FACTORY = {
     'RF': RandomForestRegressor,
@@ -176,7 +179,7 @@ def get_link_list(VIM,gene_names=None,regulators='all',maxcount='all',file_name=
                 target_idx = int(target_idx)
                 print('G%d\tG%d\t%.6f' % (TF_idx+1,target_idx+1,score))
 
-def GENIE3(em,odir,gids,rids,tree_method='RF',K='sqrt',ntrees=1000,max_depth=100,nthreads=1):
+def GENIE3(em,odir,gids,rids,tree_method='RF',K='sqrt',ntrees=1000,max_depth=None,nthreads=1):
     '''Computation of tree-based scores for all putative regulatory links.
 
     Parameters
@@ -283,8 +286,8 @@ def GENIE3_single(em,gid,rids,tree_method,K,ntrees,max_depth,fo):
     vis = pd.DataFrame(data=vis)
     oob_score = reg.oob_score_
     res = [rids, reg]
-    with open(fo, 'wb') as fho:
-        _pickle.dump(res, fho, protocol=4)
+    # with open(fo, 'wb') as fho:
+        # _pickle.dump(res, fho, protocol=4)
 
     return [oob_score, vis]
 
@@ -957,68 +960,6 @@ def dynGENIE3_predict_doubleKO(expr_WT,treeEstimators,alpha,gene_names,regulator
 
     return TS_predict
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser(
-            formatter_class = argparse.ArgumentDefaultsHelpFormatter,
-            description = 'Build Gene Regulatory Network (GRN) using expression matrix'
-    )
-    sp = parser.add_subparsers(title = 'available commands', dest = 'command')
-
-    sp1 = sp.add_parser('genie3', help='Build GRN using GENIE3 (tree ensemble)',
-            formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    sp1.add_argument('fi', help='input expression matrix (*.tsv)')
-    sp1.add_argument('ft', help='file with regulator/TF IDs (*.txt)')
-    sp1.add_argument('fo', help = 'output file')
-    sp1.add_argument('odir', help = 'folder to store built models')
-    sp1.add_argument('-p', '--thread', type=int, default=1, help='threads')
-    sp1.add_argument('--tree_method', default='RF', choices=['RF','ET'],
-                     help='tree method')
-    sp1.add_argument('--K', default='sqrt', help='K')
-    sp1.add_argument('--ntrees', type=int, default=1000, help='number trees to grow')
-    sp1.add_argument('--max_depth', type=int, default=100, help='maximum depth of each tree')
-    sp1.set_defaults(func = run_GENIE3)
-
-    sp1 = sp.add_parser('dyngenie3', help='Build GRN using dynGENIE3 (tree ensemble)',
-            formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    sp1.add_argument('fi', help='input time-series expression matrix (*.tsv)')
-    sp1.add_argument('ft', help='file with regulator/TF IDs (*.txt)')
-    sp1.add_argument('fo', help = 'output file')
-    sp1.add_argument('-ss', '--steady-state', default=None, help='steady-state expression matrix')
-    sp1.add_argument('-p', '--thread', type=int, default=1, help='threads')
-    sp1.add_argument('--tree_method', default='RF', choices=['RF','ET'],
-                     help='tree method')
-    sp1.add_argument('--K', default='sqrt', help='K')
-    sp1.add_argument('--ntrees', type=int, default=1000, help='number trees to grow')
-    sp1.set_defaults(func = run_dynGENIE3)
-
-    sp1 = sp.add_parser('xgb', help='Build GRN using XGBoost',
-            formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    sp1.add_argument('fi', help='input expression matrix (*.tsv)')
-    sp1.add_argument('ft', help='file with regulator/TF IDs (*.txt)')
-    sp1.add_argument('fo', help = 'output file')
-    sp1.add_argument('-p', '--thread', type=int, default=1, help='threads')
-    sp1.add_argument('--ntrees', type=int, default=1000, help='number trees to grow')
-    sp1.set_defaults(func = run_xgboost)
-
-    sp1 = sp.add_parser('eval_model', help='Evaluate model performance',
-            formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    sp1.add_argument('nid', help='ID of the GRN to evaluate')
-    sp1.add_argument('fo', help='output file (*.tsv)')
-    sp1.add_argument('--f_cfg', default='/home/springer/zhoux379/projects/grn/data/10.dataset.xlsx', help='Meta table of all expression datasets (*.tsv)')
-    sp1.add_argument('--dir_filt', default='/scratch.global/zhoux379/grn/12_em_filt', help='directory of filtered expression matrices')
-    sp1.add_argument('--dir_raw', default='/scratch.global/zhoux379/grn/11_em_raw', help='directory of raw expression matrices')
-    sp1.add_argument('--dir_model', default='/scratch.global/zhoux379/grn/14_grn', help='GRN model directory')
-    sp1.add_argument('-p', '--thread', type=int, default=1, help='threads')
-    sp1.set_defaults(func = eval_model)
-
-    args = parser.parse_args()
-    if args.command:
-        args.func(args)
-    else:
-        print('Error: need to specify a sub command\n')
-        parser.print_help()
-
 def run_GENIE3(args):
     fi, ft, fo, odir = args.fi, args.ft, args.fo, args.odir
     thread = args.thread
@@ -1069,20 +1010,196 @@ def run_dynGENIE3(args):
     with open(fo, "wb") as fho:
         _pickle.dump(VIM, fho)
 
-def run_xgboost(args):
-    fi, fo = args.fi, args.fo
-    thread = args.thread
+def run_xgboost_1(em,gid,rids, ntrees,max_depth,learning_rate,reg_alpha,reg_lambda):
+    y = em[gid].values.tolist()
+    y = (y - np.mean(y)) / np.std(y)
 
-    x = pd.read_csv(fi, sep='\t')
-    sids = x.columns.values.tolist()[1:]
-    gids = x['gid'].tolist()
-    exp_mat = x.drop('gid',axis=1).T.values
+    if gid in rids:
+        rids.remove(gid)
+    x = em[rids]
+
+    seed = 131
+    reg = xgb.XGBRegressor(max_depth=max_depth, n_estimators=ntrees,
+                           learning_rate=learning_rate,
+                           subsample=0.8, seed = seed,
+                           reg_lambda=reg_lambda, reg_alpha=reg_alpha,
+                           colsample_bylevel=0.6, colsample_bytree=0.6)
+    reg.fit(x, y)
+
+    vis = {'rid':rids, 'tid': [gid]*len(rids), 'score': reg.feature_importances_}
+    vis = pd.DataFrame(data=vis)
+    mse = mean_squared_error(reg.predict(x), y)
+
+    return [mse, vis]
+
+def run_xgboost(args):
+    fi, ft, fo = args.fi, args.ft, args.fo
+    thread = args.thread
+    ntrees = args.ntrees
+    learning_rate, reg_alpha, reg_lambda = args.learning_rate, args.reg_alpha, args.reg_lambda
+    max_depth = args.max_depth
+
+    em = pd.read_csv(fi, index_col=0, sep='\t').T
+    sids = em.index.tolist()
+    gids = em.columns.values.tolist()
 
     rids = pd.read_csv(ft, sep='\t', names=['rid'])['rid'].tolist()
     rids = list(set(rids) & set(gids))
 
-    import xgboost as xgb
-    dtrain = xgb.DMatrix(exp_mat, label=gids)
+    time_start = time.time()
+    ngenes = em.shape[1]
+    if gids is not None:
+        if not isinstance(gids,(list,tuple)):
+            raise ValueError('input argument gene_names must be a list of gene names')
+        elif len(gids) != ngenes:
+            raise ValueError('input argument gene_names must be a list of length p, where p is the number of columns/genes in the expr_data')
+    print('Number of trees: ' + str(ntrees))
+
+    nthreads = thread
+    print('running jobs on %d threads' % nthreads)
+    input_data = [(em,gid,rids,ntrees,max_depth,learning_rate,reg_alpha,reg_lambda) for gid in gids]
+    pool = Pool(nthreads)
+    allout = pool.starmap(run_xgboost_1, input_data)
+
+    mse = [i for i, vi in allout]
+    VIM = pd.concat([vi for i, vi in allout], ignore_index=True)
+
+    time_end = time.time()
+    print("Elapsed time: %.1f minutes" % ((time_end - time_start)/60))
+
+    res = [rids, gids, VIM, mse]
+    with open(fo, "wb") as fho:
+        _pickle.dump(res, fho, protocol = 4)
+
+def run_grn_1(em,gid,rids, args):
+    opt = args.opt
+    y = em[gid].values.tolist()
+    y = (y - np.mean(y)) / np.std(y)
+
+    if gid in rids:
+        rids.remove(gid)
+    x = em[rids]
+
+    seed = args.seed
+    if seed == None:
+        seed = random.randint(1, 100)
+
+    if opt == 'rf':
+        reg = RandomForestRegressor(random_state = seed,
+                                    n_estimators = args.n_estimators,
+                                    max_features = args.max_features)
+    elif opt == 'et':
+        reg = ExtraTreesRegressor(random_state = seed,
+                                  n_estimators = args.n_estimators,
+                                  max_features = args.max_features)
+    elif opt == 'xgb':
+        reg = XGBRegressor(max_depth = args.max_depth,
+                           random_state = seed,
+                           n_estimators = args.n_estimators,
+                           learning_rate = args.learning_rate,
+                           reg_lambda = args.reg_lambda,
+                           reg_alpha = args.reg_alpha,
+                           subsample = 0.8,
+                           colsample_bylevel = 0.6,
+                           colsample_bytree = 0.6)
+    else:
+        print("unsupported opt: %s" % opt)
+
+    reg.fit(x, y)
+    vis = {'rid':rids, 'tid': [gid]*len(rids), 'score': reg.feature_importances_}
+    vis = pd.DataFrame(data=vis)
+    mse = mean_squared_error(reg.predict(x), y)
+
+    return [mse, vis]
+
+def build_grn(args):
+    fi, ft, fo = args.fi, args.ft, args.fo
+    opt = args.opt
+    nthreads = args.thread
+
+    em = pd.read_csv(fi, index_col=0, sep='\t').T
+    sids = em.index.tolist()
+    gids = em.columns.values.tolist()
+
+    rids = pd.read_csv(ft, sep='\t', names=['rid'])['rid'].tolist()
+    rids = sorted(list(set(rids) & set(gids)))
+
+    time_start = time.time()
+    ngenes = em.shape[1]
+    if gids is not None:
+        if not isinstance(gids,(list,tuple)):
+            raise ValueError('input argument gene_names must be a list of gene names')
+        elif len(gids) != ngenes:
+            raise ValueError('input argument gene_names must be a list of length p, where p is the number of columns/genes in the expr_data')
+    print('method: ' + str(opt))
+    print('Number of trees: ' + str(args.n_estimators))
+
+    print('running jobs on %d threads' % nthreads)
+    input_data = [(em,gid,rids, args) for gid in gids]
+    pool = Pool(nthreads)
+    allout = pool.starmap(run_grn_1, input_data)
+
+    mse = [i for i, vi in allout]
+    VIM = pd.concat([vi for i, vi in allout], ignore_index=True)
+
+    time_end = time.time()
+    print("Elapsed time: %.1f minutes" % ((time_end - time_start)/60))
+
+    res = [rids, gids, VIM, mse]
+    with open(fo, "wb") as fho:
+        _pickle.dump(res, fho, protocol = 4)
+
+def main():
+    import argparse
+    p = argparse.ArgumentParser(
+            formatter_class = argparse.ArgumentDefaultsHelpFormatter,
+            description = 'Construct a Gene Regulatory Network (GRN) from expression matrix'
+    )
+#    sp = parser.add_subparsers(title = 'available commands', dest = 'command')
+
+    p.add_argument('fi', help='input expression matrix (*.tsv)')
+    p.add_argument('ft', help='file with regulator/TF IDs (*.txt)')
+    p.add_argument('fo', help = 'output file')
+    p.add_argument('--opt', default='rf', choices=['rf','et','xgb'], help='tree method')
+    p.add_argument('-p', '--thread', type=int, default=1, help='threads')
+    p.add_argument('--seed', type=int, default=131, help='random seed')
+    p.add_argument('--n_estimators', type=int, default=1000, help='number trees to grow')
+
+    g1 = p.add_argument_group('rf / et', 'arguments specific to random forest / extra trees algorithm')
+    g1.add_argument('--max_features', default='sqrt', help='number of features to consider when splitting')
+
+    g2 = p.add_argument_group('xgboost', 'arguments specific to XGBoost')
+    g2.add_argument('--max_depth', type=int, default=3, help='maximum depth of each tree')
+    g2.add_argument('--learning_rate', type=float, default=0.0001, help='boosting learning rate')
+    g2.add_argument('--reg_alpha', type=float, default=0, help='L1 regularization term on weights')
+    g2.add_argument('--reg_lambda', type=float, default=1, help='L2 regularization term on weights')
+
+    # sp1 = sp.add_parser('dyngenie3', help='Build GRN using dynGENIE3 (tree ensemble)',
+            # formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    # sp1.add_argument('fi', help='input time-series expression matrix (*.tsv)')
+    # sp1.add_argument('ft', help='file with regulator/TF IDs (*.txt)')
+    # sp1.add_argument('fo', help = 'output file')
+    # sp1.add_argument('-ss', '--steady-state', default=None, help='steady-state expression matrix')
+    # sp1.add_argument('-p', '--thread', type=int, default=1, help='threads')
+    # sp1.add_argument('--tree_method', default='RF', choices=['RF','ET'],
+                     # help='tree method')
+    # sp1.add_argument('--K', default='sqrt', help='K')
+    # sp1.add_argument('--ntrees', type=int, default=1000, help='number trees to grow')
+    # sp1.set_defaults(func = run_dynGENIE3)
+
+    # # sp1 = sp.add_parser('eval_model', help='Evaluate model performance',
+            # # formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    # # sp1.add_argument('nid', help='ID of the GRN to evaluate')
+    # sp1.add_argument('fo', help='output file (*.tsv)')
+    # sp1.add_argument('--f_cfg', default='/home/springer/zhoux379/projects/grn/data/10.dataset.xlsx', help='Meta table of all expression datasets (*.tsv)')
+    # sp1.add_argument('--dir_filt', default='/scratch.global/zhoux379/grn/12_em_filt', help='directory of filtered expression matrices')
+    # sp1.add_argument('--dir_raw', default='/scratch.global/zhoux379/grn/11_em_raw', help='directory of raw expression matrices')
+    # sp1.add_argument('--dir_model', default='/scratch.global/zhoux379/grn/14_grn', help='GRN model directory')
+    # sp1.add_argument('-p', '--thread', type=int, default=1, help='threads')
+    # sp1.set_defaults(func = eval_model)
+
+    args = p.parse_args()
+    build_grn(args)
 
 if __name__ == "__main__":
     main()

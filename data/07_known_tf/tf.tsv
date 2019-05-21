@@ -1,9 +1,0 @@
-Year	TF	Study	Tissues	Targets	Reference
-2012	KNOTTED1 (KN1)	ChIP-seq	meristem (ear, tassel, leaf)	648	Bolduc2012
-2012	Pericarp Color1 (P1)	ChIP-seq	endosperm	35 (24)	Li2015
-2014	RAMOSA (RA1)	ChIP-seq	leaf, shoot/floral meristem, ear	102 (98)	Pautler2015
-2015	fascinated ear4 (FEA4)	ChIP-seq	pericarps, floral	?	Morohashi2012
-2015	Opaque2 (O2)	ChIP-seq	ear	204	Eveland2014
-2016	HDA101	ChIP-seq	seed, kernel	108	Yang2016
-2018	ZmbZIP22	ChIP-seq	endosperm	33 (26)	Li2018
-2018	Auxin Response Ractors (ARF) family (14)	DAP-seq	in vitro	>100,000 cis-regulatory regions	Galli2018

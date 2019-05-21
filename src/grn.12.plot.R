@@ -1,3 +1,4 @@
+#{{{
 source("functions.R")
 ncfg = th %>% filter(!str_detect(nid, "^n99[b]")) %>%
    select(nid, net_type, sample_size, col, lgd)
@@ -9,20 +10,22 @@ nid_txts0 = th$lgd
 nid_cols0 = th$col
 dirw = file.path(dird, '14_eval_sum')
 diri = '~/projects/rnaseq'
-gcfg = read_genome_conf()
+tsyn = read_syn(gcfg)
 #
+gs = read_gs()
 fi_em = file.path(dirr, '01.meval.rds')
 fi_tf = file.path(dirr, '01.tf.rds')
 fi_br = file.path(dirr, '01.br.rds')
 fi_go = file.path(dirr, '01.go.rds')
 fi_bm = file.path(dirr, '01.bm.rds')
-ev_tf = readRDS(fi_tf)
+#}}}
 
 #{{{ general stats
 tp0 = ev_tf %>%
     select(nid, nstat) %>% unnest() %>%
     filter(net_size == 5e4) %>% select(-net_size)
 
+#{{{ oob stats
 tp = ev_tf %>% select(nid, oob) %>% unnest() %>%
     inner_join(th, by = 'nid') %>%
     mutate(lgd = factor(lgd, levels = rev(nid_txts0)))
@@ -48,8 +51,34 @@ p1 = ggplot(tp) +
         xtick=T, ytick=T,
         xtitle=T, ytitle=T, xtext=T, ytext=T) +
     theme(axis.text.y = element_text(color=rev(nid_cols0)))
-fo = file.path(dirw, '03.test.pdf')
+fo = file.path(dirw, '03.oob.pdf')
 ggsave(p1, file=fo, width=6, height=8)
+#}}}
+
+#{{{ r2 eval stats
+tp0 = readRDS(fi_em)
+n_gene= 1000
+t_oob = ev_tf %>% select(nid, oob) %>% unnest() %>%
+    arrange(nid, desc(oob)) %>% group_by(nid) %>%
+    filter(row_number() <= n_gene) %>%
+    #filter(!gid %in% tsyn$gid) %>%
+    ungroup() %>% select(-oob)
+
+th0 = th %>% select(nid,lgd,col)
+tp = tp0 %>%
+    inner_join(t_oob, by = c('nid','gid')) %>%
+    rename(aid=nid, bid=nid_b) %>% group_by(aid, bid) %>%
+    summarise(dist = 1 - max(0,quantile(score, .75))) %>%
+    ungroup() %>%
+    inner_join(th0, by = c('aid'='nid')) %>%
+    rename(algd=lgd, acol=col) %>%
+    inner_join(th0, by = c('bid'='nid')) %>%
+    rename(blgd=lgd, bcol=col)
+
+p = heatmap_hc(tp, leg='Q50 R2 score', top=.4, bottom=5, ratio=4)
+fo = file.path(dirw, '03.stat.eval.pdf')
+p %>% ggexport(filename = fo, width = 10, height = 8)
+#}}}
 
 #{{{ topology stats
 tp1 = tp0 %>%
@@ -95,20 +124,90 @@ ggpubr::ggarrange(p1, p2,
     labels=LETTERS[1:2]) %>%
     ggpubr::ggexport(filename = fo, width = 10, height = 8)
 #}}}
+
+#{{{ network clustering
+tu = ev_tf %>% select(nid, tn) %>% unnest() %>%
+    select(nid, reg.gid, tgt.gid, score) %>%
+    group_by(nid) %>% slice(1:1e5) %>% ungroup() %>%
+    mutate(reg.tgt = str_c(reg.gid, tgt.gid, sep = '-')) %>%
+    select(-reg.gid, -tgt.gid)
+reg.tgts = tu %>% count(reg.tgt) %>% filter(n>=2) %>% pull(reg.tgt)
+length(reg.tgts)
+tu = tu %>% filter(reg.tgt %in% reg.tgts)
+
+tuw = tu %>% spread(reg.tgt, score)
+#tuw1 = tu %>% spread(reg.tgt, score) %>% replace(is.na(.), 0)
+mat = as.matrix(tuw[,-1])
+rownames(mat) = tuw$nid
+mat[is.na(mat)] = 0
+dist_mat = dist(mat, method = 'binary')
+
+th0 = th %>% select(nid, lgd, col)
+#dis = daisy(tuw[,-1], metric = 'gower')
+tp = as.matrix(dist_mat)
+colnames(tp) = tuw$nid
+tp = as_tibble(tp) %>% mutate(aid = tuw$nid) %>%
+    gather(bid, dis, -aid) %>%
+    mutate(dis = ifelse(dis <= .6, .6, dis)) %>%
+    mutate(dis = ifelse(aid==bid, NA, dis)) %>%
+    rename(dist = dis) %>%
+    inner_join(th0, by=c('aid'='nid')) %>% rename(algd=lgd, acol=col) %>%
+    inner_join(th0, by=c('bid'='nid')) %>% rename(blgd=lgd, bcol=col)
+#
+p = heatmap_hc(tp, leg = 'pairwise similarity', top=.4, bottom=5, ratio=4)
+fo = file.path(dirw, '03.hc.pdf')
+p %>% ggexport(filename = fo, width = 10, height = 8)
+#}}}
 #}}}
 
-#{{{ non-syn
-fy = file.path('~/data/genome/B73/gene_mapping/syn.gid.tsv')
-ty = read_tsv(fy)
+#{{{ TF stats
+t_tf0 = gs$all_tf %>% mutate(tf = 'TF')
+t_tf = t_tf0 %>% inner_join(tsyn, by = 'gid')
 
-nid='n15a'
-tn1 = ev_tf %>% filter(nid==!!nid) %>% select(nid, tn) %>% unnest() %>%
-    count(reg.gid) %>% rename(n.tgt=n)
+#{{{ TF - syntenic composition
+tp0 = tsyn %>% left_join(t_tf0, by = 'gid') %>%
+    replace_na(list(tf='non-TF'))
+tps = tp0 %>% count(tf) %>% mutate(lab = sprintf("%s (N=%s)", tf, number(n)))
+tp = tp0 %>%
+    group_by(tf, ftype) %>%
+    summarise(n = n()) %>%
+    mutate(freq = n / sum(n)) %>%
+    ungroup() %>%
+    mutate(lab = percent(freq, accuracy=2)) %>%
+    arrange(tf, desc(ftype)) %>%
+    group_by(tf) %>% mutate(y = cumsum(freq)) %>%
+    mutate(y = y - freq/2) %>% ungroup()
 
-tn2 = tn1 %>% mutate(hub = n.tgt > 50) %>%
-    left_join(ty, by=c("reg.gid"="gid"))
-tn2 %>% count(hub, subgenome) %>% group_by(hub) %>%
-    summarise(n.tf=sum(n), prop = n[is.na(subgenome)]/sum(n)) %>% print(n=20)
+cols5 = c('grey70', brewer.pal(6, 'Paired')[3:6])
+p1 = ggplot(tp) +
+    geom_bar(aes(x=tf, y=n, fill=ftype), stat='identity', position='fill', width=.8) +
+    geom_text(aes(x=tf, y=y, label=lab), color='black') +
+    scale_x_discrete(expand=c(0,0), breaks=tps$tf, labels=tps$lab) +
+    scale_y_continuous(expand=c(0,0)) +
+    scale_fill_manual(name='Syntenic status', values=cols5) +
+    otheme(legend.pos = 'top', legend.dir='v', legend.title = F,
+        xtick=T, ytick=F,
+        xtext=T, ytext=F)
+fo = file.path(dirw, 'tf.pdf')
+ggsave(p1, file=fo, width=4, height=6)
+#}}}
+
+ev_tf %>% filter(nid=='nc03') %>% select(nid, tn) %>% unnest() %>%
+    select(gid = reg.gid, score) %>% inner_join(t_tf, by='gid') %>%
+    group_by(ftype) %>%
+    summarise(n = n(), s25=quantile(score,.25), s50=median(score),
+              s75 = quantile(score,.75)) %>% ungroup()
+
+
+t_deg = ev_tf %>% filter(nid=='n17a') %>% select(nid, tn) %>% unnest() %>%
+    select(gid = reg.gid, score) %>% count(gid) %>% rename(deg = n)
+t_tf %>%
+    left_join(t_deg, by = 'gid') %>% replace_na(list(deg = 0)) %>%
+    mutate(degbin = cut(deg, breaks=c(0,1,3,10,100,Inf), include.lowest=T, right=F)) %>%
+    group_by(ftype, degbin) %>%
+    summarise(n = n()) %>% mutate(freq = n/sum(n)) %>%
+    ungroup() %>% select(-n) %>% spread(degbin, freq)
+
 #}}}
 
 #{{{ Y1H eval
@@ -139,7 +238,6 @@ write_tsv(to, fo, na='')
 #}}}
 
 #{{{ known TF / TFBS AUROC
-gs = read_gs()
 levs = c("AUROC", "AUPR")
 ctags = c(gs$ctags_tf5, 'known_TFs', gs$ctags_tfbs)
 ctags = c(gs$ctags_tf5, gs$ctags_tfbs)
@@ -191,6 +289,13 @@ p2 = ggplot(tp2) +
 fo = file.path(dirw, "05.roc_prc.dev.pdf")
 ggpubr::ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>%
     ggpubr::ggexport(filename = fo, width = 10, height = 5)
+#}}}
+
+#{{{ use TF mutant RNA-Seq to validate
+fi = file.path(dird, '07_mutants', 'degs.rds')
+ds = readRDS(fi)
+
+tn = ev_tf
 #}}}
 
 #{{{ aupr/auroc bar-plot
@@ -480,6 +585,14 @@ tp9 = ev_tf %>%
     group_by(reg.gid,tgt.gid) %>%
     summarise(nnet = n(), m.p.drc=mean(p.drc)) %>%
     ungroup()
+
+tpx = tp9 %>% filter(nnet >= 3) %>% count(reg.gid) %>% rename(deg = n) %>%
+    left_join(tsyn, by = c('reg.gid'='gid'))
+tpx %>% group_by(deg, ftype) %>%
+    summarise(n = n()) %>%
+    mutate(freq = n / sum(n)) %>% ungroup() %>%
+    select(-n) %>% spread(ftype, freq) %>% print(n=50)
+
 
 types = c("consis. +", "consis. -", "mix of +/-")
 tp = tp9 %>%
@@ -1095,7 +1208,7 @@ tx = gcfg$chrom
 gstart = flattern_gcoord(tx %>% select(chrom,pos=start), t_size)
 gend = flattern_gcoord(tx %>% select(chrom,pos=end), t_size)
 tx = tx %>% mutate(start=gstart, end=gend, pos=(start+end)/2)
-
+#
 nids_hc = c('nc03',
             'n13c','n14a','n15a','n16a','n18d','n19a',
             'n17a','n18a_1','n18a_2','n18a_3','n18a_4','n18a_5','n18a_6',
@@ -1173,7 +1286,8 @@ tz = ev_go %>% filter(nid %in% nids_hc) %>%
     select(ctag, nid, reg.gid, n, fc, grp=max.grp, max.grp.size) %>%
     #count(reg.gid, grp) %>% filter(n>=1) %>%
     arrange(ctag,grp,desc(fc)) %>%
-    left_join(t_gl, by=c('reg.gid'='gid')) %>% rename(gchrom=chrom,gpos=pos) %>%
+    left_join(t_gl, by=c('reg.gid'='gid')) %>%
+    rename(gchrom=chrom,gpos=pos) %>%
     left_join(hs, by=c('ctag'='qtag','grp'='qid')) %>%
     mutate(hit=ifelse(gchrom==qchrom & abs(gpos-qpos)<=5e7,'hit','non-hit'))
 #tz %>% select(-grp,-max.grp.size) %>% print(n=50)
@@ -1209,7 +1323,12 @@ ggsave(p1, filename = fp, width = 12, height = 4.5)
 # save to file
 to = tz %>% filter(hit == 'hit') %>%
     group_by(reg.gid) %>%
-    summarise(qtags = paste(ctag, collapse=',')) %>% ungroup()
+    summarise(fc = max(fc), n_qtag = n(),
+              max.grp.size = max(max.grp.size),
+              qtags = paste(ctag, collapse=',')) %>% ungroup() %>%
+    filter(max.grp.size >= 5) %>%
+    arrange(desc(n_qtag), desc(fc), desc(max.grp.size))
+to %>% print(n=50)
 fo = file.path(dirw, '02.hs.tsv')
 write_tsv(to, fo)
 

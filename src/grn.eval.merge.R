@@ -19,11 +19,9 @@ if (opt == 'tf') {
         mutate(res = map(fi, readRDS)) %>%
         mutate(tfstat = map(res, 'tfstat'),
                nstat = map(res, 'nstat'),
-               ystat = map(res, 'ystat'),
-               tn = map(res, 'tn'),
-               oob = map(res, 'oob')) %>%
+               ystat = map(res, 'ystat')) %>%
         mutate(tfstat = map(tfstat, select, ctag, auroc, auprc)) %>%
-        select(nid,tfstat,nstat,ystat,tn,oob)
+        select(nid,tfstat,nstat,ystat)
 } else if (opt == 'go') {
     ev = th %>% mutate(fi = sprintf("%s/%s_go.rds", diri, nid)) %>%
         mutate(res = map(fi, readRDS)) %>%
