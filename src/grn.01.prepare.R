@@ -1,9 +1,9 @@
 source("functions.R")
 genome = 'B73'
-genome_cfg = read_genome_conf(genome)
+gcfg = read_genome_conf(genome)
 tm = v3_to_v4()
 
-#{{{ map known TF targets
+#{{{ ## map known TF targets
 dirw = file.path(dird, '07_known_tf')
 #{{{ KN1
 tag = 'KN1'
@@ -143,7 +143,7 @@ write_tsv(to, fo)
 #}}}
 #}}}
 
-#{{{ Walley2016 and Huang2018 GRNs
+#{{{ ## Walley2016 and Huang2018 GRNs
 lift_previous_grn <- function(nid, study, tag, tm, dird = '~/projects/maize.grn/data') {
     #{{{
     fi = sprintf("%s/05_previous_grns/%s_%s.txt", dird, study, tag)
@@ -183,24 +183,24 @@ fi = file.path(dirg, "02.go.gs.tsv")
 ti = read_tsv(fi)
 go_hc = ti %>% mutate(note = str_c(evidence, gotype)) %>%
     mutate(ctag = 'GO_HC') %>% select(ctag, grp=goid, gid, note)
-
+#
 fi = file.path(dirg, "01.go.tsv")
 ti = read_tsv(fi)
 go = ti %>%
     filter(!ctag %in% c('aggregate','fanngo'), gotype=='P') %>%
     mutate(ctag = str_c("GO",ctag,sep="_")) %>%
     select(ctag, grp=goid, gid, note=goname)
-
+#
 ctag = "CornCyc"
 fi = file.path(dirg, "07.corncyc.tsv")
 ti = read_tsv(fi)
 cc = ti %>% transmute(ctag = !!ctag, grp = pid, gid = gid, note = pname)
-
+#
 ctag = 'Y1H'
 fi = '~/projects/grn/data/08_y1h/01.rds'
 y1h = readRDS(fi)
 y1h = tibble(ctag = !!ctag, grp = 'Y1H', gid = y1h$tgt.gids, note = '')
-
+#
 ctag = "PPIM"
 fi = file.path(dirg, "08.ppim.tsv")
 ti = read_tsv(fi)
@@ -209,15 +209,15 @@ ppi = ti %>% filter(type1 != '1-to-0', type2 != '1-to-0') %>%
 ppic = ppi %>% mutate(grp = sprintf('ppi%d', 1:nrow(ppi))) %>%
     gather(tag, gid, -grp) %>%
     transmute(ctag='PPIM', grp=grp, gid=gid, note='')
-
+#
 ctags = c('li2013','liu2017','wang2018')
 hs = tibble(ctag=ctags) %>%
-    mutate(fi=file.path('~/projects/genomes/data',ctag,'10.rds')) %>%
+    mutate(fi=file.path('~/projects/genome/data2',ctag,'10.rds')) %>%
     mutate(data = map(fi, readRDS)) %>%
     mutate(hs = map(data, 'hs.tgt')) %>%
     select(ctag, hs) %>% unnest() %>%
     select(ctag,grp=qid,gid) %>% mutate(note=NA)
-
+#
 fun_ann = rbind(go_hc, go, cc, hs, y1h)
 fun_ann %>% distinct(ctag,grp) %>% count(ctag)
 #}}}
@@ -227,7 +227,7 @@ ctags = c('KN1_ear', 'KN1_tassel', 'KN1_leaf', 'KN1_any', 'KN1_all',
           'FEA4', 'O2', 'RA1', 'HDA101', 'bZIP22')
 tf = tibble()
 for (ctag in ctags) {
-    fi = sprintf("%s/07_known_tf/05.%s.tsv", dird, ctag)
+    fi = sprintf("%s/07_mutants/05.%s.tsv", dird, ctag)
     ti = read_tsv(fi) %>%
         mutate(ctag = ctag) %>%
         select(ctag, everything())
@@ -254,17 +254,18 @@ to = ti %>% select(o.reg.gid, o.tgt.gid, evi) %>%
     rename(reg.gid=gid, reg.type=type) %>%
     inner_join(tm, by=c("o.tgt.gid"="ogid")) %>%
     rename(tgt.gid=gid, tgt.type=type) %>%
-    filter(reg.gid %in% genome_cfg$size.gene$gid, tgt.gid %in% genome_cfg$size.gene$gid) %>%
+    filter(reg.gid %in% gcfg$gidx$gid, tgt.gid %in% gcfg$gidx$gid) %>%
     distinct(reg.gid, tgt.gid, reg.type, tgt.type, evi)
 to %>% count(reg.type,tgt.type)
 to %>% count(reg.gid) %>% arrange(n)
 
+ctags = c("FunTFBS + motif + motif_CE", "FunTFBS + motif",
+          "motif + motif_CE", "motif")
 tfbs = to %>% distinct(reg.gid, tgt.gid, evi) %>%
-    transmute(ctag=evi, reg.gid=reg.gid, tgt.gid=tgt.gid)
-ctags_tfbs = tfbs %>% count(ctag) %>% arrange(n) %>% pull(ctag)
+    transmute(ctag=evi, reg.gid=reg.gid, tgt.gid=tgt.gid) %>%
+    mutate(ctag = str_replace_all(ctag, ", ", " + ")) %>%
+    mutate(ctag = factor(ctag, levels=ctags))
 tfbs %>% count(ctag)
-tnk = tf %>% bind_rows(tfbs)
-tnk %>% count(ctag)
 #}}}
 
 #{{{ FunTFBS (no use)
@@ -282,10 +283,15 @@ to = ti %>% select(chr,beg,end,score,note) %>%
     select(chr,beg,end,score,tid,gid,corr,pval)
 #}}}
 
-#{{{ TF IDs
+#{{{ TF RNA-Seq DEGs
+fd = file.path(dird, '07_mutants', 'degs.rds')
+ko = readRDS(fd)
+#}}}
+
+#{{{ add additional TF IDs
 ff = '~/data/genome/Zmays_v4/61_functional/06.tf.tsv'
 ti = read_tsv(ff)
-all_tf = ti
+tf_fam = ti
 tf_ids = ti$gid
 length(tf_ids)
 length(unique(tf_ids))
@@ -305,8 +311,8 @@ length(tf_ids)
 # optional: run grn.91.tf45.R
 
 # build GRN gold-standard dataset
-res = list(tnk=tnk, ctags_tf5=ctags_tf5, ctags_tfbs=ctags_tfbs,
-           all_tf=all_tf, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
+res = list(tf=tf, tfbs=tfbs, ko=ko,
+           tf_fam=tf_fam, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
 fo = file.path(dird, '09.gs.rds')
 saveRDS(res, file=fo)
 ft = file.path(dird, '09.tf.txt')

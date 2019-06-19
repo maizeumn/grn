@@ -25,6 +25,11 @@ th = t_cfg %>% select(-mid) %>%
     mutate(col = net_cols[net_type]) %>%
     mutate(lgd = sprintf("%s %s [%d]", study,note,sample_size)) #%>%
     #select(-study,-note,-sample_size)
+th1 = th %>% filter(!str_detect(nid, "^n99[a]")) %>%
+    select(nid, net_type, sample_size, col, lgd)
+th2 = th %>% filter(!str_detect(nid, "^n99[a]")) %>%
+    filter(!str_detect(nid, "^n18g")) %>%
+    select(nid, net_type, sample_size, col, lgd)
 nids_geno = th %>% filter(net_type == 'genotype') %>% pull(nid)
 nids_dev = th %>% filter(net_type == 'tissue') %>% pull(nid)
 nids22 = t_cfg %>%
@@ -33,10 +38,8 @@ nids22 = t_cfg %>%
 nids25 = t_cfg %>%
     filter(!str_detect(nid, '^n((17a)|(18a)|(99a)|(99c))_')) %>% pull(nid)
 tsyn = read_syn(gcfg)
+gs = readRDS('~/projects/grn/data/09.gs.rds')
 
-read_gs <- function(fi='~/projects/grn/data/09.gs.rds') {
-    readRDS(fi)
-}
 read_briggs <- function(fi="~/projects/briggs/data/49_coop/01.master.rda") {
     #{{{ read briggs data
     x = load(fi)

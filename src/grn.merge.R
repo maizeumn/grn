@@ -20,7 +20,8 @@ tn = th %>% mutate(fi = sprintf("%s/%s.%s.rds", diri, gopt, nid)) %>%
     mutate(rids = map(res, 'rids'),
            tids = map(res, 'tids'),
            mse = map(res, 'mse'),
-           tn = map(res, 'tn'))
+           tn = map(res, 'tn')) %>%
+    select(-fi, -res)
 
 saveRDS(tn, file = f_out)
 
