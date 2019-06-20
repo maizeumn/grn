@@ -1256,23 +1256,17 @@ ggpubr::ggarrange(p1, p2,
     ggpubr::ggexport(filename = fo, width = 8, height = 5)
 #}}}
 
-t_size = gcfg$chrom %>% select(chrom,size=end)
-tx = gcfg$chrom
-gstart = flattern_gcoord(tx %>% select(chrom,pos=start), t_size)
-gend = flattern_gcoord(tx %>% select(chrom,pos=end), t_size)
-tx = tx %>% mutate(start=gstart, end=gend, pos=(start+end)/2)
-#
 nids_hc = c('nc03',
             'n13c','n14a','n15a','n16a','n18d','n19a',
             'n17a','n18a_1','n18a_2','n18a_3','n18a_4','n18a_5','n18a_6',
             'nc04', 'n13a', 'n18c')
 
 #{{{ check for overlap w. trans- hotspots
+eopt = 'go'
+fv = sprintf("%s/%s.%s.rds", dirr, gopt, eopt)
+ev_go = readRDS(fv)
 fun_ann_note = gs$fun_ann %>% distinct(ctag,grp,note)
-t_gl = gcfg$loc.gene %>% group_by(gid) %>%
-    summarise(chrom=chrom[1], start=min(start), end=max(end)) %>%
-    ungroup() %>%
-    mutate(pos=(start+end)/2) %>% select(gid,chrom,pos)
+t_gl = gcfg$gene %>% mutate(pos=(start+end)/2) %>% select(gid,chrom,pos)
 
 qtags = c('li2013','liu2017','wang2018')
 hs = tibble(qtag=qtags) %>%
@@ -1335,7 +1329,7 @@ cor.test(as.numeric(tem[tem$gid==tfid,]), as.numeric(tem[tem$gid==tgid,]))
 nids_hc = nid
 tz = ev_go %>% filter(nid %in% nids_hc) %>%
     select(nid, enrich_reg) %>% unnest() %>%
-    filter(ctag %in% qtags, n >= 10, net_size==50000, pval < .05) %>%
+    filter(ctag %in% qtags, n >= 10, net_size==5e4, pval < .05) %>%
     select(ctag, nid, reg.gid, n, fc, grp=max.grp, max.grp.size) %>%
     #count(reg.gid, grp) %>% filter(n>=1) %>%
     arrange(ctag,grp,desc(fc)) %>%
@@ -1347,16 +1341,17 @@ tz = ev_go %>% filter(nid %in% nids_hc) %>%
 tz0 = tz
 
 #{{{ plot
+tx = gcfg$chrom
 ti = tz
-gpos = flattern_gcoord(ti %>% select(chrom=gchrom, pos=gpos), t_size)
-qpos = flattern_gcoord(ti %>% select(chrom=qchrom, pos=qpos), t_size)
+gpos = flattern_gcoord(ti %>% select(chrom=gchrom, pos=gpos), gcfg$chrom)
+qpos = flattern_gcoord(ti %>% select(chrom=qchrom, pos=qpos), gcfg$chrom)
 tp = ti %>% mutate(gpos=!!gpos, qpos=!!qpos)
 tps = tibble(reg.gid='Zm00001d026147', gname='R1')
 tps = tps %>% inner_join(tp, by = 'reg.gid')
 #
 p1 = ggplot(tp) +
     geom_point(aes(x=qpos, y=gpos, color=max.grp.size, shape=hit), size=1) +
-    geom_text_repel(data=tps, aes(qpos,gpos,label=gname), nudge_x=-150000000, direction='y', segment.size=.2, size=3) +
+    geom_text_repel(data=tps, aes(qpos,gpos,label=gname), nudge_x=-1.5e8, direction='y', segment.size=.2, size=3) +
     geom_vline(xintercept = tx$start, alpha=.1) +
     geom_vline(xintercept = tx$end, alpha=.1) +
     geom_hline(yintercept = tx$start, alpha=.1) +
@@ -1369,7 +1364,7 @@ p1 = ggplot(tp) +
     scale_color_viridis(name='N_targets',option = "plasma") +
     otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, legend.title=T,
          legend.pos='top.center.out', legend.dir='h')
-fp = sprintf("%s/32.hs.pdf", dirw, qtag)
+fp = sprintf("%s/32.hs.pdf", dirw)
 ggsave(p1, filename = fp, width = 12, height = 4.5)
 #}}}
 
@@ -1380,9 +1375,10 @@ to = tz %>% filter(hit == 'hit') %>%
               max.grp.size = max(max.grp.size),
               qtags = paste(ctag, collapse=',')) %>% ungroup() %>%
     filter(max.grp.size >= 5) %>%
-    arrange(desc(n_qtag), desc(fc), desc(max.grp.size))
+    arrange(desc(n_qtag), desc(fc), desc(max.grp.size)) %>%
+    left_join(gcfg$gene[,c('gid','note2')], by=c('reg.gid'='gid'))
 to %>% print(n=50)
-fo = file.path(dirw, '02.hs.tsv')
+fo = file.path(dirw, '33.hs.tsv')
 write_tsv(to, fo)
 
 tz = ev_go %>% filter(nid==!!nid) %>%

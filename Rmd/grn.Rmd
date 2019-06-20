@@ -61,6 +61,32 @@ tp %>% select(-col) %>%
 ```
 
 \pagebreak
+```{r, message=FALSE, echo=FALSE}
+fi = '/home/springer/zhoux379/projects/barn/data/01.cfg.xlsx'
+tp = read_xlsx(fi, 'mutants') %>%
+	mutate(accession=str_sub(accession, 1, 11)) %>%
+    select(`TF alias`=gene_alias, `TF name`=gene_name, `TF ID`=gene_id, 
+    Study=author, Accession=accession, Tissue=tissue, N=n)
+tp %>%
+    kable(format='latex', escape=F, longtable=F, booktabs=T, linesep="",
+        format.args = list(big.mark = ","),
+        caption = "Table 2. TF knockout mutant RNA-Seq datasets used in this study.") %>%
+    kable_styling(latex_options = c("striped", "hold_position"), full_width=F, font_size=9)
+```
+
+\pagebreak
+```{r, message=FALSE, echo=FALSE}
+fi = file.path(dird, '14_eval_sum/33.hs.tsv')
+tp = read_tsv(fi) %>%
+    select(ID=reg.gid, `\\#_Targets`=max.grp.size, `Supported eQTL study`=qtags, Annotation=note2)
+tp %>%
+    kable(format='latex', escape=F, longtable=T, booktabs=T,
+        format.args = list(big.mark = ","),
+        caption = "Table 3. GRN-predicted TFs supported by trans-eQTL hotspots.") %>%
+    kable_styling(latex_options = c("striped", "hold_position"), full_width=F, font_size=9)
+```
+
+\pagebreak
 ![]($grn/data/14_eval_sum/02.gopt.1.hc.pdf){width=100%}
 
 Figure S1. Hierarchical clustering of 126 GRNs (42 expression dataset * 3 methods).  Each of the three regression-based method (random forest, extra trees, gradient boosted) was used to build a network for each RNA-Seq dataset.  Pairwise distance between networks was determined by taking the top 100,000 TF-target predictions from each network and calculating the proportion of shared (common) predictions (using ‘dist()’ function in R with additional argument ‘method=binary’).  Hierarchical clustering was then performed based on the cross-network pairwise distance matrix using “ward.D” option.
