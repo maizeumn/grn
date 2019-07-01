@@ -1,48 +1,45 @@
 nid	mid	study	note	subid	net_type	sample_size
-n13a	me13a	li2013	SAM	z	ril	107
-n13c	me13c	eitchen2013	seedling_leaf3	z	genotype	62
-n14a	me14a	hirsch2014	seedling	z	genotype	503
-n15a	me15a	leiboff2015	SAM	z	genotype	383
-n16a	me13e	fu2013	kernel	z	genotype	368
-n16b	me16b	stelpflug2016	B73	z	tissue	93
-n16c	me16c	walley2016	B73	z	tissue	23
-n17a	me17a	lin2017	5*27	z	tissue*genotype	133
-n17a_1	me17a	lin2017	ear	ear	genotype	26
-n17a_2	me17a	lin2017	root	root	genotype	27
-n17a_3	me17a	lin2017	shoot	shoot	genotype	27
-n17a_4	me17a	lin2017	tassel	tassel	genotype	26
-n17a_5	me17a	lin2017	SAM	SAM	genotype	27
-n18a_1	me18a	kremling2018	GRoot	GRoot	genotype	274
-n18a_2	me18a	kremling2018	GShoot	GShoot	genotype	280
-n18a_3	me18a	kremling2018	Kern	Kern	genotype	231
-n18a_4	me18a	kremling2018	L3Base	L3Base	genotype	264
-n18a_5	me18a	kremling2018	L3Tip	L3Tip	genotype	266
-n18a_6	me18a	kremling2018	LMAD	LMAD	genotype	204
-n18a_7	me18a	kremling2018	LMAN	LMAN	genotype	262
-n18c	me18c	wang2018	seedling_v2	z	ril	617
-n18d	me18d	shaefer2018	root_GCN	z	genotype	48
-n18e_1	me18e	huang2018	leaf	leaf	genotype	394
-n18e_2	me18e	huang2018	root	root	genotype	176
-n18e_3	me18e	huang2018	SAM	SAM	genotype	406
-n18e_4	me18e	huang2018	seed	seed	genotype	159
-n19a	me19a	mazaheri2019	seedling	z	genotype	453
-n99a	me99a	kaeppler2018	5*96	z	tissue*genotype	447
-n99a_1	me99a	kaeppler2018	endosperm	endosperm	genotype	89
-n99a_2	me99a	kaeppler2018	internode	internode	genotype	43
-n99a_3	me99a	kaeppler2018	leaf	leaf	genotype	50
-n99a_4	me99a	kaeppler2018	root	root	genotype	49
-n99a_5	me99a	kaeppler2018	seedling	seedling	genotype	216
-n99b	me99b	zhou2018	23*3	z	tissue*genotype	73
-n99b_1	me99b	zhou2018	B73	B73	tissue	23
-n99b_2	me99b	zhou2018	Mo17	Mo17	tissue	23
-n99b_3	me99b	zhou2018	BxM	B73xMo17	tissue	23
-n99c	me99c	li2019	5*121	z	tissue*genotype	450
-n99c_1	me99c	li2019	endosperm	Endosperm	genotype	121
-n99c_2	me99c	li2019	internode	Internode	genotype	77
-n99c_3	me99c	li2019	leaf	Leaf	genotype	84
-n99c_4	me99c	li2019	root	Root	genotype	84
-n99c_5	me99c	li2019	seedling	Seedling	genotype	84
-nc01	mec01	leaf dev	leaf	z	tissue	40
-nc02	mec02	seed dev	embryo_endpsperm	z	tissue	61
-nc03	mec03	dev atlas	combined	z	tissue	139
-nc04	mec04	root dev	3*15	z	tissue*genotype	50
+n16b	rn16b	stelpflug2016	B73	z	tissue	93
+n16c	rn16c	walley2016	B73	z	tissue	23
+n19c	rn19c	yi2019	seed dev	z	tissue	31
+nc01	rnc01	dev atlas	combined	z	tissue	247
+n13a	rn13a	li2013	B73 x Mo17	z	ril	107
+n15c	rn15c	baute2016	MAGIC	z	ril	102
+n15d	rn15d	baute2015	B73 x H99	z	ril	106
+n18c	rn18c	wang2018	W22 x Teosinte	z	ril	617
+n13c	rn13c	eitchen2013	seedling_leaf3	z	genotype	62
+n13e	rn13e	fu2013	kernel	z	genotype	368
+n14a	rn14a	hirsch2014	seedling	z	genotype	503
+n15a	rn15a	leiboff2015	SAM	z	genotype	383
+n18d	rn18d	shaefer2018	root_GCN	z	genotype	48
+n19a	rn19a	mazaheri2019	seedling	z	genotype	453
+n17a	rn17a	lin2017	5*27	z	tissue*genotype	133
+n17a_1	rn17a	lin2017	ear	ear	genotype	26
+n17a_2	rn17a	lin2017	root	root	genotype	27
+n17a_3	rn17a	lin2017	shoot	shoot	genotype	27
+n17a_4	rn17a	lin2017	tassel	tassel	genotype	26
+n17a_5	rn17a	lin2017	SAM	SAM	genotype	27
+n18a	rn18a	kremling2018	7*237	z	tissue*genotype	1657
+n18a_1	rn18a	kremling2018	GRoot	GRoot	genotype	201
+n18a_2	rn18a	kremling2018	GShoot	GShoot	genotype	271
+n18a_3	rn18a	kremling2018	Kern	Kern	genotype	226
+n18a_4	rn18a	kremling2018	L3Base	L3Base	genotype	254
+n18a_5	rn18a	kremling2018	L3Tip	L3Tip	genotype	257
+n18a_6	rn18a	kremling2018	LMAD	LMAD	genotype	199
+n18a_7	rn18a	kremling2018	LMAN	LMAN	genotype	249
+n18e	rn18e	huang2018	4*300	z	tissue*genotype	1136
+n18e_1	rn18e	huang2018	leaf	leaf	genotype	394
+n18e_2	rn18e	huang2018	root	root	genotype	176
+n18e_3	rn18e	huang2018	SAM	SAM	genotype	406
+n18e_4	rn18e	huang2018	seed	seed	genotype	159
+n99a	rn99a	li2019	6*103	z	tissue*genotype	620
+n99a_1	rn99a	li2019	endosperm	E	genotype	121
+n99a_2	rn99a	li2019	internode	I	genotype	77
+n99a_3	rn99a	li2019	leaf	L	genotype	84
+n99a_4	rn99a	li2019	root	R	genotype	84
+n99a_5	rn99a	li2019	shoot	S	genotype	85
+n99a_6	rn99a	li2019	unknown	U	genotype	169
+n18g	rn18g	zhou2018	23*3	z	tissue*genotype	73
+n18g_1	rn18g	zhou2018	B73	B73	tissue	23
+n18g_2	rn18g	zhou2018	Mo17	Mo17	tissue	23
+n18g_3	rn18g	zhou2018	BxM	B73xMo17	tissue	23

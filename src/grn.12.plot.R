@@ -1383,7 +1383,7 @@ write_tsv(to, fo)
 
 tz = ev_go %>% filter(nid==!!nid) %>%
     select(enrich_grp) %>% unnest() %>%
-    filter(ctag == 'li2013', n >=10, net_size==50000, pval < .01) %>%
+    filter(ctag == 'li2013', n >=10, net_size==5e4, pval < .01) %>%
     select(grp, n, fc, reg.gid=max.reg.gid, max.reg.size) %>%
     arrange(desc(fc)) %>%
     left_join(hs, by=c('grp'='qid')) %>%

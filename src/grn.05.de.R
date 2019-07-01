@@ -1,5 +1,4 @@
 source("functions.R")
-gs = read_gs()
 
 run_deseq2 <- function(gene_alias, Tissue, tm, th) {
     #{{{
@@ -41,13 +40,50 @@ run_deseq2 <- function(gene_alias, Tissue, tm, th) {
     #}}}
 }
 
+call_degs <- function(th, tm, tc) { # th should have 'group' column
+    #{{{
+    require(DESeq2)
+    require(edgeR)
+    th1 = th; tm1 = tm
+    #{{{ prepare data
+    vh = th1 %>% mutate(Genotype = factor(Genotype)) %>% arrange(SampleID)
+    vh.d = column_to_rownames(as.data.frame(vh), var = 'SampleID')
+    gids = tm1 %>% group_by(gid) %>% summarise(n.sam = sum(ReadCount >= 10)) %>%
+        filter(n.sam > .2 * nrow(vh)) %>% pull(gid)
+    vm = tm1 %>% filter(gid %in% gids) %>%
+        select(SampleID, gid, ReadCount)
+    x = readcount_norm(vm)
+    mean.lib.size = mean(x$tl$libSize)
+    vm = x$tm
+    vm.w = vm %>% select(SampleID, gid, ReadCount) %>% spread(SampleID, ReadCount)
+    vm.d = column_to_rownames(as.data.frame(vm.w), var = 'gid')
+    stopifnot(identical(rownames(vh.d), colnames(vm.d)))
+    #}}}
+    # DESeq2
+    dds = DESeqDataSetFromMatrix(countData=vm.d, colData=vh.d, design=~group)
+    dds = estimateSizeFactors(dds)
+    dds = estimateDispersions(dds, fitType = 'parametric')
+    disp = dispersions(dds)
+    #dds = nbinomLRT(dds, reduced = ~ 1)
+    dds = nbinomWaldTest(dds)
+    resultsNames(dds)
+    get_results <- function(group1, group2, dds)
+        as_tibble(results(dds, contrast=c("group",group1,group2), pAdjustMethod="fdr"))
+    res = tc %>%
+        mutate(data=map2(group1, group2, get_results, dds=dds)) %>%
+        unnest() %>% select(-baseMean,lfc=log2FoldChange,-stat,pval=pvalue)
+    t_ds = res %>% replace_na(list(padj = 1))
+    t_ds
+    #}}}
+}
+
 #{{{ call DEGs for mutant RNA-Seq
 fi= '~/projects/barn/data/01.cfg.xlsx'
 ti = read_xlsx(fi, sheet='mutants') %>%
     select(yid,gene_id,gene_alias,gene_name)
 ti %>% print(n=40)
 #
-diri = '~/projects/rnaseq/data/raw'
+diri = '~/projects/rnaseq/data/11_qc'
 fi = file.path(diri, 'rn12a', 'cpm.rds')
 x = readRDS(fi)
 
@@ -78,6 +114,42 @@ ds %>% unnest() %>% filter(padj < .01) %>% dplyr::count(gene_alias, Tissue) %>%
 fo = file.path(dird, '07_mutants', 'degs.rds')
 saveRDS(ds, file=fo)
 #}}}
+
+#{{{ DEGs for natural variation data
+yid = 'rn17c'
+res = rnaseq_cpm(yid)
+
+tm = res$tm
+th = res$th %>%
+    mutate(Treatment=ifelse(Treatment=='con', 'control', Treatment)) %>%
+    mutate(group=str_c(Treatment,Genotype,sep='_')) %>%
+    select(SampleID,Tissue,Genotype,Treatment,group)
+tc = tibble(yid=yid, cond=c('control','drought'), group1='B73', group2='Mo17') %>%
+    mutate(contrast=str_c(cond, group1, group2, sep="_"),
+           group1 = str_c(cond, group1, sep="_"),
+           group2 = str_c(cond, group2, sep="_"))
+
+t_ds = call_degs(th, tm, tc)
+
+
+yid = 'rn18g'
+res = rnaseq_cpm(yid)
+
+tm = res$tm
+th = res$th %>% mutate(Tissue=str_c(Tissue,Treatment)) %>%
+    mutate(group=str_c(Tissue,Genotype,sep='_')) %>%
+    select(SampleID,Tissue,Genotype,Treatment,group)
+conds = unique(th$Tissue)
+tc = tibble(yid=yid, cond=conds, group1='B73', group2='Mo17') %>%
+    mutate(contrast=str_c(cond, group1, group2, sep="_"),
+           group1 = str_c(cond, group1, sep="_"),
+           group2 = str_c(cond, group2, sep="_"))
+
+t_ds = call_degs(th, tm, tc)
+t_ds %>% dplyr::count(contrast, padj <.01)
+#}}}
+
+
 
 #{{{ TF
 tf = gs$all_tf
@@ -302,19 +374,19 @@ tql = tq %>%
     mutate(r.chr = as.integer(r.chr)) %>%
     arrange(r.chr, r.pos)
 tql %>% count(reg)
-tqlo = tql %>% transmute(chrom = r.chr, 
-                         start = r.pos - 1, end = r.pos, 
+tqlo = tql %>% transmute(chrom = r.chr,
+                         start = r.pos - 1, end = r.pos,
                          t.gid = t.gid, reg = reg)
 
 #
 grn = 'huang_sam'
-tn = t_grn %>% filter(ctag == grn) %>% select(-ctag) %>% 
+tn = t_grn %>% filter(ctag == grn) %>% select(-ctag) %>%
     top_n(100000, score) %>%
     transmute(r.gid = regulator, t.gid = target, r.fam = fam)
 tno = tn %>% distinct(r.gid) %>% inner_join(tg, by = c('r.gid'='gid')) %>%
     arrange(chrom, start) %>%
-    transmute(chrom = chrom, 
-              start = pmax(0, start - 10000001), 
+    transmute(chrom = chrom,
+              start = pmax(0, start - 10000001),
               end = end + 10000000, gid = r.gid)
 
 fo = file.path(dirw, 't1.tf.bed')
