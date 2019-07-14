@@ -1,7 +1,6 @@
 source("functions.R")
 require(PRROC)
 dirw = file.path(dird, '14_eval_sum')
-th1
 gopts = c("rf",'et','xgb')
 colmap = pal_aaas()(3)
 names(colmap) = gopts
@@ -11,7 +10,7 @@ ti = tibble(gopt = gopts) %>%
     mutate(fi = sprintf("%s/%s.50k.rds", dirr, gopt)) %>%
     mutate(data = map(fi, readRDS)) %>%
     unnest() %>% select(-fi) %>%
-    filter(nid %in% th1$nid) %>%
+    filter(nid %in% t_cfg$nid) %>%
     mutate(nid = sprintf("%s_%s", nid, str_to_upper(gopt))) %>%
     mutate(lgd = sprintf("%s_%s", lgd, str_to_upper(gopt)))
 
@@ -76,6 +75,39 @@ p = heatmap_hc(tp, top=0, bottom=4.8, r.top=1, text.size=1.5,ratio=4)
 fo = file.path(dirw, '02.gopt.2.heat.pdf')
 p %>% ggexport(filename = fo, width = 15, height = 12)
 #}}}
+
+#{{{ tSNE
+require(Rtsne)
+tt = tu %>% spread(nid, score) %>% replace(., is.na(.), 0)
+dim(tt)
+tsne <- Rtsne(t(as.matrix(tt[-1])), dims=2, verbose=T, perplexity=9,
+              pca = T, max_iter = 2000)
+
+tp = as_tibble(tsne$Y) %>%
+    add_column(nid = colnames(tt)[-1]) %>%
+    inner_join(ti[,c('gopt','nid','lgd','col','net_type')], by = 'nid') %>%
+    mutate(lgd0 = str_replace(lgd,'_[A-Z]{2,3}$',''))
+tps = tp %>% mutate(lgd0 = ifelse(gopt=='rf', lgd0, ''))
+x.max=max(tp$V1)
+p_tsne = ggplot(tp, aes(x=V1, y=V2)) +
+    geom_text_repel(data=tps,aes(x=V1,y=V2,label=lgd0), size=3) +
+    geom_mark_ellipse(aes(fill=lgd0),
+        expand=unit(2,'mm'), alpha=0, size = .2,
+        con.type='none',label.fontsize=7,label.minwidth=unit(0,'mm'),
+        label.buffer=unit(0,'mm'),label.margin = margin(0,0,0,0,"mm")) +
+    geom_point(aes( color=gopt, shape=gopt), size=2) +
+    scale_x_continuous(name = 'tSNE-1') +
+    scale_y_continuous(name = 'tSNE-2') +
+    scale_color_aaas() +
+    scale_shape(solid=F) +
+    otheme(legend.pos='top.left', legend.dir='v', legend.title=F,
+           xtitle=T, ytitle=T,
+           margin = c(.2,.2,.2,.2)) +
+    theme(axis.ticks.length = unit(0, 'lines')) +
+    guides(fill=F)
+fp = file.path(dirw, "03.tsne.pdf")
+ggsave(p_tsne, filename = fp, width=10, height=10)
+#}}}
 #}}}
 
 #{{{ knockout pval
@@ -93,7 +125,7 @@ tvk = tibble(gopt = gopts) %>%
     mutate(data = map(fi, readRDS)) %>%
     unnest() %>% select(nid, gopt, ko) %>% unnest() %>%
     filter(!is.na(pval)) %>%
-    inner_join(th1, by = 'nid')
+    inner_join(t_cfg, by = 'nid')
 
 tv0 = tvk %>% inner_join(dss, by=c('gene_alias','Tissue'))
 cols100 = colorRampPalette(rev(brewer.pal(n = 6, name = "RdYlBu")))(100)
@@ -103,8 +135,8 @@ tp = tv0 %>%
     select(gopt,nid,ctag,pval,lab) %>%
     mutate(gopt = str_to_upper(gopt)) %>%
     mutate(ctag = factor(ctag, levels = ctags)) %>%
-    inner_join(th1, by = 'nid') %>%
-    mutate(lgd = factor(lgd, levels=rev(th1$lgd)))
+    inner_join(t_cfg, by = 'nid') %>%
+    mutate(lgd = factor(lgd, levels=rev(t_cfg$lgd)))
 pval.max = max(tp$pval)
 p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=pval)) +
     geom_tile() +
@@ -118,7 +150,7 @@ p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=pval)) +
     otheme(strip.size=8, legend.pos='none', margin=c(.2,.2,.2,.2),
            ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
     theme(axis.text.x = element_text(angle = 30, hjust=1, vjust=1, size=7)) +
-    theme(axis.text.y = element_text(color=rev(th1$col)))
+    theme(axis.text.y = element_text(color=rev(t_cfg$col)))
 fo = file.path(dirw, '02.gopt.3.ko.pval.pdf')
 ggsave(p1, file = fo, width = 15, height = 8)
 #}}}
@@ -129,7 +161,7 @@ tvg = tibble(gopt = gopts) %>%
     mutate(fi = sprintf("%s/%s.%s.rds", dirr, gopt, eopt)) %>%
     mutate(data = map(fi, readRDS)) %>%
     unnest() %>% select(-fi) %>%
-    inner_join(th1, by = 'nid')
+    inner_join(t_cfg, by = 'nid')
 
 #{{{ enrichment
 net_size = 5e4
@@ -151,7 +183,7 @@ tp = tp1 %>% left_join(tp2, by=c('nid','gopt','net_size','ctag')) %>%
     mutate(fc = log2(fc)) %>%
     mutate(gopt = str_to_upper(gopt)) %>%
     mutate(ctag = factor(ctag, levels = ctags)) %>%
-    mutate(lgd = factor(lgd, levels=rev(th1$lgd)))
+    mutate(lgd = factor(lgd, levels=rev(t_cfg$lgd)))
 tpi = tp %>% filter(sig == 0)
 tps = tp %>% distinct(lgd, col) %>% arrange(lgd)
 #
@@ -165,11 +197,11 @@ p1 = ggplot(tp, aes(lgd, fc)) +
     coord_flip() +
     facet_grid(.~ctag, scale='free') +
     scale_color_npg() +
-    scale_shape_manual(values=c(2,1,3)) +
+    scale_shape_manual(values=c(0:5)) +
     otheme(legend.pos='top.center.out', legend.dir='h', legend.title=T,
            strip.size = 8,
            xtitle=T, xtext=T, ytext=T, ygrid=T, xtick=T, ytick=T) +
-    theme(axis.text.y = element_text(color=rev(th1$col))) +
+    theme(axis.text.y = element_text(color=rev(t_cfg$col))) +
     theme(legend.box = "horizontal") +
     theme(legend.position = c(.5,1), legend.justification = c(.5,-.3)) +
     guides(color = guide_legend("inference approach:", nrow=1, order=1),

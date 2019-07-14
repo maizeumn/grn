@@ -196,7 +196,6 @@ eval_fun_ann_1a <- function(net_size=1e4, perm=0, ctag='GO_HC', tn, fun_ann) {
     list(enc.grp = enc1, enc.reg = enc2)
     #}}}
 }
-
 #' evaluate functional enrichment of GO CornCyc Y1H
 eval_fun_ann <- function(f_net, gs, n_permut=permut, net_sizes=c(1e4,5e4,1e5,5e5)) {
     #{{{
@@ -234,6 +233,29 @@ eval_fun_ann <- function(f_net, gs, n_permut=permut, net_sizes=c(1e4,5e4,1e5,5e5
             pval = sum(coreg[perm!=0]>coreg[perm==0]) / sum(perm!=0)) %>%
         ungroup()
     list(enrich=enrich, enrich_grp=enrich_grp, enrich_reg=enrich_reg)
+    #}}}
+}
+
+#' evaluate natural variation datasets
+eval_nv <- function(f_net, net_size=1e6) {
+    #{{{
+    y = readRDS(f_net)
+    rids=y$rids; tids=y$tids; tn=y$tn
+    nv = readRDS('~/projects/grn/data/06_deg/all.rds')
+
+    tn0 = tn %>% slice(1:net_size) %>%
+        mutate(score=as.integer(cut_interval(score,10))) %>%
+        mutate(pcc_sign=ifelse(pcc < 0, '-', '+')) %>%
+        select(reg.gid,tgt.gid,score,pcc_sign)
+    nv0 = nv %>% select(yid,cond,group1,group2,gid,DE,DEdir)
+    res = tn0 %>% inner_join(nv0, by=c('reg.gid'='gid')) %>%
+        rename(reg.DE=DE, reg.DEdir=DEdir) %>%
+        inner_join(nv0, by=c('tgt.gid'='gid','yid','cond','group1','group2')) %>%
+        rename(tgt.DE=DE, tgt.DEdir=DEdir) %>%
+        mutate(DE_sign=ifelse(reg.DEdir==tgt.DEdir, '+', '-')) %>%
+        mutate(consis = pcc_sign == DE_sign) %>%
+        count(yid,cond,group1,group2,reg.DE,tgt.DE,score, consis)
+    res
     #}}}
 }
 
@@ -320,15 +342,16 @@ eval_bm_spe <- function(reg.v, tgt.v, p.drc) {
     #}}}
 }
 
+#gs was already read
 if (opt == 'tf') {
     require(PRROC)
-    gs = read_gs()
     fi = file.path(dird, '08_y1h', '01.rds')
     y1h = readRDS(fi)
     res = eval_gs(f_net, gs, y1h)
 } else if (opt == 'go') {
-    gs = read_gs()
     res = eval_fun_ann(f_net, gs)
+} else if (opt == 'nv') {
+    res = eval_nv(f_net)
 } else if (opt == 'br') {
     br = read_briggs()
     res = eval_briggs(f_net, br)

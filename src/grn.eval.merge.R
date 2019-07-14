@@ -15,7 +15,8 @@ source("~/projects/grn/src/functions.R")
 dirw = file.path(dird, 'cache')
 diri = file.path(dirw, '17_eval')
 
-ev0 = th %>% mutate(fi = sprintf("%s/%s.%s.%s.rds", diri, eopt, gopt, nid)) %>%
+ev0 = t_cfg %>%
+    mutate(fi = sprintf("%s/%s.%s.%s.rds", diri, eopt, gopt, nid)) %>%
     mutate(res = map(fi, readRDS))
 if (eopt == 'tf') {
     ev = ev0 %>%
@@ -31,6 +32,9 @@ if (eopt == 'tf') {
                enrich_grp = map(res, "enrich_grp"),
                enrich_reg = map(res, "enrich_reg")) %>%
         select(nid,enrich,enrich_grp,enrich_reg)
+} else if (eopt == 'nv') {
+    ev = ev0 %>%
+        select(nid,res) %>% unnest()
 } else if (eopt == 'br') {
     ev = ev0 %>%
         select(nid,res) %>% unnest()

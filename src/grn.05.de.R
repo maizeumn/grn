@@ -1,81 +1,6 @@
+require(DESeq2)
+require(edgeR)
 source("functions.R")
-
-run_deseq2 <- function(gene_alias, Tissue, tm, th) {
-    #{{{
-    require(DESeq2)
-    require(edgeR)
-    cat(sprintf('--> working on %s - %s\n', gene_alias, Tissue))
-    th1 = th %>% filter(gene_alias == !!gene_alias, Tissue == !!Tissue)
-    tm1 = tm %>% filter(SampleID %in% th1$SampleID)
-    #{{{ prepare data
-    vh = th1 %>% mutate(Genotype = factor(Genotype)) %>% arrange(SampleID)
-    vh.d = column_to_rownames(as.data.frame(vh), var = 'SampleID')
-    gids = tm1 %>% group_by(gid) %>% summarise(n.sam = sum(ReadCount >= 10)) %>%
-        filter(n.sam > .2 * nrow(vh)) %>% pull(gid)
-    vm = tm1 %>% filter(gid %in% gids) %>%
-        select(SampleID, gid, ReadCount)
-    x = readcount_norm(vm)
-    mean.lib.size = mean(x$tl$libSize)
-    vm = x$tm
-    vm.w = vm %>% select(SampleID, gid, ReadCount) %>% spread(SampleID, ReadCount)
-    vm.d = column_to_rownames(as.data.frame(vm.w), var = 'gid')
-    stopifnot(identical(rownames(vh.d), colnames(vm.d)))
-    #}}}
-    # DESeq2
-    dds = DESeqDataSetFromMatrix(countData=vm.d, colData=vh.d, design=~Genotype)
-    dds = estimateSizeFactors(dds)
-    dds = estimateDispersions(dds, fitType = 'parametric')
-    disp = dispersions(dds)
-    #dds = nbinomLRT(dds, reduced = ~ 1)
-    dds = nbinomWaldTest(dds)
-    resultsNames(dds)
-    res1 = results(dds, contrast=c("Genotype","WT",'mutant'), pAdjustMethod="fdr")
-    stopifnot(rownames(res1) == gids)
-    #
-    t_ds = tibble(gid = gids, disp = disp,
-                padj = res1$padj, log2fc = res1$log2FoldChange,
-                ) %>%
-        replace_na(list(padj = 1))
-    t_ds
-    #}}}
-}
-
-call_degs <- function(th, tm, tc) { # th should have 'group' column
-    #{{{
-    require(DESeq2)
-    require(edgeR)
-    th1 = th; tm1 = tm
-    #{{{ prepare data
-    vh = th1 %>% mutate(Genotype = factor(Genotype)) %>% arrange(SampleID)
-    vh.d = column_to_rownames(as.data.frame(vh), var = 'SampleID')
-    gids = tm1 %>% group_by(gid) %>% summarise(n.sam = sum(ReadCount >= 10)) %>%
-        filter(n.sam > .2 * nrow(vh)) %>% pull(gid)
-    vm = tm1 %>% filter(gid %in% gids) %>%
-        select(SampleID, gid, ReadCount)
-    x = readcount_norm(vm)
-    mean.lib.size = mean(x$tl$libSize)
-    vm = x$tm
-    vm.w = vm %>% select(SampleID, gid, ReadCount) %>% spread(SampleID, ReadCount)
-    vm.d = column_to_rownames(as.data.frame(vm.w), var = 'gid')
-    stopifnot(identical(rownames(vh.d), colnames(vm.d)))
-    #}}}
-    # DESeq2
-    dds = DESeqDataSetFromMatrix(countData=vm.d, colData=vh.d, design=~group)
-    dds = estimateSizeFactors(dds)
-    dds = estimateDispersions(dds, fitType = 'parametric')
-    disp = dispersions(dds)
-    #dds = nbinomLRT(dds, reduced = ~ 1)
-    dds = nbinomWaldTest(dds)
-    resultsNames(dds)
-    get_results <- function(group1, group2, dds)
-        as_tibble(results(dds, contrast=c("group",group1,group2), pAdjustMethod="fdr"))
-    res = tc %>%
-        mutate(data=map2(group1, group2, get_results, dds=dds)) %>%
-        unnest() %>% select(-baseMean,lfc=log2FoldChange,-stat,pval=pvalue)
-    t_ds = res %>% replace_na(list(padj = 1))
-    t_ds
-    #}}}
-}
 
 #{{{ call DEGs for mutant RNA-Seq
 fi= '~/projects/barn/data/01.cfg.xlsx'
@@ -116,39 +41,185 @@ saveRDS(ds, file=fo)
 #}}}
 
 #{{{ DEGs for natural variation data
+dirw = file.path(dird, '06_deg')
+
+#{{{ rn14f
+yid = 'rn14f'
+res = rnaseq_cpm(yid)
+
+conds = c("control",'cold','heat')
+th = res$th %>%
+    replace_na(list(Tissue='seedling')) %>%
+    filter(Treatment %in% conds) %>%
+    mutate(group=str_c(Tissue,Treatment,Genotype,sep='_')) %>%
+    select(SampleID,Tissue,Genotype,Treatment,group)
+th_m = res$th_m %>%
+    replace_na(list(Tissue='seedling')) %>%
+    filter(Treatment %in% conds) %>%
+    mutate(cond=str_c(Tissue,Treatment,sep='_')) %>%
+    select(SampleID, cond, group=Genotype)
+conds = unique(th_m$cond)
+tc = crossing(cond=conds, group1='B73', group2=c('B37','Oh43')) %>% as_tibble()
+tm = res$tm %>% filter(SampleID %in% th$SampleID)
+tm_m = res$tm_m %>% select(gid, SampleID, CPM) %>%
+    inner_join(th_m, by='SampleID') %>% select(-SampleID)
+t_ds = call_deg_spe(th, tm, tc, tm_m)
+t_ds %>% count(cond, group1, group2, DE) %>% spread(DE, n)
+
+fo = sprintf("%s/%s.rds", dirw, yid)
+saveRDS(t_ds, file=fo)
+#}}}
+
+#{{{ rn15e
+yid = 'rn15e'
+res = rnaseq_cpm(yid)
+
+th = res$th %>% filter(Treatment==0) %>%
+    mutate(group=str_c(Tissue,Genotype,sep='_')) %>%
+    select(SampleID,Tissue,Genotype,Treatment,group)
+th_m = res$th_m %>% filter(Treatment==0) %>%
+    select(SampleID,cond=Tissue,group=Genotype)
+tc = tibble(cond='leaf', group1='B73', group2='GJ')
+tm = res$tm %>% filter(SampleID %in% th$SampleID)
+tm_m = res$tm_m %>% select(gid, SampleID, CPM) %>%
+    inner_join(th_m, by='SampleID') %>% select(-SampleID)
+t_ds = call_deg_spe(th, tm, tc, tm_m)
+t_ds %>% count(cond, group1, group2, DE) %>% spread(DE, n)
+
+fo = sprintf("%s/%s.rds", dirw, yid)
+saveRDS(t_ds, file=fo)
+#}}}
+
+#{{{ rn17b
+yid = 'rn17b'
+res = rnaseq_cpm(yid)
+
+th = res$th %>% mutate(Tissue='leaf3') %>%
+    mutate(group=str_c(Tissue,Treatment,Genotype,sep='_')) %>%
+    select(SampleID,Tissue,Genotype,Treatment,group)
+th_m = res$th_m %>% mutate(Tissue='leaf3') %>%
+    mutate(cond=str_c(Tissue,Treatment,sep='_')) %>%
+    select(SampleID, cond, group=Genotype)
+conds = unique(th_m$cond)
+gts = c('Mo17','PH207','B73xMo17','B73xPH207')
+tc = crossing(cond = conds, group1='B73', group2=gts) %>% as_tibble()
+tm = res$tm %>% filter(SampleID %in% th$SampleID)
+tm_m = res$tm_m %>% select(gid, SampleID, CPM) %>%
+    inner_join(th_m, by='SampleID') %>% select(-SampleID)
+t_ds = call_deg_spe(th, tm, tc, tm_m)
+t_ds %>% count(cond, group1, group2, DE) %>% spread(DE, n)
+
+fo = sprintf("%s/%s.rds", dirw, yid)
+saveRDS(t_ds, file=fo)
+#}}}
+
+#{{{ rn17c
 yid = 'rn17c'
 res = rnaseq_cpm(yid)
 
-tm = res$tm
 th = res$th %>%
     mutate(Treatment=ifelse(Treatment=='con', 'control', Treatment)) %>%
-    mutate(group=str_c(Treatment,Genotype,sep='_')) %>%
+    mutate(group=str_c(Tissue,Treatment,Genotype,sep='_')) %>%
     select(SampleID,Tissue,Genotype,Treatment,group)
-tc = tibble(yid=yid, cond=c('control','drought'), group1='B73', group2='Mo17') %>%
-    mutate(contrast=str_c(cond, group1, group2, sep="_"),
-           group1 = str_c(cond, group1, sep="_"),
-           group2 = str_c(cond, group2, sep="_"))
+th_m = res$th_m %>%
+    mutate(Treatment=ifelse(Treatment=='con', 'control', Treatment)) %>%
+    mutate(cond = str_c(Tissue, Treatment, sep="_")) %>%
+    select(SampleID,cond,group=Genotype)
+conds = th_m %>% distinct(cond) %>% pull(cond)
+tc = crossing(cond=conds, group1='B73', group2=c('Mo17','B73xMo17','Mo17xB73')) %>%
+    as_tibble()
+tm = res$tm %>% filter(SampleID %in% th$SampleID)
+tm_m = res$tm_m %>% select(gid, SampleID, CPM) %>%
+    inner_join(th_m, by='SampleID') %>% select(-SampleID)
+t_ds = call_deg_spe(th, tm, tc, tm_m)
+t_ds %>% count(cond, group1, group2, DE) %>% spread(DE, n)
 
-t_ds = call_degs(th, tm, tc)
+fo = sprintf("%s/%s.rds", dirw, yid)
+saveRDS(t_ds, file=fo)
+#}}}
 
+#{{{ rn18b
+yid = 'rn18b'
+res = rnaseq_cpm(yid)
 
+tismap = c("I"=1, "II"=2, "III"=3)
+gts = res$th %>% filter(Treatment != '0') %>% distinct(Genotype) %>%
+    filter(Genotype!='B73') %>% pull(Genotype)
+th = res$th %>% filter(Treatment %in% names(tismap)) %>%
+    mutate(Tissue = str_c(Tissue, tismap[Treatment], sep='')) %>%
+    mutate(group=str_c(Tissue,Genotype,sep='_')) %>%
+    select(SampleID,Tissue,Genotype,Treatment,group)
+th_m = res$th_m %>% filter(Treatment %in% names(tismap)) %>%
+    mutate(Tissue = str_c(Tissue, tismap[Treatment], sep='')) %>%
+    mutate(cond=Tissue) %>%
+    select(SampleID, cond, group=Genotype)
+conds = unique(th_m$cond)
+tc = crossing(cond=conds, group1='B73', group2=gts) %>% as_tibble()
+tm = res$tm %>% filter(SampleID %in% th$SampleID)
+tm_m = res$tm_m %>% select(gid, SampleID, CPM) %>%
+    inner_join(th_m, by='SampleID') %>% select(-SampleID)
+t_ds = call_deg_spe(th, tm, tc, tm_m)
+t_ds %>% count(cond, group1, group2, DE) %>% spread(DE, n)
+
+fo = sprintf("%s/%s.rds", dirw, yid)
+saveRDS(t_ds, file=fo)
+#}}}
+
+#{{{ rn18f
+yid = 'rn18f'
+res = rnaseq_cpm(yid)
+
+th = res$th %>% mutate(Tissue=str_replace(Treatment,' .*$', '')) %>%
+    mutate(group=str_c(Tissue,Genotype,sep='_')) %>%
+    select(SampleID,Tissue,Genotype,Treatment,group)
+th_m = res$th_m %>% mutate(Tissue=str_replace(Treatment,' .*$', '')) %>%
+    select(SampleID, cond=Tissue, group=Genotype)
+conds = th_m %>% distinct(cond) %>% pull(cond)
+tc = tibble(cond=conds, group1='B73', group2='Mo17')
+tm = res$tm %>% filter(SampleID %in% th$SampleID)
+tm_m = res$tm_m %>% select(gid, SampleID, CPM) %>%
+    inner_join(th_m, by='SampleID') %>% select(-SampleID)
+t_ds = call_deg_spe(th, tm, tc, tm_m)
+t_ds %>% count(cond, group1, group2, DE) %>% spread(DE, n)
+
+fo = sprintf("%s/%s.rds", dirw, yid)
+saveRDS(t_ds, file=fo)
+#}}}
+
+#{{{ rn18g
 yid = 'rn18g'
 res = rnaseq_cpm(yid)
 
-tm = res$tm
-th = res$th %>% mutate(Tissue=str_c(Tissue,Treatment)) %>%
+th = res$th %>%
+    filter(Genotype %in% c('B73','Mo17')) %>%
     mutate(group=str_c(Tissue,Genotype,sep='_')) %>%
     select(SampleID,Tissue,Genotype,Treatment,group)
-conds = unique(th$Tissue)
-tc = tibble(yid=yid, cond=conds, group1='B73', group2='Mo17') %>%
-    mutate(contrast=str_c(cond, group1, group2, sep="_"),
-           group1 = str_c(cond, group1, sep="_"),
-           group2 = str_c(cond, group2, sep="_"))
+th_m = res$th_m %>%
+    filter(Genotype %in% c('B73','Mo17')) %>%
+    mutate(cond = Tissue) %>%
+    select(SampleID,cond,group=Genotype)
+conds = th_m %>% distinct(cond) %>% pull(cond)
+tc = tibble(cond=conds, group1='B73', group2='Mo17')
+tm = res$tm %>% filter(SampleID %in% th$SampleID)
+tm_m = res$tm_m %>% select(gid, SampleID, CPM) %>%
+    inner_join(th_m, by='SampleID') %>% select(-SampleID)
+t_ds = call_deg_spe(th, tm, tc, tm_m)
+t_ds %>% count(cond, group1, group2, DE) %>% spread(DE, n) %>% print(n=23)
 
-t_ds = call_degs(th, tm, tc)
-t_ds %>% dplyr::count(contrast, padj <.01)
+fo = sprintf("%s/%s.rds", dirw, yid)
+saveRDS(t_ds, file=fo)
 #}}}
 
+yids = c("rn14f",'rn15e','rn17b','rn17c','rn18b','rn18f','rn18g')
+t_ds = tibble(yid=yids) %>%
+    mutate(fd = sprintf("%s/%s.rds", dirw, yid)) %>%
+    mutate(data = map(fd, readRDS)) %>% select(yid,data) %>% unnest()
+t_ds %>% count(cond, group1, group2, DE) %>% spread(DE, n) %>% print(n=50)
+
+tp = t_ds
+fo = file.path(dirw, 'all.rds')
+saveRDS(t_ds, file=fo)
+#}}}
 
 
 #{{{ TF

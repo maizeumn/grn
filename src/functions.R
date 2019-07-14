@@ -1,6 +1,10 @@
 require(devtools)
 load_all('~/git/rmaize')
 require(ggpubr)
+require(ggforce)
+require(knitr)
+require(kableExtra)
+options(knitr.table.format = "latex")
 dirg = '~/data/genome'
 dirp = '~/projects/grn'
 dird = file.path(dirp, 'data')
@@ -10,35 +14,24 @@ gcfg = read_genome_conf()
 f_cfg = file.path(dird, '10.dataset.xlsx')
 t_cfg = read_xlsx(f_cfg) %>% fill(mid, study)
 studies = t_cfg %>% distinct(study) %>% pull(study)
-net_types = c("tissue","genotype","tissue*genotype",'ril','liftover')
+net_types = c("tissue","genotype","tissue*genotype",'ril','meta')
 net_cols = pal_aaas()(length(net_types))
 names(net_cols) = net_types
-nids_meta = c("n17a","n18a","n99a","n99b","n99c")
-th = t_cfg %>% select(-mid) %>%
-    filter(net_type %in% net_types) %>%
-    mutate(net_type = ifelse(nid %in% nids_meta, 'genotype', net_type)) %>%
-    mutate(net_type = factor(net_type, levels = net_types)) %>%
-    arrange(net_type, nid, sample_size) %>%
-    mutate(net_type = as.character(net_type)) %>%
-    mutate(net_type = ifelse(nid %in% nids_meta, 'tissue*genotype', net_type)) %>%
+nids_meta = c("n17a","n18a",'n18g',"n99a")
+t_cfg = t_cfg %>% select(-mid) %>%
+    #filter(net_type %in% net_types) %>%
+    #mutate(net_type = ifelse(nid %in% nids_meta, 'genotype', net_type)) %>%
+    #mutate(net_type = factor(net_type, levels = net_types)) %>%
+    #arrange(net_type, nid, sample_size) %>%
+    #mutate(net_type = as.character(net_type)) %>%
+    #mutate(net_type = ifelse(nid %in% nids_meta, 'tissue*genotype', net_type)) %>%
     mutate(net_type = factor(net_type, levels = net_types)) %>%
     mutate(col = net_cols[net_type]) %>%
     mutate(lgd = sprintf("%s %s [%d]", study,note,sample_size)) #%>%
     #select(-study,-note,-sample_size)
-th1 = th %>% filter(!str_detect(nid, "^n99[a]")) %>%
-    select(nid, net_type, sample_size, col, lgd)
-th2 = th %>% filter(!str_detect(nid, "^n99[a]")) %>%
-    filter(!str_detect(nid, "^n18g")) %>%
-    select(nid, net_type, sample_size, col, lgd)
-nids_geno = th %>% filter(net_type == 'genotype') %>% pull(nid)
-nids_dev = th %>% filter(net_type == 'tissue') %>% pull(nid)
-nids22 = t_cfg %>%
-    filter(!str_detect(nid, '^n((17a)|(18a)|(99a)|(99b)|(99c))_')) %>%
-    pull(nid)
-nids25 = t_cfg %>%
-    filter(!str_detect(nid, '^n((17a)|(18a)|(99a)|(99c))_')) %>% pull(nid)
 tsyn = read_syn(gcfg)
 gs = readRDS('~/projects/grn/data/09.gs.rds')
+cols100 = colorRampPalette(rev(brewer.pal(n = 6, name = "RdYlBu")))(100)
 
 read_briggs <- function(fi="~/projects/briggs/data/49_coop/01.master.rda") {
     #{{{ read briggs data
@@ -87,6 +80,113 @@ read_biomap <- function(opt='all') {
 radian.rescale <- function(x, start=0, direction=1) {
       c.rotate <- function(x) (x + start) %% (2 * pi) * direction
   c.rotate(scales::rescale(x, c(0, 2 * pi), range(x)))
+}
+run_deseq2 <- function(gene_alias, Tissue, tm, th) {
+    #{{{
+    require(DESeq2)
+    require(edgeR)
+    cat(sprintf('--> working on %s - %s\n', gene_alias, Tissue))
+    th1 = th %>% filter(gene_alias == !!gene_alias, Tissue == !!Tissue)
+    tm1 = tm %>% filter(SampleID %in% th1$SampleID)
+    #{{{ prepare data
+    vh = th1 %>% mutate(Genotype = factor(Genotype)) %>% arrange(SampleID)
+    vh.d = column_to_rownames(as.data.frame(vh), var = 'SampleID')
+    gids = tm1 %>% group_by(gid) %>% summarise(n.sam = sum(ReadCount >= 10)) %>%
+        filter(n.sam > .2 * nrow(vh)) %>% pull(gid)
+    vm = tm1 %>% filter(gid %in% gids) %>%
+        select(SampleID, gid, ReadCount)
+    x = readcount_norm(vm)
+    mean.lib.size = mean(x$tl$libSize)
+    vm = x$tm
+    vm.w = vm %>% select(SampleID, gid, ReadCount) %>% spread(SampleID, ReadCount)
+    vm.d = column_to_rownames(as.data.frame(vm.w), var = 'gid')
+    stopifnot(identical(rownames(vh.d), colnames(vm.d)))
+    #}}}
+    # DESeq2
+    dds = DESeqDataSetFromMatrix(countData=vm.d, colData=vh.d, design=~Genotype)
+    dds = estimateSizeFactors(dds)
+    dds = estimateDispersions(dds, fitType = 'parametric')
+    disp = dispersions(dds)
+    #dds = nbinomLRT(dds, reduced = ~ 1)
+    dds = nbinomWaldTest(dds)
+    resultsNames(dds)
+    res1 = results(dds, contrast=c("Genotype","WT",'mutant'), pAdjustMethod="fdr")
+    stopifnot(rownames(res1) == gids)
+    #
+    t_ds = tibble(gid = gids, disp = disp,
+                padj = res1$padj, log2fc = res1$log2FoldChange,
+                ) %>%
+        replace_na(list(padj = 1))
+    t_ds
+    #}}}
+}
+
+call_deg_spe <- function(th, tm, tc, tm_m) { # th should have 'group' column
+    #{{{
+    require(DESeq2)
+    require(edgeR)
+    th1 = th; tm1 = tm
+    #{{{ prepare data
+    vh = th1 %>% mutate(Genotype = factor(Genotype)) %>% arrange(SampleID)
+    vh.d = column_to_rownames(as.data.frame(vh), var = 'SampleID')
+    gids = tm1 %>% group_by(gid) %>% summarise(n.sam = sum(ReadCount>=10)) %>%
+        filter(n.sam > .2 * nrow(vh)) %>% pull(gid)
+    vm = tm1 %>% filter(gid %in% gids) %>%
+        select(SampleID, gid, ReadCount)
+    x = readcount_norm(vm)
+    mean.lib.size = mean(x$tl$libSize)
+    vm = x$tm
+    vm.w = vm %>% select(SampleID, gid, ReadCount) %>% spread(SampleID, ReadCount)
+    vm.d = column_to_rownames(as.data.frame(vm.w), var = 'gid')
+    stopifnot(identical(rownames(vh.d), colnames(vm.d)))
+    #}}}
+    # DESeq2
+    dds = DESeqDataSetFromMatrix(countData=vm.d, colData=vh.d, design=~group)
+    dds = estimateSizeFactors(dds)
+    dds = estimateDispersions(dds, fitType = 'parametric')
+    disp = dispersions(dds)
+    #dds = nbinomLRT(dds, reduced = ~ 1)
+    dds = nbinomWaldTest(dds)
+    resultsNames(dds)
+    get_results <- function(group1, group2, dds) {
+        res = results(dds, contrast=c("group",group1,group2), pAdjustMethod="fdr")
+        as_tibble(res) %>% mutate(gid=rownames(res)) %>%
+            select(gid, everything())
+    }
+    res = tc %>%
+        mutate(g1 = str_c(cond, group1, sep="_")) %>%
+        mutate(g2 = str_c(cond, group2, sep="_")) %>%
+        mutate(data=map2(g1, g2, get_results, dds=dds)) %>%
+        select(-g1, -g2) %>% unnest() %>%
+        select(-baseMean,l2fc=log2FoldChange,-stat,-lfcSE,-pvalue)
+    t_ds = res %>% replace_na(list(padj = 1)) %>%
+        inner_join(tm_m, by=c('cond'='cond','group1'='group','gid'='gid')) %>%
+        rename(cpm1=CPM) %>%
+        inner_join(tm_m, by=c('cond'='cond','group2'='group','gid'='gid')) %>%
+        rename(cpm2=CPM)
+    DEtags = c("non_DE",'DE1-2','DE2-4','DE4+','SPE')
+    dirtags = c('up','dn')
+    t_ds %>%
+        mutate(DE=ifelse(padj<.01, 'DE1-2', 'non_DE')) %>%
+        mutate(DE=ifelse(padj<.01 & abs(l2fc)>=1, 'DE2-4', DE)) %>%
+        mutate(DE=ifelse(padj<.01 & abs(l2fc)>=2, 'DE4+', DE)) %>%
+        mutate(DE=ifelse(padj<.01 & ((cpm1<=.1 & cpm2 >=1) | (cpm1>=1 & cpm2<=.1)), 'SPE', DE)) %>%
+        mutate(DEdir=ifelse(l2fc < 0, 'up', 'dn')) %>%
+        mutate(DE = factor(DE, levels=DEtags)) %>%
+        mutate(DEdir = factor(DEdir, levels=dirtags))
+    #}}}
+}
+
+sum_degs <- function(t_ds) {
+    #{{{
+    t_ds %>% group_by(yid, cond, group1, group2) %>%
+        summarise(ntot = n(),
+                  deg_1p = sum(padj<.01 & lfc>0),
+                  deg_1n = sum(padj<.01 & lfc<0),
+                  deg_2p = sum(padj<.05 & lfc>1),
+                  deg_2n = sum(padj<.05 & lfc< -1)) %>%
+        ungroup() %>% print(n=50)
+    #}}}
 }
 
 
