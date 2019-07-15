@@ -81,6 +81,14 @@ radian.rescale <- function(x, start=0, direction=1) {
       c.rotate <- function(x) (x + start) %% (2 * pi) * direction
   c.rotate(scales::rescale(x, c(0, 2 * pi), range(x)))
 }
+bin_network <- function(ti, bins=10) {
+    #{{{
+    ti %>%
+        mutate(pcc_sign=ifelse(pcc < 0, '-', '+')) %>%
+        mutate(score=as.integer(cut_interval(score,bins))) %>%
+        select(reg.gid,tgt.gid,score,pcc_sign)
+    #}}}
+}
 run_deseq2 <- function(gene_alias, Tissue, tm, th) {
     #{{{
     require(DESeq2)

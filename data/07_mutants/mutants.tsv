@@ -1,22 +1,22 @@
-yid	libtype	author	source	format	lid	interleaved	accession	readtype	gene_id	gene_alias	gene_name	genotype	tissue	n	ref	mapper	ase	stress	meta	done	run	runB	runD	runR
-rm01		bolduc2012					PRJNA168086	illumina	Zm00001d033859	kn1	knotted1	B73	meristem	10										
-rm02							PRJNA494874	illumina	GRMZM2G372364	cle7	clavata3/esr-related7	B73	ear tip	4										
-rm03							PRJNA485828	illumina	Zm00001d054077	rbm48	RNA binding motif protein 48	W22	endosperm	16										
-rm04							PRJNA485820	illumina	Zm00001d054077	dek42	RNA binding motif protein 48		kernel	6										
-rm05							PRJNA289143	illumina	Zm00001d046053	mads47	MADS-transcription factor 47	B73	kernel	2										
-rm06		wittmeyer2018					PRJNA483200	illumina	Zm00001d000009	ufo1	unstable factor for orange1	B73	pericarp	27										
-rm07		liu2018					PRJNA475209	illumina	Zm00001d024523	rel2	ramosa1 enhancer locus2	B73	tassel	6										
-rm08		zhan2018					PRJNA471036	illumina	Zm00001d018971	o2	opaque2	B73	endosperm	6										
-rm09		li2015					PRJNA262503	illumina	Zm00001d018971	o2_b	opaque2	W22	endosperm	2										
-rm10		li2018					PRJNA449867	illumina	Zm00001d021191	bzip22	bZIP-transcription factor 22 	W22	kernel	6										
-rm11		li2017					PRJNA375801	illumina	Zm00001d009292	fl3	floury3	B73	endosperm	6										
-rm12		pautler2015					PRJNA262781	illumina	Zm00001d037317	fea4	fasciated ear4	A619	ear primordia	6										
-rm13		johnston2014					PRJNA260793	illumina	Zm00001d002005	liguleless	liguleless1		leaf primordia	24										
-rm14		gontarek2016					PRJNA260183	illumina	Zm00001d002654	nkd	naked endosperm1	B73	aleurone+endosperm	2										
-rm15							PRJNA483310	illumina	Zm00001d002970	sk1	silkless ears1		young tassel at the nine leaf stage	6										
-rm16							PRJNA494076	illumina	Zm00001d052197	dek15	defective kernel15		kernel	6										
-rm17		Eveland2014					PRJNA219746	illumina	Zm00001d020430	ra1	RAMOSA1		ear	10										
-rm18		Eveland2014					PRJNA219746	illumina	Zm00001d039694	ra2	RAMOSA2		ear	10										
-rm19		Eveland2014					PRJNA219746	illumina	Zm00001d022193	ra3	RAMOSA3		ear	10										
-rm20		Morohashi2012					PRJNA167802 PRJNA167803	illumina	Zm00001d028842	P1	Pericarp Color1 		pericarp	6										
-rm21		Yang2016					PRJNA305809	illumina	Zm00001d053595	hda101	RPD3 histone deacetylase homolog		seed	6										
+yid	libtype	author	source	format	lid	interleaved	accession	readtype	gene_id	gene_alias	gene_name	genotype	tissue	n
+rm01		bolduc2012					PRJNA168086	illumina	Zm00001d033859	kn1	knotted1	B73	meristem	10
+rm02							PRJNA494874	illumina	GRMZM2G372364	cle7	clavata3/esr-related7	B73	ear tip	4
+rm03							PRJNA485828	illumina	Zm00001d054077	rbm48	RNA binding motif protein 48	W22	endosperm	16
+rm04							PRJNA485820	illumina	Zm00001d054077	dek42	RNA binding motif protein 48		kernel	6
+rm05							PRJNA289143	illumina	Zm00001d046053	mads47	MADS-transcription factor 47	B73	kernel	2
+rm06		wittmeyer2018					PRJNA483200	illumina	Zm00001d000009	ufo1	unstable factor for orange1	B73	pericarp	27
+rm07		liu2018					PRJNA475209	illumina	Zm00001d024523	rel2	ramosa1 enhancer locus2	B73	tassel	6
+rm08		zhan2018					PRJNA471036	illumina	Zm00001d018971	o2	opaque2	B73	endosperm	6
+rm09		li2015					PRJNA262503	illumina	Zm00001d018971	o2_b	opaque2	W22	endosperm	2
+rm10		li2018					PRJNA449867	illumina	Zm00001d021191	bzip22	bZIP-transcription factor 22 	W22	kernel	6
+rm11		li2017					PRJNA375801	illumina	Zm00001d009292	fl3	floury3	B73	endosperm	6
+rm12		pautler2015					PRJNA262781	illumina	Zm00001d037317	fea4	fasciated ear4	A619	ear primordia	6
+rm13		johnston2014					PRJNA260793	illumina	Zm00001d002005	liguleless	liguleless1		leaf primordia	24
+rm14		gontarek2016					PRJNA260183	illumina	Zm00001d002654	nkd	naked endosperm1	B73	aleurone, endosperm	2
+rm15							PRJNA483310	illumina	Zm00001d002970	sk1	silkless ears1		young V9 tassel	6
+rm16							PRJNA494076	illumina	Zm00001d052197	dek15	defective kernel15		kernel	6
+rm17		Eveland2014					PRJNA219746	illumina	Zm00001d020430	ra1	RAMOSA1		ear	10
+rm18		Eveland2014					PRJNA219746	illumina	Zm00001d039694	ra2	RAMOSA2		ear	10
+rm19		Eveland2014					PRJNA219746	illumina	Zm00001d022193	ra3	RAMOSA3		ear	10
+rm20		Morohashi2012					PRJNA167802 PRJNA167803	illumina	Zm00001d028842	P1	Pericarp Color1 		pericarp	6
+rm21		Yang2016					PRJNA305809	illumina	Zm00001d053595	hda101	RPD3 histone deacetylase homolog		seed	6

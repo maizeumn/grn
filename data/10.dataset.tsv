@@ -2,12 +2,8 @@ nid	mid	study	note	subid	net_type	sample_size
 n16b	rn16b	stelpflug2016	B73	z	tissue	93
 n16c	rn16c	walley2016	B73	z	tissue	23
 n19c	rn19c	yi2019	seed dev	z	tissue	31
-nc01	rnc01	dev atlas	combined	z	tissue	247
-n13a	rn13a	li2013	B73 x Mo17	z	ril	107
-n15c	rn15c	baute2016	MAGIC	z	ril	102
-n15d	rn15d	baute2015	B73 x H99	z	ril	106
-n18c	rn18c	wang2018	W22 x Teosinte	z	ril	617
-n13c	rn13c	eitchen2013	seedling_leaf3	z	genotype	62
+nc01	rnc01	tissue atlas	combined	z	tissue	247
+n13c	rn13c	eichten2013	seedling_leaf3	z	genotype	62
 n13e	rn13e	fu2013	kernel	z	genotype	368
 n14a	rn14a	hirsch2014	seedling	z	genotype	503
 n15a	rn15a	leiboff2015	SAM	z	genotype	383
@@ -38,8 +34,12 @@ n99a_2	rn99a	li2019	internode	I	genotype	77
 n99a_3	rn99a	li2019	leaf	L	genotype	84
 n99a_4	rn99a	li2019	root	R	genotype	84
 n99a_5	rn99a	li2019	shoot	S	genotype	85
-n99a_6	rn99a	li2019	unknown	U	genotype	169
+n99a_6	rn99a	li2019	seedling	U	genotype	169
 n18g	rn18g	zhou2018	23*3	z	tissue*genotype	73
 n18g_1	rn18g	zhou2018	B73	B73	tissue	23
 n18g_2	rn18g	zhou2018	Mo17	Mo17	tissue	23
 n18g_3	rn18g	zhou2018	BxM	B73xMo17	tissue	23
+n13a	rn13a	li2013	B73 x Mo17	z	ril	107
+n15c	rn15c	baute2016	MAGIC	z	ril	102
+n15d	rn15d	baute2015	B73 x H99	z	ril	106
+n18c	rn18c	wang2018	W22 x Teosinte	z	ril	617

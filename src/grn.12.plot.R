@@ -263,7 +263,8 @@ ggsave(p_tsne, filename = fp, width=6, height=6)
 #}}}
 #}}}
 
-#{{{ TF stats
+#{{{ TF & target stats
+diro = file.path(dird, '17_degree')
 t_tf0 = gs$all_tf %>% mutate(tf = 'TF')
 t_tf = t_tf0 %>% inner_join(tsyn, by = 'gid')
 
@@ -295,22 +296,26 @@ fo = file.path(dirw, 'tf.pdf')
 ggsave(p1, file=fo, width=4, height=6)
 #}}}
 
-ev_tf %>% filter(nid=='nc03') %>% select(nid, tn) %>% unnest() %>%
-    select(gid = reg.gid, score) %>% inner_join(t_tf, by='gid') %>%
-    group_by(ftype) %>%
-    summarise(n = n(), s25=quantile(score,.25), s50=median(score),
-              s75 = quantile(score,.75)) %>% ungroup()
+# get TF & target stats
+fi = sprintf("%s/%s.500k.rds", dirr, gopt)
+tn = readRDS(fi) %>% mutate(tn2 = map(tn, bin_network, bins=10)) %>%
+    select(nid, tn2) %>% unnest()
 
+deg.tgt = tn %>% group_by(nid, tgt.gid) %>%
+    summarise(r1 = sum(score >= 1), r2 = sum(score >= 2),
+              r3 = sum(score >= 3), r4 = sum(score >= 4)) %>%
+    ungroup() %>%
+    gather(score, deg, -nid, -tgt.gid) %>%
+    mutate(score = as.integer(str_replace(score, 'r', '')))
+deg.reg = tn %>% group_by(nid, reg.gid) %>%
+    summarise(r1 = sum(score >= 1), r2 = sum(score >= 2),
+              r3 = sum(score >= 3), r4 = sum(score >= 4)) %>%
+    ungroup() %>%
+    gather(score, deg, -nid, -reg.gid) %>%
+    mutate(score = as.integer(str_replace(score, 'r', '')))
 
-t_deg = ev_tf %>% filter(nid=='n17a') %>% select(nid, tn) %>% unnest() %>%
-    select(gid = reg.gid, score) %>% count(gid) %>% rename(deg = n)
-t_tf %>%
-    left_join(t_deg, by = 'gid') %>% replace_na(list(deg = 0)) %>%
-    mutate(degbin = cut(deg, breaks=c(0,1,3,10,100,Inf), include.lowest=T, right=F)) %>%
-    group_by(ftype, degbin) %>%
-    summarise(n = n()) %>% mutate(freq = n/sum(n)) %>%
-    ungroup() %>% select(-n) %>% spread(degbin, freq)
-
+fo = file.path(diro, 'degree.rds')
+saveRDS(list(tgt=deg.tgt, reg=deg.reg), file=fo)
 #}}}
 
 #{{{ # [obsolete] Y1H eval
