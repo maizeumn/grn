@@ -1,7 +1,8 @@
 # Maize gene regulatory network (GRN) code and data
 
-This repository hosts code and data related to gene regulatory networks built using maize expression datasets.  [Check here](data/10.dataset.tsv) for a complete list of GRNs built for this project.
+This repository hosts code and data related to gene regulatory networks built using published maize RNA-Seq datasets.
 
-This repo also provides a collection of published maize transcription factor functional studies, with focus on Chip-Seq and knockout mutant RNA-Seq datasets. [Check here](/data/07_mutants/mutants.tsv) for detail.
-
+* GRNs built in this study: [click here](data/14_eval_sum/01.t1.pdf)
+* Maize transcription factor knockout mutant RNA-Seq datasets: [click here](/data/14_eval_sum/01.t2.pdf)
+* Natural variation datasets collected for validation: [click here](/data/14_eval_sum/01.t3.pdf)
 
