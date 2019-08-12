@@ -663,7 +663,7 @@ ggsave(p1, file = fp, width = 6, height = 6)
 #}}}
 
 #{{{ GO/CornCyc
-fv = sprintf("%s/%s.go.rds", dirr, gopt)
+fv = sprintf("%s/rf.go.rds", dirr)
 ev_go = readRDS(fv)
 
 #{{{ enrichment [selected]
@@ -868,14 +868,14 @@ tx = ev_go %>% select(nid,enrich_grp) %>%
 txs = tx %>%
     filter(n>=30) %>%
     count(grp,net_type) %>% spread(net_type,n) %>%
-    rename(tg=`tissue*genotype`) %>%
-    replace_na(list(tissue=0,genotype=0,ril=0,tg=0)) %>%
-    mutate(n=tissue+genotype+ril+tg) %>%
+    rename(tg=`Tissue*Genotype`) %>%
+    replace_na(list(Tissue=0,Genotype=0,RIL=0,tg=0)) %>%
+    mutate(n=Tissue+Genotype+RIL+tg) %>%
     inner_join(goname, by='grp')
 
 require(cluster)
 require(ape)
-grps = txs %>% filter(tissue>0,genotype>1,tg>0,n>8) %>% pull(grp)
+grps = txs %>% filter(Tissue>0,Genotype>1,tg>0,n>8) %>% pull(grp)
 length(grps)
 tp = tx %>% filter(grp %in% grps)
 
@@ -928,10 +928,11 @@ p1 = ggplot(tp) +
     theme(panel.border = element_blank()) +
     theme(axis.text.x=element_text(color=s_cols,angle=45,size=7,hjust=1,vjust=1)) +
     theme(legend.title = element_text()) +
-    expand_limits(x=.4,y=.4) +
-    expand_limits(x=43.6,y=102.6) +
-    annotate('rect',xmin=.5,xmax=43.5,ymin=96.5,ymax=102.5,color='red',alpha=0) +
-    annotate('rect',xmin=.5,xmax=11.5,ymin=83.5,ymax=95.5,color='red',alpha=0)
+    expand_limits(x=.2,y=.2) +
+    expand_limits(x=43.8,y=102.8) +
+    annotate('rect',xmin=.5,xmax=43.5,ymin=96.5,ymax=102.5,color='red',size=1,alpha=0) +
+    annotate('rect',xmin=.5,xmax=11.5,ymin=83.5,ymax=95.5,color='red',size=1,alpha=0) +
+    annotate('rect',xmin=24.5,xmax=30.5,ymin=83.5,ymax=95.5,color='red',size=1,alpha=0)
 #
 require(ggdendro)
 margin = c(0,3.2,0,16.5)
