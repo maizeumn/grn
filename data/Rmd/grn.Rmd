@@ -152,12 +152,12 @@ Figure 5b.  Enrichment in differentially expressed targets regulated by TFs that
 \pagebreak
 ![]($grn/data/14_eval_sum/30.eQTL.pdf){width=100%}
 
-Figure S9. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Fold enrichment is determined by the same permutation approach described in Figure 5.
+Figure S9. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Fold enrichment is determined by the same permutation approach described in Figure 2.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/31.eQTL.heat.pdf){width=60%}
 
-Figure S10. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and only the first bin (top 100k edges) were used to assess enrichment. Fold enrichment is determined by the same permutation approach described in Figure 5. 
+Figure S10. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and only the first bin (top 100k edges) were used to assess enrichment. Fold enrichment is determined by the same permutation approach described in Figure 2. 
 
 \pagebreak
 
