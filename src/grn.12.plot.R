@@ -1816,9 +1816,12 @@ t_pick = t_pick[c(1,2,3),]
 
 #{{{ prepare
 nids_hc = c("nc01",'n17a_3','n13a','n18g','n18e','n99a','n18d','n13c')
+nids_hc = c("nc01", 'n13a','n15c','n15d','n18c',
+    'n17a','n18a','n18e','n99a','n18g',
+    'n13c','n13e','n15a','n19a','n18d')
 tz0 = ev_go %>% filter(nid %in% nids_hc) %>%
     select(nid, enrich_reg) %>% unnest() %>%
-    filter(ctag %in% qtags, n>=10, score==10, pval < .05) %>%
+    filter(ctag %in% qtags, n>=10, score==10, pval < .01) %>%
     select(ctag, nid, reg.gid, n, fc, grp=max.grp, max.grp.size) %>%
     inner_join(t_cfg, by = 'nid')
 tz = tz0 %>%
@@ -1867,7 +1870,7 @@ ti = tz %>% filter(hit=='hit')
 gpos = flattern_gcoord(ti %>% select(chrom=gchrom, pos=gpos), gcfg$chrom)
 qpos = flattern_gcoord(ti %>% select(chrom=qchrom, pos=qpos), gcfg$chrom)
 tp = ti %>% mutate(gpos=!!gpos, qpos=!!qpos)
-tps = t_pick %>% inner_join(tp, by = 'reg.gid')
+tps = t_pick %>% inner_join(tp, by = 'reg.gid') %>% filter(max.grp.size>3)
 p0 = ggplot(tp) +
     geom_point(aes(x=qpos, y=gpos, color=ctag, shape=hit)) +
     geom_text_repel(data=tps, aes(qpos,gpos,label=gname), nudge_x=-2e8, direction='y', segment.size=.3, size=2.5) +
@@ -1887,7 +1890,7 @@ p0 = ggplot(tp) +
 #}}}
 
 #{{{ save as table
-reg.gids = tz %>% distinct(reg.gid) %>% pull(reg.gid)
+reg.gids = tz %>% filter(hit=='hit') %>% distinct(reg.gid) %>% pull(reg.gid)
 tn0 = tz0 %>% select(nid,reg.gid,ctag,grp) %>% filter(reg.gid %in% reg.gids)
 tn = ev %>% select(nid,tn) %>% unnest() %>%
     inner_join(tn0, by=c('nid','reg.gid')) %>%
@@ -1916,7 +1919,7 @@ tv = tv0 %>%
     ungroup()
     #filter(reg.gid == 'Zm00001d046405') %>% print(n=50)
 #
-to = tz %>%
+to = tz %>% filter(reg.gid %in% reg.gids) %>%
     group_by(reg.gid) %>%
     summarise(n_qtag = n(), studies=str_c(unlist(studies), collapse=', '),
               max.grp.size = max(max.grp.size),
