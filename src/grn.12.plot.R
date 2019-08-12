@@ -3,7 +3,7 @@ diri = '~/projects/rnaseq'
 dirw = file.path(dird, '14_eval_sum')
 
 #{{{ general stats
-fv = sprintf("%s/%s.100k.rds", dirr, gopt)
+fv = sprintf("%s/rf.100k.rds", dirr)
 ev = readRDS(fv)
 
 #{{{ # score distribution
@@ -187,7 +187,7 @@ p_tsne = ggplot(tp) +
     scale_y_continuous(name = 'tSNE-2') +
     scale_color_aaas() +
     scale_shape_manual(values = c(0:7)) +
-    otheme(legend.pos='bottom.right', legend.dir='v', legend.title=F, legend.border=T,
+    otheme(legend.pos='bottom.left', legend.dir='v', legend.title=F, legend.border=T,
            xtitle=T, ytitle=T,
            margin = c(.2,.2,.2,.2)) +
     theme(axis.ticks.length = unit(0, 'lines'))
