@@ -150,14 +150,18 @@ Figure S6.  TF-target validation of the combined tissue  network in all six sele
 Figure 5b.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  Color and number in each cell represents the enrichment P-value (-log10 transformed, hypergeometric test p-value) of (SPE TF regulated) target DE proportions relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
 
 \pagebreak
-![]($grn/data/14_eval_sum/08.go.eQTL.pdf){width=100%}
+![]($grn/data/14_eval_sum/30.eQTL.pdf){width=100%}
 
 Figure S9. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Fold enrichment is determined by the same permutation approach described in Figure 5.
 
 \pagebreak
-![]($grn/data/14_eval_sum/32.hs.pdf){width=100%}
+![]($grn/data/14_eval_sum/31.eQTL.heat.pdf){width=100%}
 
-Figure S10.  Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each trans-eQTL hotspot were first tested for significant overlap in targets with any TFs (hypergeometric enrichment test as implemented in the phyper() function in R).  To control for false positives, only TFs identified in at least two (out of 8 high quality networks, see Methods) that show significant co-regulation with at least one trans-eQTL hotspot (p < 0.01) were kept.  Trans-eQTL hotspots identified in previous maize assemblies were lifted over to the AGPv4 assembly coordinates.  Co-localization of a TF and a trans-eQTL is determined if the two coordinates are within 10-Mbp distance.  Color of each dot represents the number of common targets between the predicted TF regulator and the trans-eQTL hotspot.
+Figure S10. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and only the first bin (top 100k edges) were used to assess enrichment. Fold enrichment is determined by the same permutation approach described in Figure 5. 
+
+\pagebreak
+
+Figure S11.  Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each trans-eQTL hotspot were first tested for significant overlap in targets with any TFs (hypergeometric enrichment test as implemented in the phyper() function in R).  To control for false positives, only TFs identified in at least two (out of 8 high quality networks, see Methods) that show significant co-regulation with at least one trans-eQTL hotspot (p < 0.01) were kept.  Trans-eQTL hotspots identified in previous maize assemblies were lifted over to the AGPv4 assembly coordinates.  Co-localization of a TF and a trans-eQTL is determined if the two coordinates are within 10-Mbp distance.  Color of each dot represents the number of common targets between the predicted TF regulator and the trans-eQTL hotspot.
 
 \pagebreak
 
