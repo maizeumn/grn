@@ -1,9 +1,8 @@
 source("functions.R")
-require(PRROC)
-dirw = file.path(dird, '14_eval_sum')
 gopts = c("rf",'et','xgb')
 colmap = pal_aaas()(3)
 names(colmap) = gopts
+dirw = file.path(dird, '13_eval')
 
 #{{{ network clustering
 ti = tibble(gopt = gopts) %>%
@@ -37,21 +36,21 @@ tp = as_tibble(tp) %>% mutate(aid = tuw$nid) %>%
     mutate(dis = ifelse(dis <= 0, 0, dis)) %>%
     mutate(dis = ifelse(aid==bid, NA, dis)) %>%
     rename(dist = dis)
-
-    require(cluster)
-    require(ape)
-    require(ggtree)
-    hc = hclust(as.dist(dist_mat), method = "ward.D")
-    oidx = hc$order
-    tree = as.phylo(hc)
-    #
-    tpt = ti %>% select(taxa=nid, everything())
-    p1 = ggtree(tree, ladderize=F) %<+%
-        tpt +
-        geom_tiplab(aes(label=lgd, col=gopt), size=2.5) +
-        scale_x_continuous(expand=expand_scale(mult=c(0,.3))) +
-        scale_color_aaas() +
-        theme(plot.margin = margin(-1,.5,-1,.5, 'lines'))
+#
+require(cluster)
+require(ape)
+require(ggtree)
+hc = hclust(as.dist(dist_mat), method = "ward.D")
+oidx = hc$order
+tree = as.phylo(hc)
+#
+tpt = ti %>% select(taxa=nid, everything())
+p1 = ggtree(tree, ladderize=F) %<+%
+    tpt +
+    geom_tiplab(aes(label=lgd, col=gopt), size=2.5) +
+    scale_x_continuous(expand=expand_scale(mult=c(0,.3))) +
+    scale_color_aaas() +
+    theme(plot.margin = margin(-1,.5,-1,.5, 'lines'))
 #
 fo = file.path(dirw, '02.gopt.1.hc.pdf')
 p1 %>% ggexport(filename = fo, width = 8, height = 10)
@@ -105,74 +104,215 @@ p_tsne = ggplot(tp, aes(x=V1, y=V2)) +
            margin = c(.2,.2,.2,.2)) +
     theme(axis.ticks.length = unit(0, 'lines')) +
     guides(fill=F)
-fp = file.path(dirw, "03.tsne.pdf")
+fp = file.path(dirw, "02.tsne.pdf")
 ggsave(p_tsne, filename = fp, width=10, height=10)
 #}}}
 #}}}
 
-#{{{ knockout pval
-fd = file.path(dird, '07_mutants', 'degs.rds')
-ds = readRDS(fd) %>% filter(gene_alias != 'P1')
-dss = ds %>% unnest() %>% group_by(gene_alias, Tissue) %>%
-    summarise(n_tot=n(), n_de=sum(padj<.01), prop_de=n_de/n_tot) %>%
-    ungroup() %>%
+#{{{ eval TF KO / TFBS AUROC [takes long]
+ev = tibble(gopt=gopts, fv=sprintf("%s/%s.1m.rds", dirr, gopts)) %>%
+    mutate(data = map(fv, readRDS)) %>% select(-fv) %>% unnest()
+#{{{ read ko
+nrow_positive <- function(ti) sum(ti$response == 1)
+ko = read_ko() %>% filter(gene_alias != 'P1', gene_alias != 'fl3') %>%
+    mutate(kid=1:n()) %>%
+    select(kid,gene_id,gene_alias,Tissue,ds) %>%
+    unnest() %>%
+    mutate(response=ifelse(padj < .01, 1, 0)) %>%
+    rename(reg.gid = gene_id, tgt.gid = gid) %>%
+    group_by(kid, gene_alias, Tissue) %>% nest() %>% rename(res = data) %>%
+    mutate(n_tot = map_dbl(res, nrow)) %>%
+    mutate(n_de = map_dbl(res, nrow_positive)) %>%
+    mutate(prop_de=n_de/n_tot) %>%
     mutate(ctag=sprintf("%s [%s] [%s] [%s]", gene_alias, Tissue, number(n_de), percent(prop_de)))
-ctags = dss$ctag
-
-eopt = 'tf'
-tvk = tibble(gopt = gopts) %>%
-    mutate(fi = sprintf("%s/%s.%s.rds", dirr, gopt, eopt)) %>%
-    mutate(data = map(fi, readRDS)) %>%
-    unnest() %>% select(nid, gopt, ko) %>% unnest() %>%
-    filter(!is.na(pval)) %>%
-    inner_join(t_cfg, by = 'nid')
-
-tv0 = tvk %>% inner_join(dss, by=c('gene_alias','Tissue'))
-cols100 = colorRampPalette(rev(brewer.pal(n = 6, name = "RdYlBu")))(100)
-tp = tv0 %>%
-    mutate(lab = ifelse(pval<.05, number(-log10(pval),accuracy=2), '')) %>%
-    mutate(pval=-log10(pval)) %>%
-    select(gopt,nid,ctag,pval,lab) %>%
-    mutate(gopt = str_to_upper(gopt)) %>%
-    mutate(ctag = factor(ctag, levels = ctags)) %>%
-    inner_join(t_cfg, by = 'nid') %>%
-    mutate(lgd = factor(lgd, levels=rev(t_cfg$lgd)))
-pval.max = max(tp$pval)
-p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=pval)) +
-    geom_tile() +
-    geom_text(aes(label=lab, col=abs(pval-pval.max/2)<pval.max/4), hjust=.5, size=2) +
-    scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
-    scale_y_discrete(expand=c(0,0)) +
-    #scale_fill_viridis(name="-log10(P-value)", begin = .4) +
-    scale_color_manual(values = c('white','black')) +
-    scale_fill_gradientn(name = '-log10(P-value)', colors = cols100) +
-    facet_grid(.~gopt) +
-    otheme(strip.size=8, legend.pos='none', margin=c(.2,.2,.2,.2),
-           ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
-    theme(axis.text.x = element_text(angle = 30, hjust=1, vjust=1, size=7)) +
-    theme(axis.text.y = element_text(color=rev(t_cfg$col)))
-fo = file.path(dirw, '02.gopt.3.ko.pval.pdf')
-ggsave(p1, file = fo, width = 15, height = 8)
+ctags_ko = ko$ctag
+rids_ko = ko %>% unnest() %>% distinct(reg.gid) %>% pull(reg.gid)
+ko_u = ko %>% unnest()
+#}}}
+#{{{ read tf (ko direct)
+tf0 = read_ko_direct() %>% select(gene_alias,tissue,ctag=lab,data)
+tfs = tf0 %>% select(gene_alias, tissue, ctag)
+tmp = ko %>% rename(tissue=Tissue) %>%
+    mutate(gene_alias = str_to_upper(gene_alias)) %>%
+    mutate(gene_alias=ifelse(gene_alias=='BZIP22','bZIP22',gene_alias)) %>%
+    mutate(tissue=ifelse(tissue=='ear_1mm', 'ear',tissue)) %>%
+    filter(gene_alias %in% tf0$gene_alias) %>%
+    filter(tissue != 'SAM', tissue != 'ear_2mm') %>%
+    unnest() %>%
+    select(gene_alias,tissue, reg.gid, tgt.gid)
+tf = tf0 %>% select(-ctag) %>% unnest() %>%
+    mutate(response=1) %>%
+    right_join(tmp, by=c('gene_alias','tissue','reg.gid','tgt.gid')) %>%
+    replace_na(list(response=0)) %>%
+    inner_join(tfs, by=c('gene_alias','tissue')) %>%
+    group_by(gene_alias,tissue,ctag) %>% nest() %>%
+    rename(res=data)
+ctags_tf = tf$ctag
+rids_tf = tf %>% unnest() %>% distinct(reg.gid) %>% pull(reg.gid)
+tf_u = tf %>% unnest()
+#}}}
+#{{{ read tfbs
+gids = gcfg$gene %>% filter(ttype=='mRNA') %>% pull(gid)
+tmp = gs$tfbs %>% distinct(ctag, reg.gid) %>% crossing(tgt.gid = gids)
+nrow_positive <- function(ti) sum(ti$response == 1)
+bs = gs$tfbs %>% mutate(response = 1) %>%
+    right_join(tmp, by=c('ctag','reg.gid','tgt.gid')) %>%
+    replace_na(list(response=0)) %>%
+    group_by(ctag) %>% nest() %>%
+    rename(res = data) %>% arrange(ctag) %>%
+    mutate(n = map_dbl(res, nrow_positive)) %>%
+    mutate(ctag = as.character(ctag)) %>%
+    mutate(ctag = sprintf("%s [%s]", ctag, number(n))) %>%
+    mutate(ctag = factor(ctag, levels=ctag))
+ctags_bs = bs$ctag
+rids_bs = bs %>% unnest() %>% distinct(reg.gid) %>% pull(reg.gid)
+bs_u = bs %>% unnest()
+#}}}
+#
+#{{{ functions
+complete_tn <- function(tn, tids, rids) {
+    #{{{
+    if(sum(rids %in% tn$reg.gid)==0)
+        tibble()
+    else {
+        rids = rids[rids %in% tn$reg.gid]
+        crossing(reg.gid = rids, tgt.gid = tids) %>% as_tibble() %>%
+            left_join(tn, by=c('reg.gid','tgt.gid')) %>%
+            replace_na(list(score=0))
+    }
+    #}}}
+}
+filter_tn <- function(tn, rids) {
+    #{{{
+    if(sum(rids %in% tn$reg.gid)==0)
+        tibble()
+    else
+        tn %>% filter(reg.gid %in% rids)
+    #}}}
+}
+get_auroc <- function(ti, fpr=1) {
+    #{{{
+    if(max(ti$response) == 0)
+        NA
+    else if (min(ti$response) == 1)
+        NA
+    else
+        roc(ti$response, ti$score, partial.auc=c(1,1-fpr), levels=c(0,1))$auc
+    #}}}
+}
+get_spc_pval <- function(ti)
+    -log10(cor.test(ti$score, ti$padj, method='kendall')$p.value)
+get_wil_pval <- function(ti) {
+    #{{{
+    scores1 = ti %>% filter(response==1) %>% pull(score)
+    scores2 = ti %>% filter(response==0) %>% pull(score)
+    if(length(scores1) > 0 & length(scores2) > 0)
+        -log10(wilcox.test(scores1, scores2, alternative='greater')$p.value)
+    else
+        NA
+    #}}}
+}
 #}}}
 
-#{{{ GO evaluation
-eopt = 'go'
-tvg = tibble(gopt = gopts) %>%
-    mutate(fi = sprintf("%s/%s.%s.rds", dirr, gopt, eopt)) %>%
-    mutate(data = map(fi, readRDS)) %>%
-    unnest() %>% select(-fi) %>%
-    inner_join(t_cfg, by = 'nid')
+#{{{ auroc + pval
+tp_tf = ev %>% select(gopt,nid,tids,tn) %>%
+    mutate(res = map2(tn, tids, complete_tn, rids = rids_tf)) %>%
+    select(gopt, nid, res) %>% unnest() %>%
+    select(gopt, nid, reg.gid, tgt.gid, score) %>%
+    inner_join(tf_u, by=c('reg.gid','tgt.gid')) %>%
+    group_by(gopt, nid, gene_alias, tissue, ctag) %>%
+    nest() %>%
+    mutate(auroc = map_dbl(data, get_auroc, fpr=.1)) %>%
+    mutate(spc.pval = map_dbl(data, get_wil_pval)) %>% select(-data)
+#
+tp_ko = ev %>% select(gopt,nid,tids,tn) %>%
+    mutate(res = map2(tn, tids, complete_tn, rids = rids_ko)) %>%
+    select(gopt, nid, res) %>% unnest() %>%
+    select(gopt, nid, reg.gid, tgt.gid, score) %>%
+    inner_join(ko_u, by=c('reg.gid','tgt.gid')) %>% rename(tissue=Tissue) %>%
+    group_by(gopt, nid, kid, gene_alias, tissue, ctag) %>%
+    nest() %>%
+    mutate(auroc = map_dbl(data, get_auroc, fpr=.1)) %>%
+    mutate(spc.pval = map_dbl(data, get_wil_pval)) %>% select(-data)
+#
+tp_bs = ev %>% select(gopt,nid,tids,tn) %>%
+    mutate(res = map(tn, filter_tn, rids = rids_bs)) %>%
+    select(gopt, nid, res) %>% unnest() %>%
+    select(gopt, nid, reg.gid, tgt.gid, score) %>%
+    inner_join(bs_u, by=c('reg.gid','tgt.gid')) %>%
+    group_by(gopt, nid, ctag) %>%
+    nest() %>%
+    mutate(auroc = map_dbl(data, get_auroc, fpr=.1)) %>%
+    mutate(spc.pval = map_dbl(data, get_wil_pval)) %>% select(-data)
+#
+res = list(tf=tp_tf, ko=tp_ko, bs=tp_bs)
+fo = file.path(dird, '13_eval', '05.tf.ko.bs.rds')
+saveRDS(res, file=fo)
+#}}}
+#}}}
 
-#{{{ enrichment
-net_size = 5e4
+ev = read_tf_ko_bs()
+#{{{ plot tf / ko / bs
+eopt = 'bs'; wid=5; hei=10
+eopt = 'tf'; wid=6; hei=10
+eopt = 'ko'; wid=12; hei=10
+tp1 = ev %>% filter(eopt==!!eopt, key=='auroc')
+tp2 = ev %>% filter(eopt==!!eopt, key=='spc.pval')
+p1 = plot_tile(tp1, lgd.opt=1, faceting=T)
+p2 = plot_tile(tp2, lgd.opt=2, faceting=T)
+fo = sprintf('%s/11.%s.pdf', dirw, eopt)
+ggarrange(p1, p2,
+    nrow = 2, ncol = 1, labels = LETTERS[1:2], heights = c(2,2)) %>%
+    ggexport(filename = fo, width = wid, height = hei)
+#}}}
+
+
+#{{{ GO evaluation
+evg = tibble(gopt = gopts) %>%
+    mutate(fi = sprintf("%s/%s.go.rds", dirr, gopt)) %>%
+    mutate(data = map(fi, readRDS)) %>% select(-fi) %>% unnest()
+
+#{{{ enrichment [heatmap]
+ctags = c("GO_HC","GO_arabidopsis","GO_uniprot.plants","CornCyc")
+tp = evg %>% select(gopt, nid, enrich) %>% unnest() %>%
+    mutate(gopt = str_to_upper(gopt)) %>%
+    filter(ctag %in% ctags, score == 10) %>%
+    group_by(gopt, ctag) %>%
+    #mutate(fcn = scale(fc)) %>% ungroup() %>%
+    mutate(fcn = fc) %>% ungroup() %>%
+    mutate(lab = sprintf("%.01f", fc)) %>%
+    mutate(lab = str_remove(lab, '^0+')) %>%
+    mutate(ctag = factor(ctag, levels = ctags)) %>%
+    inner_join(t_cfg, by='nid') %>%
+    mutate(lgd = factor(lgd, levels=t_cfg$lgd))
+tps = tp %>% distinct(lgd, col) %>% arrange(lgd)
+swit = max(tp$fcn) / 2
+p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=fcn)) +
+    geom_tile() +
+    geom_text(aes(x=ctag, y=lgd, label=lab, color=fc>swit), hjust=.5, size=2.5) +
+    scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
+    scale_y_discrete(expand=c(0,0)) +
+    #scale_fill_viridis(name = 'Fold Enrichment', direction=-1) +
+    scale_fill_gradientn(name='Fold Enrichment', colors=cols100v) +
+    scale_color_manual(values=c('black','white')) +
+    facet_grid(.~gopt) +
+    otheme(legend.pos='top.center.out', legend.dir='h', legend.title=T,
+           ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
+    theme(axis.text.x = element_text(angle=30, hjust=1, vjust=1, size=7)) +
+    theme(axis.text.y = element_text(color=rev(tps$col))) +
+    guides(color = F)
+fp = sprintf('%s/15.go.heat.pdf', dirw)
+ggsave(p1, file = fp, width = 6, height = 6)
+#}}}
+
+#{{{ # enrichment [obsolete]
 ctags = c("GO_HC", "GO_arabidopsis","CornCyc")
-fo = file.path(dirw, "02.gopt.6.go.pdf")
-tp1 = tvg %>% select(nid, gopt, lgd, enrich) %>% unnest() %>%
-    filter(net_size == !!net_size)
-tp2 = tvg %>% select(nid, gopt, enrich_grp) %>% unnest() %>%
-    filter(net_size == !!net_size) %>%
+fo = file.path(dirw, "15.go.pdf")
+tp1 = evg %>% select(nid, gopt, lgd, enrich) %>% unnest() %>% filter(score==10)
+tp2 = evg %>% select(nid, gopt, enrich_grp) %>% unnest() %>%
+    filter(score == 10) %>%
     filter(n >= 10) %>%
-    group_by(nid, gopt, net_size, ctag) %>%
+    group_by(nid, gopt, score, ctag) %>%
     summarise(n_grp=length(grp), n_grp_sig=sum(pval<.05)) %>%
     ungroup() %>%
     mutate(sigtxt = str_c(n_grp_sig,n_grp,sep='/')) %>%
@@ -212,60 +352,4 @@ ggsave(p1, filename = fo, width = 8, height = 8)
 #}}}
 
 
-#{{{ ## eval knockout mutant RNA-Seq at once
-ev_tf = readRDS(fi_tf)
-
-fd = file.path(dird, '07_mutants', 'degs.rds')
-ds = readRDS(fd) %>% filter(gene_alias != 'P1')
-dss = ds %>% unnest() %>% group_by(gene_alias, Tissue) %>%
-    summarise(n_tot=n(), n_de=sum(padj<.01), prop_de=n_de/n_tot) %>%
-    ungroup() %>%
-    mutate(ctag=sprintf("%s [%s] [%s] [%s]", gene_alias, Tissue, number(n_de), percent(prop_de)))
-ctags = dss$ctag
-
-eval_tf_1 <- function(gene_id,gene_alias,Tissue,t_ds, tids,tn) {
-    #{{{
-    rid = gene_id
-    gids = tids
-    #
-    if(! rid %in% tn$reg.gid) {
-        list(auroc=NA, auprc=NA, pval=NA)
-    } else {
-        tr = tn %>% filter(reg.gid == rid, reg.gid != tgt.gid) %>%
-            select(gid = tgt.gid, score) %>%
-            mutate(score = as.numeric(score)) %>%
-            replace_na(list(score=0))
-        if(max(tr$score) == 0) tr$score[1] = 0.1
-        tt = t_ds %>% mutate(weight=padj < .01) %>% select(gid, weight)
-        to = tt %>% filter(gid %in% gids) %>%
-            left_join(tr, by = 'gid') %>%
-            replace_na(list(score=0))
-        resR = roc.curve(scores.class0=to$score, weights.class0=to$weight)
-        resP = pr.curve(scores.class0=to$score, weights.class0=to$weight)
-        scores1 = to %>% filter(weight) %>% pull(score)
-        scores2 = to %>% filter(!weight) %>% pull(score)
-        res = wilcox.test(scores1, scores2, alternative='greater')
-        pval = res$p.value
-        auroc = resR$auc
-        auprc = resP$auc.integral
-        list(auroc=auroc, auprc=auprc, pval=pval)
-    }
-    #}}}
-}
-eval_tf <- function(tids,tn, ds) {
-    #{{{
-    ds %>%
-        mutate(res = pmap(list(gene_id,gene_alias,Tissue,ds), eval_tf_1,
-                          tids=!!tids,tn=!!tn)) %>%
-        mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc'),
-               pval=map_dbl(res,'pval')) %>%
-        select(-ds,-res)
-    #}}}
-}
-
-tv = ev_tf %>% #filter(nid=='n18a') %>%
-    mutate(r=map2(tids,tn, eval_tf, ds=ds)) %>%
-    select(nid, r) %>% unnest() %>%
-    filter(!is.na(auroc))
-#}}}
 

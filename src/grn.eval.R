@@ -4,20 +4,25 @@ suppressPackageStartupMessages(library("argparse"))
 p <- ArgumentParser(description = 'GRN evaluation utilities')
 p$add_argument("net", nargs=1, help="GRN file (*.rds)")
 p$add_argument("out", nargs=1, help="output file (*.rds)")
-p$add_argument("--opt", default='tf',
+p$add_argument('-t', "--opt", default='tf',
                help="evaluation option [default: '%(default)s']")
-p$add_argument("--permut", type='integer', default=100,
+p$add_argument('-m', "--permut", type='integer', default=100,
                help="number permutations to evaluate significance [default: %(default)s]")
+p$add_argument('-p', "--thread", type='integer', default=1,
+               help="number threads [default: %(default)s]")
 args <- p$parse_args()
 
 f_net = args$net
 f_out = args$out
 opt = args$opt
 permut = args$permut
+thread = args$thread
 if( file.access(f_net) == -1 )
     stop(sprintf("file ( %s ) cannot be accessed", f_net))
 
 source("~/projects/grn/src/functions.R")
+require(future)
+require(furrr)
 y = readRDS(f_net)
 rids=y$rids; tids=y$tids; tn=y$tn
 
@@ -100,42 +105,6 @@ eval_ko <- function(gene_id,gene_alias,Tissue,t_ds, tids,tn) {
     #}}}
 }
 
-#' evaluate network stats, TF/target pairs, Y1H overlap
-eval_gs <- function(f_net, gs, y1h, net_sizes=c(1e4,5e4,1e5,5e5)) {
-    #{{{
-    tf = gs$tf; tfbs = gs$tfbs; ko = gs$ko
-    y = readRDS(f_net)
-    rids=y$rids; tids=y$tids; tn=y$tn
-    tfstat = tf %>% filter(reg.gid %in% rids) %>%
-        distinct(ctag) %>%
-        mutate(res=map(ctag, eval_tf, tnk=tf, rids=rids, tids=tids, tn=tn)) %>%
-        mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc'),
-               pval=map_dbl(res, 'pval')) %>%
-        select(-res)
-    tfbsstat = tfbs %>% filter(reg.gid %in% rids) %>%
-        distinct(ctag) %>%
-        mutate(res=map(ctag, eval_tf, tnk=tfbs, rids=rids, tids=tids, tn=tn)) %>%
-        mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc'),
-               pval=map_dbl(res, 'pval')) %>%
-        select(-res)
-    kostat = ko %>%
-        mutate(res = pmap(list(gene_id,gene_alias,Tissue,ds), eval_ko,
-                          tids=!!tids,tn=!!tn)) %>%
-        mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc'),
-               pval=map_dbl(res,'pval')) %>%
-        select(-ds,-res)
-    # network properties
-    nstat = tibble(net_size = net_sizes) %>%
-        mutate(res = map(net_size, eval_netstat, tn)) %>%
-        mutate(n.reg = map_int(res, 'n.reg'), n.tgt = map_int(res, 'n.tgt'),
-            deg.reg = map(res, 'deg.reg'), deg.tgt = map(res, 'deg.tgt')) %>%
-        select(-res)
-    ystat = tibble(net_size = net_sizes) %>%
-        mutate(res = map(net_size, eval_y1h, tn, y1h$reg.gids, y1h$tgt.gids))
-    list(tfstat=tfstat, tfbsstat=tfbsstat, kostat=kostat, nstat=nstat, ystat=ystat)
-    #}}}
-}
-
 eval_fun_ann_1 <- function(net_size=1e4, perm=0, tn, fun_ann) {
     #{{{
     tn = tn %>% filter(row_number() <= net_size)
@@ -143,9 +112,8 @@ eval_fun_ann_1 <- function(net_size=1e4, perm=0, tn, fun_ann) {
         set.seed(perm)
         tn = tn %>% mutate(tgt.gid = sample(tgt.gid))
     }
-    if(perm %% 10 == 0) {
+    if(perm %% 10 == 0)
         cat('net_size:', net_size, 'permut:', perm, '\n')
-    }
     tn2 = tn %>%
         inner_join(fun_ann, by = c("tgt.gid" = 'gid')) %>%
         count(ctag, grp, reg.gid)
@@ -236,51 +204,28 @@ eval_fun_ann <- function(f_net, gs, n_permut=permut, net_sizes=c(1e4,5e4,1e5,5e5
     #}}}
 }
 
-#' evaluate natural variation datasets
-eval_nv <- function(f_net, net_size=1e6) {
+eval_go_1 <- function(perm=0, tn, fun_ann) {
     #{{{
-    y = readRDS(f_net)
-    rids=y$rids; tids=y$tids; tn=y$tn
-    nv = readRDS('~/projects/grn/data/06_deg/all.rds')
-
-    tn0 = tn %>% slice(1:net_size) %>%
-        mutate(score=as.integer(cut_interval(score,10))) %>%
-        mutate(pcc_sign=ifelse(pcc < 0, '-', '+')) %>%
-        select(reg.gid,tgt.gid,score,pcc_sign)
-    nv0 = nv %>% select(yid,cond,group1,group2,gid,DE,DEdir)
-    res = tn0 %>% inner_join(nv0, by=c('reg.gid'='gid')) %>%
-        rename(reg.DE=DE, reg.DEdir=DEdir) %>%
-        inner_join(nv0, by=c('tgt.gid'='gid','yid','cond','group1','group2')) %>%
-        rename(tgt.DE=DE, tgt.DEdir=DEdir) %>%
-        mutate(DE_sign=ifelse(reg.DEdir==tgt.DEdir, '+', '-')) %>%
-        mutate(consis = pcc_sign == DE_sign) %>%
-        count(yid,cond,group1,group2,reg.DE,tgt.DE,score, consis)
-    res
-    #}}}
-}
-
-#' evaluate briggs dataset
-eval_briggs <- function(f_net, br, net_size=5e4) {
-    #{{{
-    y = readRDS(f_net)
-    rids=y$rids; tids=y$tids; tn=y$tn
-    res = tibble()
-    for (tissue in br$tissues) {
-        t_de = br$de %>% filter(Tissue == tissue, gid %in% tids) %>% select(-Tissue)
-        gids = t_de$gid
-        rids1 = rids[rids %in% gids]
-        tids1 = tids[tids %in% gids]
-        tn1 = tn %>% filter(reg.gid %in% rids1, tgt.gid %in% tids1) %>%
-            filter(row_number() <= net_size) %>%
-            inner_join(t_de, by = c('reg.gid' = 'gid')) %>%
-            rename(reg.DE = DE, reg.DEdir = DEdir) %>%
-            inner_join(t_de, by = c('tgt.gid' = 'gid')) %>%
-            rename(tgt.DE = DE, tgt.DEdir = DEdir) %>%
-            mutate(tissue = !!tissue) %>%
-            select(tissue, everything())
-        res = rbind(res, tn1)
+    if(perm != 0) {
+        set.seed(perm)
+        tn = tn %>% mutate(tgt.gid = sample(tgt.gid))
     }
-    res
+    tn2 = tn %>%
+        inner_join(fun_ann, by = c("tgt.gid" = 'gid')) %>%
+        count(ctag, grp, reg.gid)
+    enc1 = tn2 %>%
+        arrange(ctag, grp, desc(n), reg.gid) %>%
+        group_by(ctag, grp) %>%
+        summarise(coreg = sum(n*(n-1)/2),
+                  max.reg.gid=reg.gid[1], max.reg.size=n[1], n=sum(n)) %>%
+        ungroup()
+    enc2 = tn2 %>%
+        arrange(ctag, reg.gid, desc(n), grp) %>%
+        group_by(ctag, reg.gid) %>%
+        summarise(coreg = sum(n*(n-1)/2),
+                  max.grp=grp[1], max.grp.size=n[1], n=sum(n)) %>%
+        ungroup()
+    list(enc.grp = enc1, enc.reg = enc2)
     #}}}
 }
 
@@ -342,19 +287,104 @@ eval_bm_spe <- function(reg.v, tgt.v, p.drc) {
     #}}}
 }
 
+if(thread > 1) {
+    plan(multiprocess, workers=thread)
+    options(future.globals.maxSize=10e9)
+}
+
 #gs was already read
 if (opt == 'tf') {
+    #{{{ evaluate network stats, TF/target pairs, Y1H overlap
     require(PRROC)
     fi = file.path(dird, '08_y1h', '01.rds')
     y1h = readRDS(fi)
     res = eval_gs(f_net, gs, y1h)
+    net_sizes=c(1e4,5e4,1e5,5e5)
+    tf = gs$tf; tfbs = gs$tfbs; ko = gs$ko
+    tfstat = tf %>% filter(reg.gid %in% rids) %>%
+        distinct(ctag) %>%
+        mutate(res=map(ctag, eval_tf, tnk=tf, rids=rids, tids=tids, tn=tn)) %>%
+        mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc'),
+               pval=map_dbl(res, 'pval')) %>%
+        select(-res)
+    tfbsstat = tfbs %>% filter(reg.gid %in% rids) %>%
+        distinct(ctag) %>%
+        mutate(res=map(ctag, eval_tf, tnk=tfbs, rids=rids, tids=tids, tn=tn)) %>%
+        mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc'),
+               pval=map_dbl(res, 'pval')) %>%
+        select(-res)
+    kostat = ko %>%
+        mutate(res = pmap(list(gene_id,gene_alias,Tissue,ds), eval_ko,
+                          tids=!!tids,tn=!!tn)) %>%
+        mutate(auroc=map_dbl(res,'auroc'), auprc=map_dbl(res,'auprc'),
+               pval=map_dbl(res,'pval')) %>%
+        select(-ds,-res)
+    # network properties
+    nstat = tibble(net_size = net_sizes) %>%
+        mutate(res = map(net_size, eval_netstat, tn)) %>%
+        mutate(n.reg = map_int(res, 'n.reg'), n.tgt = map_int(res, 'n.tgt'),
+            deg.reg = map(res, 'deg.reg'), deg.tgt = map(res, 'deg.tgt')) %>%
+        select(-res)
+    ystat = tibble(net_size = net_sizes) %>%
+        mutate(res = map(net_size, eval_y1h, tn, y1h$reg.gids, y1h$tgt.gids))
+    list(tfstat=tfstat, tfbsstat=tfbsstat, kostat=kostat, nstat=nstat, ystat=ystat)
+    #}}}
 } else if (opt == 'go') {
-    res = eval_fun_ann(f_net, gs)
+    #{{{
+    fun_ann = gs$fun_ann
+    n_permut=permut; net_size=1e6; nbin=10
+    res = tn %>% slice(1:net_size) %>%
+        mutate(score = as.integer(cut_number(score,nbin))) %>%
+        select(reg.gid,tgt.gid,score) %>%
+        group_by(score) %>% nest() %>% rename(tn=data) %>%
+        crossing(perm=0:n_permut) %>%
+        mutate(data = future_map2(perm, tn, eval_go_1, fun_ann=fun_ann, .progress=T)) %>%
+        #mutate(data = map2(perm, tn, eval_go_1, fun_ann=fun_ann)) %>%
+        mutate(enc.grp = map(data, 'enc.grp')) %>%
+        mutate(enc.reg = map(data, 'enc.reg'))
+    res1 = res %>% select(-tn, -data, -enc.reg) %>% unnest()
+    res2 = res %>% select(-tn, -data, -enc.grp) %>% unnest()
+    res10 = res1 %>% filter(perm==0) %>% select(-perm,-coreg)
+    res20 = res2 %>% filter(perm==0) %>% select(-perm,-coreg)
+    enrich_grp = res1 %>%
+        group_by(score, ctag, grp) %>%
+        summarise(fc = coreg[perm==0]/mean(coreg[perm!=0]),
+            pval = sum(coreg[perm!=0]>coreg[perm==0]) / sum(perm!=0)) %>%
+        ungroup() %>%
+        inner_join(res10, by=c('score','ctag','grp'))
+    enrich_reg = res2 %>%
+        inner_join(res20[,1:3], by=c('score','ctag','reg.gid')) %>%
+        group_by(score, ctag, reg.gid) %>%
+        summarise(fc = coreg[perm==0]/mean(coreg[perm!=0]),
+            pval = sum(coreg[perm!=0]>coreg[perm==0]) / sum(perm!=0)) %>%
+        ungroup() %>%
+        inner_join(res20, by=c('score','ctag','reg.gid'))
+    enrich = res1 %>%
+        group_by(score, ctag, perm) %>%
+        summarise(n_grp=length(grp), coreg=sum(coreg)) %>% ungroup() %>%
+        group_by(score, ctag, n_grp) %>%
+        summarise(fc = coreg[perm==0]/mean(coreg[perm!=0]),
+            pval = sum(coreg[perm!=0]>coreg[perm==0]) / sum(perm!=0)) %>%
+        ungroup()
+    res = list(enrich=enrich, enrich_grp=enrich_grp, enrich_reg=enrich_reg)
+    #}}}
 } else if (opt == 'nv') {
-    res = eval_nv(f_net)
-} else if (opt == 'br') {
-    br = read_briggs()
-    res = eval_briggs(f_net, br)
+    #{{{ evaluate natural variation datasets
+    net_size=1e6; nbin=10
+    nv = readRDS('~/projects/grn/data/06_deg/all.rds')
+    tn0 = tn %>% slice(1:net_size) %>%
+        mutate(score = as.integer(cut_number(score,nbin))) %>%
+        mutate(pcc_sign=ifelse(pcc < 0, '-', '+')) %>%
+        select(reg.gid,tgt.gid,score,pcc_sign)
+    nv0 = nv %>% select(yid,cond,group1,group2,gid,DE,DEdir)
+    res = tn0 %>% inner_join(nv0, by=c('reg.gid'='gid')) %>%
+        rename(reg.DE=DE, reg.DEdir=DEdir) %>%
+        inner_join(nv0, by=c('tgt.gid'='gid','yid','cond','group1','group2')) %>%
+        rename(tgt.DE=DE, tgt.DEdir=DEdir) %>%
+        mutate(DE_sign=ifelse(reg.DEdir==tgt.DEdir, '+', '-')) %>%
+        mutate(consis = pcc_sign == DE_sign) %>%
+        count(yid,cond,group1,group2,reg.DE,tgt.DE,score, consis)
+    #}}}
 } else if (opt == 'bm') {
     bm = read_biomap(opt='inbred')
     res = eval_biomap(f_net, bm)

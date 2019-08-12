@@ -49,9 +49,8 @@ if(args$use_fpkm) {
 }
 cat(sprintf("%d genes in %d samples read\n", length(unique(ti$gid)), length(unique(ti$SampleID))))
 
-if(!args$no_asinh) {
+if(!args$no_asinh)
     ti = ti %>% mutate(val = asinh(val))
-}
 
 tis = ti %>% group_by(gid) %>%
     summarise(nsam_on = sum(val >= args$min_cpm),

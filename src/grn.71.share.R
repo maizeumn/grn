@@ -9,7 +9,7 @@ ti = read_tsv(fi, col_names = c('gid.v3')) %>%
 ti %>% print(n=40)
 tl = ti %>% mutate(gid = ifelse(is.na(gid), gid.v3, gid)) %>% select(gid)
 
-fn = file.path(dird, 'raw_output/01.tf.rds')
+fn = file.path(dird, 'raw/01.tf.rds')
 res = readRDS(fn)
 
 ncfg = th %>% select(nid, lgd)

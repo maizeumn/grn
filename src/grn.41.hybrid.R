@@ -1,8 +1,8 @@
 source("functions.R")
 require(PRROC)
 #source("enrich.R")
-diri = '~/projects/maize.expression'
-dirw = '~/projects/maize.grn/data'
+diri = '~/projects/rnaseq'
+dirw = '~/projects/grn/data'
 f_cfg = file.path(dirw, '10.dataset.tsv')
 t_cfg = read_tsv(f_cfg)
 t_cfg = t_cfg %>% mutate(note = ifelse(is.na(note), study, sprintf("%s_%s", study, note)))
@@ -26,7 +26,7 @@ reg.mat.b = reg.mat.b[rids, tids]
 reg.mat.m = reg.mat.m[rids, tids]
 reg.mat.h = reg.mat.h[rids, tids]
 
-max_net_size = 1000000
+max_net_size = 1e6
 tnb = as_tibble(reg.mat.b) %>% mutate(rid = rids) %>%
     gather(tid, score, -rid) %>% filter(rid != tid) %>%
     arrange(desc(score)) %>% filter(row_number() <= max_net_size)
@@ -37,11 +37,11 @@ tnh = as_tibble(reg.mat.h) %>% mutate(rid = rids) %>%
     gather(tid, score, -rid) %>% filter(rid != tid) %>%
     arrange(desc(score)) %>% filter(row_number() <= max_net_size)
 
-net_size = 1000000
+net_size = 1e6
 fo = sprintf("%s/vennd.%d.pdf", dirw, net_size)
 grn_venn(net_size, tnb, tnm, tnh, fo)
 
-grn_venn <- function(net_size = 10000, tnb, tnm, tnh, fo) {
+grn_venn <- function(net_size = 1e4, tnb, tnm, tnh, fo) {
     require(eulerr)
     edges.b = tnb[1:net_size,] %>% mutate(ename = sprintf("%s_%s", rid, tid)) %>% pull(ename)
     edges.m = tnm[1:net_size,] %>% mutate(ename = sprintf("%s_%s", rid, tid)) %>% pull(ename)

@@ -1,11 +1,13 @@
 ##PBS -l nodes=1:ppn=24,mem=62gb,walltime=2:00:00
-#PBS -l nodes=1:ppn=1,mem=50gb,walltime=2:00:00
+##PBS -l nodes=1:ppn=1,mem=50gb,walltime=2:00:00
+#PBS -l nodes=1:ppn=8,mem=40gb,walltime=5:00:00
 #PBS -m ae
 #PBS -M zhoux379@umn.edu
-##PBS -q ram256g
 #PBS -q small
 
+source activate work
 cd $grn/src
-Rscript --no-init-file --no-restore grn.10.input.R
+#Rscript --no-init-file --no-restore grn.10.input.R
 #Rscript --no-init-file --no-restore grn.run.R
-
+cd $grn/data/cache
+grn.eval.R 15_grn_rds/xgb.n18g.rds x.rds -t go --permut 500 -p 8

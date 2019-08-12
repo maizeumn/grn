@@ -5,6 +5,8 @@ require(ggforce)
 require(knitr)
 require(kableExtra)
 options(knitr.table.format = "latex")
+require(pROC)
+require(PRROC)
 dirg = '~/data/genome'
 dirp = '~/projects/grn'
 dird = file.path(dirp, 'data')
@@ -14,7 +16,7 @@ gcfg = read_genome_conf()
 f_cfg = file.path(dird, '10.dataset.xlsx')
 t_cfg = read_xlsx(f_cfg) %>% fill(mid, study)
 studies = t_cfg %>% distinct(study) %>% pull(study)
-net_types = c("tissue","genotype","tissue*genotype",'ril','meta')
+net_types = c("Tissue","Genotype","Tissue*Genotype",'RIL','Meta')
 net_cols = pal_aaas()(length(net_types))
 names(net_cols) = net_types
 nids_meta = c("n17a","n18a",'n18g',"n99a")
@@ -27,11 +29,95 @@ t_cfg = t_cfg %>% select(-mid) %>%
     #mutate(net_type = ifelse(nid %in% nids_meta, 'tissue*genotype', net_type)) %>%
     mutate(net_type = factor(net_type, levels = net_types)) %>%
     mutate(col = net_cols[net_type]) %>%
-    mutate(lgd = sprintf("%s %s [%d]", study,note,sample_size)) #%>%
+    mutate(lgd = sprintf("%s %s [%d]", str_to_title(study),note,sample_size)) #%>%
     #select(-study,-note,-sample_size)
 tsyn = read_syn(gcfg)
 gs = readRDS('~/projects/grn/data/09.gs.rds')
 cols100 = colorRampPalette(rev(brewer.pal(n = 6, name = "RdYlBu")))(100)
+cols100v = viridis_pal(direction=-1,option='magma')(100)
+
+read_ko_direct <- function() {
+    #{{{ known TF/target pairs
+    dirw = file.path(dird, '07_mutants')
+    fi = file.path(dirw, 'known_tf_targets.xlsx')
+    ti = read_xlsx(fi) %>%
+        fill(gene_alias, gene_name, gene_id, libtype, targets, reference) %>%
+        filter(gene_alias %in% c('KN1','RA1','FEA4','O2','bZIP22'))
+    #
+    tf = ti %>% mutate(tmp=ifelse(gene_alias=='KN1', str_c(gene_alias, tissue, sep='_'), gene_alias)) %>%
+        mutate(ft=sprintf("%s/05.%s.tsv", dirw, tmp)) %>%
+        mutate(data = map(ft, read_tsv)) %>% select(-tmp, -ft) %>%
+        mutate(n=map_int(data, nrow)) %>%
+        mutate(lab = sprintf("%s [%s] [%s]", gene_alias, tissue, n)) %>%
+        select(-n)
+    tf
+    #}}}
+}
+read_ko <- function(fd = file.path(dird, '07_mutants', 'degs.rds'))
+    readRDS(fd)
+
+read_tf_ko_bs <- function(fi = file.path(dird, '13_eval', '05.tf.ko.bs.rds')) {
+    #{{{
+    ev = readRDS(fi)
+    ev1 = ev$tf %>% mutate(eopt='tf') %>%
+        gather(key, score, -gopt,-eopt,-nid,-ctag,-gene_alias,-tissue)
+    ctags1 = sort(unique(ev$tf$ctag))
+    ev2 = ev$ko %>% mutate(eopt='ko') %>% select(-kid) %>%
+        gather(key, score, -gopt,-eopt,-nid,-ctag,-gene_alias,-tissue)
+    ctags2 = sort(unique(ev$ko$ctag))
+    ev3 = ev$bs %>% mutate(eopt='bs') %>% mutate(gene_alias=NA,tissue=NA) %>%
+        gather(key, score, -gopt,-eopt,-nid,-ctag,-gene_alias,-tissue)
+    ctags3 = as.character(sort(unique(ev$bs$ctag)))
+    ctags = c(ctags1, ctags2, ctags3)
+    #
+    ev = rbind(ev1, ev2, ev3) %>%
+        mutate(gopt = str_to_upper(gopt)) %>%
+        mutate(score = ifelse(key=='auroc', score*1000, score)) %>%
+        mutate(ctag = factor(ctag, levels=ctags)) %>%
+        mutate(lab = number(score, accuracy=1)) %>%
+        mutate(lab = str_remove(lab, '^0+')) %>%
+        mutate(lab = ifelse(key=='spc.pval' & score < -log10(.05), '', lab))
+    ev
+    #}}}
+}
+plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
+    #{{{
+    tp = tp %>%
+        inner_join(t_cfg, by = 'nid') %>%
+        mutate(lgd = factor(lgd, levels=rev(t_cfg$lgd)))
+    tps = t_cfg %>% distinct(lgd, col)
+    swit = max(tp$score) / 2
+    #
+    if(lgd.opt == 1)
+        lgd = bquote('AUC'~x10^3~'(FPR<=0.1)')
+    else if(lgd.opt == 2)
+        lgd = bquote(-log[10]~'(Wilcox P-value)')
+    #
+    if(col.opt == 1)
+        cols = cols100v
+    else if(col.opt == 2)
+        cols = cols100
+    #
+    p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=score)) +
+        geom_tile() +
+        geom_text(aes(label=lab, color=score>swit), hjust=.5, size=2) +
+        scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
+        scale_y_discrete(drop=F, expand=c(0,0)) +
+        scale_fill_gradientn(name=lgd, colors=cols) +
+        scale_color_manual(values=c('black','white')) +
+        otheme(legend.pos='top.center.out', legend.dir='h', legend.title=T,
+               ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
+        theme(axis.text.x = element_text(angle=30, hjust=1, vjust=1, size=7)) +
+        guides(color=F)
+    if(ytext)
+        p1 = p1 + theme(axis.text.y = element_text(color=rev(tps$col), size=7))
+    else
+        p1 = p1 + theme(axis.text.y = element_blank())
+    if(faceting)
+        p1 = p1 + facet_grid(.~gopt)
+    p1
+    #}}}
+}
 
 read_briggs <- function(fi="~/projects/briggs/data/49_coop/01.master.rda") {
     #{{{ read briggs data
@@ -80,14 +166,6 @@ read_biomap <- function(opt='all') {
 radian.rescale <- function(x, start=0, direction=1) {
       c.rotate <- function(x) (x + start) %% (2 * pi) * direction
   c.rotate(scales::rescale(x, c(0, 2 * pi), range(x)))
-}
-bin_network <- function(ti, bins=10) {
-    #{{{
-    ti %>%
-        mutate(pcc_sign=ifelse(pcc < 0, '-', '+')) %>%
-        mutate(score=as.integer(cut_interval(score,bins))) %>%
-        select(reg.gid,tgt.gid,score,pcc_sign)
-    #}}}
 }
 run_deseq2 <- function(gene_alias, Tissue, tm, th) {
     #{{{

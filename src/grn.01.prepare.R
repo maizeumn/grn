@@ -43,7 +43,7 @@ for (tag in tags) {
     write_tsv(to, fo)
 }
 
-to = ti4 %>% 
+to = ti4 %>%
     distinct(gid) %>%
     transmute(reg.gid = tfid, tgt.gid = gid)
 tag = 'KN1'
@@ -177,8 +177,11 @@ tp = th %>% filter(nid %in% c("np16_1", sprintf("np18_%d", 1:4))) %>%
 pmap_lgl(tp, lift_previous_grn, tm)
 #}}}
 
+tf = read_ko_direct()
+ko = read_ko()
+
 #{{{ functional annotation: GO CornCyc Y1H
-dirg = '~/data/genome/B73/61_functional'
+dirg = '~/data/genome/Zmays_B73/61_functional'
 fi = file.path(dirg, "02.go.gs.tsv")
 ti = read_tsv(fi)
 go_hc = ti %>% mutate(note = str_c(evidence, gotype)) %>%
@@ -222,27 +225,6 @@ fun_ann = rbind(go_hc, go, cc, hs, y1h)
 fun_ann %>% distinct(ctag,grp) %>% count(ctag)
 #}}}
 
-#{{{ known TF/target pairs
-ctags = c('KN1_ear', 'KN1_tassel', 'KN1_leaf', 'KN1_any', 'KN1_all',
-          'FEA4', 'O2', 'RA1', 'HDA101', 'bZIP22')
-tf = tibble()
-for (ctag in ctags) {
-    fi = sprintf("%s/07_mutants/05.%s.tsv", dird, ctag)
-    ti = read_tsv(fi) %>%
-        mutate(ctag = ctag) %>%
-        select(ctag, everything())
-    tf = rbind(tf, ti)
-}
-tf = tf %>%
-    filter(! ctag %in% c("KN1_any","KN1_ear","KN1_tassel","KN1_leaf")) %>%
-    mutate(ctag = ifelse(ctag=='KN1_all', 'KN1', ctag)) %>%
-    filter(ctag != 'HDA101')
-ctags_tf5 = tf %>% count(ctag) %>% arrange(n) %>% pull(ctag)
-tf2 = tf %>% mutate(ctag = 'known_TFs') %>% distinct(ctag, reg.gid, tgt.gid)
-tf = tf %>% bind_rows(tf2)
-tf %>% count(ctag)
-#}}}
-
 #{{{ FunTFBS regulations
 fi = file.path(dird, '03_tfbs', 'regulation_merged.txt')
 ti = read_tsv(fi, col_names=c("o.reg.gid",'relation','o.tgt.gid','org','evi'))
@@ -268,7 +250,7 @@ tfbs = to %>% distinct(reg.gid, tgt.gid, evi) %>%
 tfbs %>% count(ctag)
 #}}}
 
-#{{{ FunTFBS (no use)
+#{{{ # obsolete - FunTFBS
 fi = file.path(dird, '03_tfbs', 'TFBS_from_FunTFBS_inProm.gff')
 ti = read_tsv(fi, col_names=c('chr','src','type','beg','end','score','srd','phase','note'), col_types='cccdddccc')
 ti %>% count(src,type)
@@ -283,13 +265,8 @@ to = ti %>% select(chr,beg,end,score,note) %>%
     select(chr,beg,end,score,tid,gid,corr,pval)
 #}}}
 
-#{{{ TF RNA-Seq DEGs
-fd = file.path(dird, '07_mutants', 'degs.rds')
-ko = readRDS(fd)
-#}}}
-
 #{{{ add additional TF IDs
-ff = '~/data/genome/Zmays_v4/61_functional/06.tf.tsv'
+ff = '~/projects/genome/data/Zmays_B73/61_functional/06.tf.tsv'
 ti = read_tsv(ff)
 tf_fam = ti
 tf_ids = ti$gid
