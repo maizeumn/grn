@@ -78,7 +78,7 @@ saveRDS(x, file=fo)
 #}}}
 
 #|{{{ trans hotspots
-fi = file.path(dird, '14_eval_sum/33.hs.tsv')
+fi = file.path(dird, '14_eval_sum/33.hit.tsv')
 tp = read_tsv(fi) %>%
     replace_na(list(reg.note='',txt='')) %>%
     mutate(reg.note = str_replace(reg.note, " *\\[.*\\]", '')) %>%
