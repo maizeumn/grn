@@ -1804,14 +1804,8 @@ hs = tibble(qtag=qtags) %>%
 fv = sprintf("%s/rf.50k.rds", dirr)
 ev = readRDS(fv)
 #
-t_pick = tibble(reg.gid=c('Zm00001d026147','Zm00001d046405','Zm00001d053124','Zm00001d030028'),
-    gname=c('R1', 'hb87','myb61','myc7'),
-    grp = c('PWY-5125', 'CHLOROPHYLL-SYN', 'CALVIN-PWY','PWY-321'),
-    #c('PWY-6787','GO:0010027','GO:0010027')
-    path = c('anthocyanin biosynthesis',
-      "3,8-divinyl-chlorophyllide a biosynthesis I (aerobic, light-dependent)",
-      "Calvin-Benson-Bassham cycle",'cutin biosynthesis'))
-t_pick = t_pick[c(1,2,3),]
+f_pick = sprintf("%s/35.0.pick.xlsx", dirw)
+t_pick = read_xlsx(f_pick)
 #}}}
 
 #{{{ prepare
@@ -1842,8 +1836,8 @@ length(tz$hit[tz$hit=='hit'])
 length(unique(tz$reg.gid[tz$hit=='hit']))
 #}}}
 
-#{{{ plot
 tx = gcfg$chrom
+#{{{ 3-panel plot
 ti = tz
 gpos = flattern_gcoord(ti %>% select(chrom=gchrom, pos=gpos), gcfg$chrom)
 qpos = flattern_gcoord(ti %>% select(chrom=qchrom, pos=qpos), gcfg$chrom)
@@ -1865,15 +1859,17 @@ p = ggplot(tp) +
     #theme(legend.background = element_rect(fill='white'))
 fp = sprintf("%s/32.hs.pdf", dirw)
 ggsave(p, filename = fp, width = 10, height = 4.2)
+#}}}
 
+#{{{ panel A
 ti = tz %>% filter(hit=='hit')
 gpos = flattern_gcoord(ti %>% select(chrom=gchrom, pos=gpos), gcfg$chrom)
 qpos = flattern_gcoord(ti %>% select(chrom=qchrom, pos=qpos), gcfg$chrom)
 tp = ti %>% mutate(gpos=!!gpos, qpos=!!qpos)
-tps = t_pick %>% inner_join(tp, by = 'reg.gid') %>% filter(max.grp.size>3)
-p0 = ggplot(tp) +
-    geom_point(aes(x=qpos, y=gpos, color=ctag, shape=hit)) +
-    geom_text_repel(data=tps, aes(qpos,gpos,label=gname), nudge_x=-2e8, direction='y', segment.size=.3, size=2.5) +
+tps = t_pick[c(1,2,8),] %>% inner_join(tp, by = 'reg.gid') %>% filter(max.grp.size>3)
+p0 = ggplot(tp, aes(qpos, gpos)) +
+    geom_point(aes(color=ctag, shape=hit)) +
+    geom_text_repel(data=tps, aes(label=gname), nudge_x=-2e8, direction='y', segment.size=.3, size=2.5) +
     geom_vline(xintercept = tx$start, alpha=.1) +
     geom_vline(xintercept = tx$end, alpha=.1) +
     geom_hline(yintercept = tx$start, alpha=.1) +
@@ -1887,6 +1883,8 @@ p0 = ggplot(tp) +
            legend.pos='bottom.right', legend.dir='v') +
     theme(legend.background = element_rect(fill='white')) +
     guides(shape = F)
+fp = file.path(dirw, '33.hit.pdf')
+ggsave(p0, filename=fp, width=5, height=5)
 #}}}
 
 #{{{ save as table
@@ -1921,7 +1919,7 @@ tv = tv0 %>%
 #
 to = tz %>% filter(reg.gid %in% reg.gids) %>%
     group_by(reg.gid) %>%
-    summarise(n_qtag = n(), studies=str_c(unlist(studies), collapse=', '),
+    summarise(n_qtag = n(), studies=str_c(unique(unlist(studies)), collapse=', '),
               max.grp.size = max(max.grp.size),
               qtags = paste(ctag, collapse=',')) %>% ungroup() %>%
     filter(max.grp.size >= 1) %>%
@@ -1936,60 +1934,58 @@ fo = file.path(dirw, '33.hs.tsv')
 write_tsv(to, fo)
 #}}}
 
-#{{{ # [obsolete] individual loci test
-ztag = 'GO_uniprot.plants'
-ztag = 'CornCyc'
-tfid = 'Zm00001d026147'
-tgid = 'Zm00001d017077'
-tgid = 'Zm00001d026141'
-tz2 = ev_go %>% filter(nid %in% nids_hc) %>%
-    select(nid, enrich_reg) %>% unnest() %>%
-    filter(ctag == ztag, n >= 5, net_size==5e4, pval < .05) %>%
-    select(nid, reg.gid, n, fc, grp=max.grp, max.grp.size) %>%
-    count(reg.gid, grp) %>% filter(n>=1) %>%
-    #arrange(grp,desc(fc)) %>%
-    filter(reg.gid == tfid) %>%
-    inner_join(fun_ann_note, by='grp')
-tno = ev_tf %>% filter(nid==!!nid) %>% pull(tn)
-tno[[1]] %>% filter(reg.gid==tfid) %>% select(tgt.gid) %>%
-    inner_join(gcfg$gene.desc, by=c('tgt.gid'='id')) %>%
-    select(-note2) %>% arrange(tgt.gid) %>% print(n=30)
-
-nid = 'n18a_5'
-fem = sprintf("%s/../11_exp_mat/%s.tsv", dirw, nid)
-tem1 = read_tsv(fem)
-nid = 'nc03'
-fem = sprintf("%s/../11_exp_mat/%s.tsv", dirw, nid)
-tem2 = read_tsv(fem)
-nid = 'n18a_6'
-fem = sprintf("%s/../11_exp_mat/%s.tsv", dirw, nid)
-tem3 = read_tsv(fem)
-nid = 'n18c'
-fem = sprintf("%s/../11_exp_mat/%s.tsv", dirw, nid)
-tem4 = read_tsv(fem)
-nid = 'n13a'
-fem = sprintf("%s/../11_exp_mat/%s.tsv", dirw, nid)
-tem5 = read_tsv(fem)
-
-tem = tem1
-cor.test(as.numeric(tem[tem$gid==tfid,]), as.numeric(tem[tem$gid==tgid,]))
-tem = tem2
-cor.test(as.numeric(tem[tem$gid==tfid,]), as.numeric(tem[tem$gid==tgid,]))
-tem = tem3
-cor.test(as.numeric(tem[tem$gid==tfid,]), as.numeric(tem[tem$gid==tgid,]))
-tem = tem4
-cor.test(as.numeric(tem[tem$gid==tfid,]), as.numeric(tem[tem$gid==tgid,]))
-tem = tem5
-cor.test(as.numeric(tem[tem$gid==tfid,]), as.numeric(tem[tem$gid==tgid,]))
-#}}}
-#}}}
-
 #{{{ pathway plot
+fi = '~/projects/genome/data/Zmays_B73/61_functional/07.corncyc.rds'
+cc = readRDS(fi)
+#
+tn = ev %>%
+    select(nid,tn) %>% unnest() %>%
+    select(nid,reg.gid,tgt.gid) %>% group_by(reg.gid, tgt.gid) %>%
+    summarise(nids = list(nid), n_nid = n()) %>% ungroup()
+#
+t_pick = read_xlsx(f_pick)
+
+# summary
+tx = tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>%
+    arrange(reg.gid,desc(fc)) %>%
+    inner_join(gs$fun_ann, by=c('ctag','grp')) %>%
+    rename(tgt.gid=gid) %>%
+    left_join(tn, by=c('reg.gid','tgt.gid')) %>%
+    replace_na(list(n_nid = 0)) %>%
+    group_by(reg.gid, nid, ctag, grp, fc) %>%
+    summarise(n.tgt = n(), n.tgt.hit = sum(n_nid > 0)) %>%
+    ungroup() %>% mutate(p.tgt.hit = n.tgt.hit / n.tgt) %>%
+    mutate(lab = sprintf("%s/%s", n.tgt.hit, n.tgt)) %>%
+    select(-n.tgt, -n.tgt.hit, -ctag)
+tx %>% print(n=50, width=Inf)
+
+ty = tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>%
+    filter(ctag == 'CornCyc') %>%
+    select(reg.gid, grp, fc) %>%
+    inner_join(t_pick, by=c('reg.gid','grp')) %>%
+    inner_join(cc, by='pathway') %>%
+    select(-net) %>%
+    mutate(rxn = map_chr(rxn, str_c, collapse=",")) %>%
+    mutate(reactants = map_chr(reactants, str_c, collapse=",")) %>%
+    mutate(products = map_chr(products, str_c, collapse=",")) %>%
+    rename(tgt.gid = gids) %>%
+    unnest() %>%
+    left_join(tn, by=c('reg.gid','tgt.gid')) %>%
+    replace_na(list(nids='', n_nid = 0)) %>%
+    mutate(nids = map_chr(nids, str_c, collapse=',')) %>%
+    arrange(reg.gid, grp, pathway, rxn, n_nid)
+fo = file.path(dirw, '35.2.tsv')
+write_tsv(ty, fo)
+#}}}
+#}}}
+
+
+#{{{ # [obsolete] pathway plot
 #{{{ read trans-eQTL - requires tv0 and tz
 tn0 = ev %>% #filter(nid %in% nids_hc) %>%
     select(nid,tn) %>% unnest() %>%
     select(nid,reg.gid,tgt.gid)
-tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>% arrange(reg.gid,desc(fc)) %>% print(n=40)
+tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>% arrange(reg.gid,desc(fc))
 #x = to %>% filter(reg.gid %in% t_pick$reg.gid) %>% print(width=Inf)
 #x$txt
 #}}}
@@ -2082,14 +2078,12 @@ p
 
 p1 = plot_pathway(1)
 p2 = plot_pathway(2)
-p3 = plot_pathway(3)
+p3 = plot_pathway(7)
 fo= file.path(dirw, '35.1.pdf')
 ggarrange(p0, p1, p2, p3,
     nrow = 2, ncol = 2, labels = LETTERS[1:4], heights = c(2,2)) %>%
     ggexport(filename = fo, width=10, height=10)
 #}}}
-
-
 #{{{ # new go - not working
 fv = sprintf("%s/rf.go2.rds", dirr)
 ev_go = readRDS(fv)
