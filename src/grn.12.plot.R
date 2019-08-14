@@ -727,20 +727,22 @@ p1 = ggplot(tp, aes(score, fc)) +
     geom_line(aes(color=ctag), size=.3) +
     scale_x_continuous(name='Edge score', breaks=seq(2,10,2), expand = expand_scale(mult=c(.05,.05))) +
     scale_y_continuous(name='Fold Enrichment', expand=c(.05,.05)) +
-    facet_wrap(~lgd, ncol=2, dir='h', scale='free') +
+    facet_wrap(~lgd, ncol=1, dir='h', scale='free') +
+    #facet_grid(lgd~., scale='free') +
     scale_color_d3() +
     scale_shape_manual(values=c(0:6)) +
     otheme(legend.pos='top.center.out', legend.dir='h', legend.title=T,
-           xtitle=T, xtext=T, ytitle=T, ytext=T, ygrid=F, xtick=T, ytick=T) +
+           xtitle=T, xtext=T, ytitle=T, ytext=T, ygrid=F, xtick=T, ytick=T,
+           margin = c(1.5,.2,.1,.1)) +
     theme(legend.box = "horizontal") +
-    theme(legend.position = c(.5,1), legend.justification = c(.5,-.3)) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,-.1)) +
     theme(strip.text.x = element_text(size=8)) +
     theme(strip.background.x = element_rect(fill = 'white')) +
-    guides(color = guide_legend("", nrow=1, order=1),
-           shape = guide_legend("", nrow=1, order=1))
+    guides(color = guide_legend("", ncol=1, order=1),
+           shape = guide_legend("", ncol=1, order=1))
 #
 pg = ggplot_gtable(ggplot_build(p1))
-nr = 2; nc = 2
+nr = 4; nc = 1
 for (i in 1:nrow(tps)) {
     r = floor((i-1)/nc) + 1; c = (i-1) %% nc + 1
     strip = sprintf("strip-t-%d-%d", c, r)
@@ -749,7 +751,7 @@ for (i in 1:nrow(tps)) {
     pg$grobs[[idx]]$grobs[[1]]$children[[2]]$children[[1]]$gp$col = 'white'
 }
 fo = file.path(dirw, "07.go.selected.pdf")
-ggsave(pg, filename=fo, width=4, height=4)
+#ggsave(pg, filename=fo, width=2.2, height=7)
 #}}}
 
 #{{{ enrichment [all]
@@ -806,7 +808,7 @@ tp = ev_go %>% select(nid, enrich) %>% unnest() %>%
     mutate(lgd = factor(lgd, levels = rev(t_cfg$lgd)))
 tps = tp %>% distinct(lgd, col) %>% arrange(lgd)
 swit = max(tp$fcn) / 2
-p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=fcn)) +
+p2 = ggplot(tp, aes(x=ctag, y=lgd, fill=fcn)) +
     geom_tile() +
     geom_text(aes(x=ctag, y=lgd, label=lab, color=fc>swit), hjust=.5, size=2.5) +
     scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
@@ -819,8 +821,12 @@ p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=fcn)) +
     theme(axis.text.y = element_text(color=rev(t_cfg$col))) +
     guides(color = F)
 fp = sprintf('%s/07.go.heat.pdf', dirw)
-ggsave(p1, file = fp, width = 4, height = 7)
+#ggsave(p2, file = fp, width = 4, height = 7)
 #}}}
+fo = sprintf('%s/07.go.pdf', dirw)
+ggarrange(pg, p2, common.legend = F,
+    nrow=1, ncol=2, labels=LETTERS[1:5], widths=c(3,5), heights=c(2,2)) %>%
+    ggexport(filename = fo, width=5.5, height=6)
 
 #{{{ enrichment [all eQTL]
 ctags = c("li2013","liu2017","wang2018")
