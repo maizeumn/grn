@@ -99,7 +99,8 @@ Figure 2B.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network 
 
 Figure S7.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal).
 
-![]($grn/data/14_eval_sum/03.tsne.pdf){width=100%}
+\pagebreak
+![]($grn/data/14_eval_sum/03.tsne.pdf){width=70%}
 
 Figure 3.  T-SNE clustering of 44 GRNs.  Top 500,000 TF-target predictions were extracted from each network to perform t-SNE clustering using parameter “perplexing=9, permutation=2000”.
 
@@ -116,17 +117,17 @@ Figure 4.  Hierarchical clustering of 140 Gene Ontology (Uniprot.Plants) terms u
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.1.pdf){width=60%}
 
-Figure 5A.  TF-target validation of the combined tissue  network in three selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
-
-\pagebreak
-![]($grn/data/14_eval_sum/11.nv.3.pdf){width=100%}
-
-Figure 5B.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  Color and number in each cell represents the enrichment P-value (-log10 transformed, hypergeometric test p-value) of (SPE TF regulated) target DE proportions relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
+Figure 5.  TF-target validation of the combined tissue  network in three selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.1s.pdf){width=100%}
 
 Figure S9.  TF-target validation of the combined tissue  network in all six selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
+
+\pagebreak
+![]($grn/data/14_eval_sum/11.nv.3.pdf){width=100%}
+
+Figure 6.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  Color and number in each cell represents the enrichment P-value (-log10 transformed, hypergeometric test p-value) of (SPE TF regulated) target DE proportions relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/30.eQTL.pdf){width=100%}
@@ -146,7 +147,7 @@ Figure S12.  Co-localization of TFs predicted by GRNs in this study and trans-eQ
 \pagebreak
 ![]($grn/data/14_eval_sum/fig6.pdf){width=100%}
 
-Figure 6.  Identification of acting transcription factors underlying trans-eQTL hotspots identified in previous studies.  (A) Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each dot represents a TF supported by at least two high quality networks to show significant co-regulation with at least one trans-eQTL hotspot, and are within 10-Mbp distance from the trans-eQTL hotspot location;  (B) Identification of R1 (colored, Zm00001d026147) co-localizing a previous trans-eQTL hotspot as the master regulator of the well studied anthocyanin biosynthesis pathway;  (C) and (D) Identification of two previously uncharacterized TFs, the homeobox-transcription factor 87 (hb87, Zm00001d046405) and MYB-transcription factor 61 (myb61, Zm00001d053124) that co-localize previous trans-eQTL hotspots as the master regulator of the chlorophyllide biosynthesis pathway and the major CO2 fixation pathway (Calvin cycle pathway), respectively.
+Figure 7.  Identification of acting transcription factors underlying trans-eQTL hotspots identified in previous studies.  (A) Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each dot represents a TF supported by at least two high quality networks to show significant co-regulation with at least one trans-eQTL hotspot, and are within 10-Mbp distance from the trans-eQTL hotspot location;  (B) Identification of R1 (colored, Zm00001d026147) co-localizing a previous trans-eQTL hotspot as the master regulator of the well studied anthocyanin biosynthesis pathway;  (C) and (D) Identification of two previously uncharacterized TFs, the homeobox-transcription factor 87 (hb87, Zm00001d046405) and MYB-transcription factor 61 (myb61, Zm00001d053124) that co-localize previous trans-eQTL hotspots as the master regulator of the chlorophyllide biosynthesis pathway and the major CO2 fixation pathway (Calvin cycle pathway), respectively.
 
 
 \pagebreak
