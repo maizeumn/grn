@@ -1855,7 +1855,12 @@ t_pick = read_xlsx(f_pick)
 #}}}
 
 #{{{ prepare
-nids_hc = c("nc01",'n17a_3','n13a','n18g','n18e','n99a','n18d','n13c')
+nids_hc = c("nc01", 'n13a','n15d',
+    'n17a','n18a','n99a',
+    'n13e','n15a','n18d')
+nids_hc = c("nc01", 'n13a','n15c','n15d','n18c',
+    'n17a','n18a','n18e','n99a','n18g',
+    'n13c','n13e','n15a','n19a','n18d')
 tz0 = ev_go %>% filter(nid %in% nids_hc) %>%
     select(nid, enrich_reg) %>% unnest() %>%
     filter(ctag %in% qtags, n>=10, score==10, pval < .01) %>%
@@ -1909,7 +1914,7 @@ ti = tz %>% filter(hit=='hit')
 gpos = flattern_gcoord(ti %>% select(chrom=gchrom, pos=gpos), gcfg$chrom)
 qpos = flattern_gcoord(ti %>% select(chrom=qchrom, pos=qpos), gcfg$chrom)
 tp = ti %>% mutate(gpos=!!gpos, qpos=!!qpos)
-tps = t_pick[c(1,2,8),] %>% inner_join(tp, by = 'reg.gid') %>% filter(max.grp.size>3)
+tps = t_pick[c(1,5,7),] %>% inner_join(tp, by = 'reg.gid') %>% filter(max.grp.size>3)
 p0 = ggplot(tp, aes(qpos, gpos)) +
     geom_point(aes(color=ctag, shape=hit)) +
     geom_text_repel(data=tps, aes(label=gname), nudge_x=-2e8, direction='y', segment.size=.3, size=2.5) +
@@ -1927,7 +1932,7 @@ p0 = ggplot(tp, aes(qpos, gpos)) +
     theme(legend.background = element_rect(fill='white')) +
     guides(shape = F)
 fp = file.path(dirw, '33.hit.pdf')
-ggsave(p0, filename=fp, width=5, height=5)
+ggsave(p0, filename=fp, width=7, height=2.5)
 #}}}
 
 #{{{ save as table
@@ -1973,7 +1978,7 @@ to = tz %>% filter(reg.gid %in% reg.gids) %>%
     arrange(reg.gid)
 to %>% print(n=50)
 
-fo = file.path(dirw, '33.hs.tsv')
+fo = file.path(dirw, '33.hit.tsv')
 write_tsv(to, fo)
 #}}}
 
@@ -1997,14 +2002,12 @@ tv0 = ev_go %>% select(nid, enrich_reg) %>% unnest() %>%
     inner_join(unique(tn0[c('nid','reg.gid')]), by=c('nid','reg.gid')) %>%
     filter(score==10) %>%
     filter(ctag == "CornCyc") %>%
-    filter(fc > 2) #%>%
+    filter(fc > 3) %>%
     select(nid, reg.gid,ctag,grp=max.grp, fc)
-#
-t_pick = read_xlsx(f_pick)
 
 # summary
 tx = tv0 %>% #filter(reg.gid %in% t_pick$reg.gid) %>%
-    filter(fc > 5) %>%
+    filter(fc > 3) %>%
     arrange(reg.gid,desc(fc)) %>%
     inner_join(gs$fun_ann, by=c('ctag','grp')) %>%
     rename(tgt.gid=gid) %>%
@@ -2017,6 +2020,8 @@ tx = tv0 %>% #filter(reg.gid %in% t_pick$reg.gid) %>%
     select(-n.tgt, -n.tgt.hit, -ctag)
 tx %>% print(n=50, width=Inf)
 
+t_pick = read_xlsx(f_pick)
+#
 ty = tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>%
     filter(ctag == 'CornCyc') %>%
     select(reg.gid, grp, fc) %>%
@@ -2035,7 +2040,7 @@ ty = tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>%
     left_join(t1, by=c('reg.gid','tgt.gid')) %>%
     replace_na(list(ctag_hs='',hs='')) %>%
     arrange(reg.gid, grp, pathway, rxn, n_nid)
-
+#
 fo = file.path(dirw, '35.2.tsv')
 write_tsv(ty, fo)
 #}}}
