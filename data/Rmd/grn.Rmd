@@ -85,7 +85,7 @@ Figure S5. Area under receiver-operating characteristic curve (AUROC) evaluated 
 Figure S6.  Evaluation (AUROC and Wilcox P-value) of constructed GRNs using four sets of predicted TF-target interactions based on TF-binding site motif, conserved element of TFBS motif or FunTFBS.  There are 202,670 “motif”-based predictions, 37,699 predictions based on motif and cross-species conservation, 7,459 predictions based on motif and FunTFBS as well as 4,115 predictions based on all three evidences.
 
 \pagebreak
-![]($grn/data/14_eval_sum/07.go.pdf){width=90%}
+![]($grn/data/14_eval_sum/07.go.pdf){width=80%}
 
 Figure 2.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation).  (A) GO/CornCyc enrichment is shown for 4 selected networks.  (B) Heatmap showing enrichment of co-annotated GO/CornCyc terms in the first bin (i.e., top 100k) of edges in the GRNs.  See Figure S7 for the enrichment in all bins of all built GRNs.
 
@@ -110,7 +110,7 @@ Figure S8.  Hierarchical clustering of 44 GRNs.  Pairwise distance between netwo
 Figure 4.  Hierarchical clustering of 140 Gene Ontology (Uniprot.Plants) terms using fold enrichment in different GRNs.  Only GO terms enriched in at least 5 out of the 44 networks were used for clustering.  Insignificant enrichment (p-value < 0.05) was treated as missing data and shown as white space in the figure.
 
 \pagebreak
-![]($grn/data/14_eval_sum/11.nv.1.pdf){width=50%}
+![]($grn/data/14_eval_sum/11.nv.1.pdf){width=60%}
 
 Figure 5.  TF-target validation of the combined tissue  network in three selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
 
