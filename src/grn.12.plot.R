@@ -194,6 +194,52 @@ p_tsne = ggplot(tp) +
 fp = file.path(dirw, "03.tsne.pdf")
 ggsave(p_tsne, filename = fp, width=6, height=6)
 #}}}
+
+#{{{ clustering of 15 networks
+nids0 = c("nc01", 'n13a','n15c','n15d','n18c',
+    'n17a','n18a','n18e','n99a','n18g',
+    'n13c','n13e','n15a','n19a','n18d')
+tu = ev %>% filter(nid %in% nids0) %>% select(nid, tn) %>% unnest() %>%
+    select(nid, reg.gid, tgt.gid, score) %>%
+    filter(nid %in% t_cfg$nid) %>%
+    group_by(nid) %>% slice(1:1e5) %>% ungroup() %>%
+    mutate(reg.tgt = str_c(reg.gid, tgt.gid, sep = '-')) %>%
+    select(-reg.gid, -tgt.gid)
+reg.tgts = tu %>% count(reg.tgt) %>% filter(n>=2) %>% pull(reg.tgt)
+length(reg.tgts)
+tu = tu %>% filter(reg.tgt %in% reg.tgts)
+#
+tuw = tu %>% spread(reg.tgt, score)
+#tuw1 = tu %>% spread(reg.tgt, score) %>% replace(is.na(.), 0)
+mat = as.matrix(tuw[,-1])
+rownames(mat) = tuw$nid
+mat[is.na(mat)] = 0
+dist_mat = dist(mat, method = 'binary')
+
+require(Rtsne)
+tt = tu %>% spread(nid, score) %>% replace(., is.na(.), 0)
+dim(tt)
+tsne <- Rtsne(t(as.matrix(tt[-1])), dims=2, verbose=T, perplexity=2,
+              pca = T, max_iter = 1500)
+#
+tp = as_tibble(tsne$Y) %>%
+    add_column(nid = colnames(tt)[-1]) %>%
+    inner_join(t_cfg, by = 'nid')
+x.max=max(tp$V1)
+p_tsne = ggplot(tp) +
+    geom_text_repel(aes(x=V1,y=V2,label=lgd), size=2.5) +
+    geom_point(aes(x=V1, y=V2, color=net_type, shape=net_type), size=2) +
+    scale_x_continuous(name = 'tSNE-1') +
+    scale_y_continuous(name = 'tSNE-2') +
+    scale_color_aaas() +
+    scale_shape_manual(values = c(0:7)) +
+    otheme(legend.pos='bottom.left', legend.dir='v', legend.title=F, legend.border=T,
+           xtitle=T, ytitle=T,
+           margin = c(.2,.2,.2,.2)) +
+    theme(axis.ticks.length = unit(0, 'lines'))
+fp = file.path(dirw, "03.tsne.9.pdf")
+ggsave(p_tsne, filename = fp, width=6, height=6)
+#}}}
 #}}}
 
 #{{{ TF & target stats
@@ -1810,9 +1856,6 @@ t_pick = read_xlsx(f_pick)
 
 #{{{ prepare
 nids_hc = c("nc01",'n17a_3','n13a','n18g','n18e','n99a','n18d','n13c')
-nids_hc = c("nc01", 'n13a','n15c','n15d','n18c',
-    'n17a','n18a','n18e','n99a','n18g',
-    'n13c','n13e','n15a','n19a','n18d')
 tz0 = ev_go %>% filter(nid %in% nids_hc) %>%
     select(nid, enrich_reg) %>% unnest() %>%
     filter(ctag %in% qtags, n>=10, score==10, pval < .01) %>%
@@ -1943,10 +1986,25 @@ tn = ev %>%
     select(nid,reg.gid,tgt.gid) %>% group_by(reg.gid, tgt.gid) %>%
     summarise(nids = list(nid), n_nid = n()) %>% ungroup()
 #
+t1 = tz %>% filter(hit == 'hit', reg.gid %in% t_pick$reg.gid) %>%
+    select(reg.gid, ctag, grp) %>%
+    inner_join(gs$fun_ann, by=c('ctag','grp')) %>% select(-note) %>%
+    rename(tgt.gid = gid, ctag_hs = ctag, hs = grp)
+#
+reg.gids = tz %>% filter(hit=='hit') %>% distinct(reg.gid) %>% pull(reg.gid)
+tn0 = tz0 %>% select(nid,reg.gid,ctag,grp) %>% filter(reg.gid %in% reg.gids)
+tv0 = ev_go %>% select(nid, enrich_reg) %>% unnest() %>%
+    inner_join(unique(tn0[c('nid','reg.gid')]), by=c('nid','reg.gid')) %>%
+    filter(score==10) %>%
+    filter(ctag == "CornCyc") %>%
+    filter(fc > 2) #%>%
+    select(nid, reg.gid,ctag,grp=max.grp, fc)
+#
 t_pick = read_xlsx(f_pick)
 
 # summary
-tx = tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>%
+tx = tv0 %>% #filter(reg.gid %in% t_pick$reg.gid) %>%
+    filter(fc > 5) %>%
     arrange(reg.gid,desc(fc)) %>%
     inner_join(gs$fun_ann, by=c('ctag','grp')) %>%
     rename(tgt.gid=gid) %>%
@@ -1962,6 +2020,7 @@ tx %>% print(n=50, width=Inf)
 ty = tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>%
     filter(ctag == 'CornCyc') %>%
     select(reg.gid, grp, fc) %>%
+    group_by(reg.gid, grp) %>% summarise(fc=max(fc)) %>% ungroup() %>%
     inner_join(t_pick, by=c('reg.gid','grp')) %>%
     inner_join(cc, by='pathway') %>%
     select(-net) %>%
@@ -1973,7 +2032,10 @@ ty = tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>%
     left_join(tn, by=c('reg.gid','tgt.gid')) %>%
     replace_na(list(nids='', n_nid = 0)) %>%
     mutate(nids = map_chr(nids, str_c, collapse=',')) %>%
+    left_join(t1, by=c('reg.gid','tgt.gid')) %>%
+    replace_na(list(ctag_hs='',hs='')) %>%
     arrange(reg.gid, grp, pathway, rxn, n_nid)
+
 fo = file.path(dirw, '35.2.tsv')
 write_tsv(ty, fo)
 #}}}
@@ -2084,7 +2146,7 @@ ggarrange(p0, p1, p2, p3,
     nrow = 2, ncol = 2, labels = LETTERS[1:4], heights = c(2,2)) %>%
     ggexport(filename = fo, width=10, height=10)
 #}}}
-#{{{ # new go - not working
+#{{{ # [obsolete] new go - not working
 fv = sprintf("%s/rf.go2.rds", dirr)
 ev_go = readRDS(fv)
 
