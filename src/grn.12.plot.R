@@ -904,7 +904,19 @@ ggsave(p1, file = fp, width = 4, height = 7)
 #}}}
 
 
+dirg = '~/data/genome/Zmays_B73/61_functional'
+fgo = file.path(dirg, "01.go.tsv")
+tgo = read_tsv(fgo)
+
+tgo %>% distinct(gotype, goid, level) %>% count(gotype, level) %>% print(n=40)
+gos = tgo %>% filter(gotype=='P') %>%
+    filter(level==6 | goid == 'GO:0010344') %>%
+    distinct(goid) %>% pull(goid)
+length(gos)
+
 #{{{ GO heatmap
+require(cluster)
+require(ape)
 gotag = 'CornCyc'
 gotag = 'GO_arabidopsis'
 gotag = 'GO_uniprot.plants'
@@ -913,56 +925,55 @@ goname = gs$fun_ann %>% filter(ctag==gotag) %>% distinct(grp,note) %>%
 tx = ev_go %>% select(nid,enrich_grp) %>%
     unnest() %>%
     filter(score==10,ctag==gotag) %>%
+    filter(grp %in% gos) %>%
     select(-score, -ctag) %>%
-    filter(pval<.01, !is.nan(fc), fc > 3.5) %>%
-    #mutate(fc = log2(fc)) %>%
+    filter(pval<.05, !is.nan(fc), fc>1) %>%
+    mutate(fc = log2(fc)) %>%
     inner_join(t_cfg, by = 'nid')
 txs = tx %>%
-    filter(n>=30) %>%
+    filter(n>=3, fc>log2(3)) %>%
     count(grp,net_type) %>% spread(net_type,n) %>%
     rename(tg=`Tissue*Genotype`) %>%
     replace_na(list(Tissue=0,Genotype=0,RIL=0,tg=0)) %>%
     mutate(n=Tissue+Genotype+RIL+tg) %>%
     inner_join(goname, by='grp')
-
-require(cluster)
-require(ape)
-grps = txs %>% filter(Tissue>0,Genotype>1,tg>0,n>8) %>% pull(grp)
+#
+grps = txs %>% filter(Tissue>0,Genotype>0,tg>0,n>4) %>% pull(grp)
 length(grps)
 tp = tx %>% filter(grp %in% grps)
 
+hc_opt = "ward.D"
 #{{{ GO term order
 e = tp %>% select(nid,grp,fc) %>% spread(grp, fc) %>% select(-nid)
-e[is.na(e)] = NA
+e[is.na(e)] = 0
 dim(e)
 #
-cor_opt = "pearson"
-hc_opt = "ward.D"
-# edist <- as.dist(1-cor(e, method = cor_opt))
-edist = daisy(t(e), metric = 'gower')
+edist <- as.dist(1-cor(e, method='pearson'))
+#edist = daisy(t(e), metric = 'gower')
 edist[is.na(edist)] = 0
 ehc = hclust(edist, method = hc_opt)
 tree = as.phylo(ehc)
 go_names = ehc$labels[ehc$order]
 #}}}
-#{{{ GRN order
-e = tp %>% select(nid,grp,fc) %>% spread(nid, fc) %>% select(-grp)
-e[is.na(e)] = NA
-dim(e)
 #
-cor_opt = "pearson"
-hc_opt = "ward.D"
-#edist <- as.dist(1-cor(e, method = cor_opt))
-edist = daisy(t(e), metric = 'gower')
-edist[is.na(edist)] = 0
-ehc <- hclust(edist, method = hc_opt)
-ntree = as.phylo(ehc)
-s_nids = ehc$labels[ehc$order]
+#{{{ GRN order
+#e = tp %>% select(nid,grp,fc) %>% spread(nid, fc) %>% select(-grp)
+#e[is.na(e)] = NA
+#dim(e)
+##
+#edist = daisy(t(e), metric = 'gower')
+#edist[is.na(edist)] = 0
+#ehc <- hclust(edist, method = hc_opt)
+#ntree = as.phylo(ehc)
+#s_nids = ehc$labels[ehc$order]
+fz = file.path(dird, '10.dataset.xlsx')
+tz = read_xlsx(fz, 'Sheet3', col_names=c('nid','study','note'))
+s_nids = tz$nid
 s_ncfg = t_cfg %>% mutate(nid=factor(nid, levels=s_nids)) %>% arrange(nid)
 s_lgds = s_ncfg %>% pull(lgd)
 s_cols = s_ncfg %>% pull(col)
 #}}}
-#
+
 #{{{ plot tree+heatmap
 tp = tp %>% mutate(lgd = factor(lgd, levels = s_lgds)) %>%
     mutate(grp = factor(grp, levels = go_names))
@@ -971,7 +982,7 @@ tpg = tp %>% distinct(grp) %>% inner_join(goname,by='grp') %>%
     arrange(grp)
 tpn = tp %>% distinct(nid,lgd,col) %>% rename(taxa=nid) %>% arrange(lgd)
 p1 = ggplot(tp) +
-    geom_tile(aes(x = lgd, y = grp, fill = fc)) +
+    geom_tile(aes(x = lgd, y = grp, fill=fc)) +
     scale_x_discrete(position='bottom', expand=c(0,0)) +
     scale_y_discrete(breaks=tpg$grp, labels=tpg$note, expand=c(0,0)) +
     scale_fill_viridis(name='log2FC', direction=-1) +
@@ -980,21 +991,24 @@ p1 = ggplot(tp) +
     theme(panel.border = element_blank()) +
     theme(axis.text.x=element_text(color=s_cols,angle=45,size=7,hjust=1,vjust=1)) +
     theme(legend.title = element_text()) +
+    theme(legend.position = c(0,0), legend.justification=c(3,1)) +
     expand_limits(x=.2,y=.2) +
-    expand_limits(x=43.8,y=102.8) +
-    annotate('rect',xmin=.5,xmax=43.5,ymin=96.5,ymax=102.5,color='red',size=1,alpha=0) +
-    annotate('rect',xmin=.5,xmax=11.5,ymin=83.5,ymax=95.5,color='red',size=1,alpha=0) +
-    annotate('rect',xmin=24.5,xmax=30.5,ymin=83.5,ymax=95.5,color='red',size=1,alpha=0)
+    expand_limits(x=45.4,y=91.8) +
+    annotate('rect',xmin=.5,xmax=44.5,ymin=.5,ymax=4.5,color='red',size=1,alpha=0) +
+    annotate('rect',xmin=.5,xmax=44.5,ymin=26.5,ymax=33.5,color='red',size=1,alpha=0) +
+    annotate('rect',xmin=.5,xmax=44.5,ymin=38.5,ymax=39.5,color='red',size=1,alpha=0) +
+    annotate('text',x=44.5,y=c(2.5,30,39), hjust=0, vjust=.5, label=c('A','B','C'))
 #
 require(ggdendro)
-margin = c(0,3.2,0,16.5)
-p2 = ggdendrogram(ehc, labels=F, leaf_labels=F, theme_dendro=F) +
-    theme_void() +
-    theme(plot.margin = unit(margin, "lines"))
+margin = c(0,3.1,0,15)
+#p2 = ggdendrogram(ehc, labels=F, leaf_labels=F, theme_dendro=F) +
+    #theme_void() +
+    #theme(plot.margin = unit(margin, "lines"))
+p2 = ggplot()
 fo = file.path(dirw, '09.go.heat.pdf')
 ggpubr::ggarrange(p2, p1,
-    nrow=2, ncol=1, heights = c(1,11)) %>%
-    ggpubr::ggexport(filename = fo, width = 10, height = 12)
+    nrow=2, ncol=1, heights = c(0,11)) %>%
+    ggpubr::ggexport(filename = fo, width=8.5, height=9.5)
 #}}}
 
 #{{{ # plot tree [obsolete]
@@ -1919,15 +1933,16 @@ ggsave(p, filename = fp, width = 10, height = 4.2)
 ti = tz %>% filter(hit=='hit')
 gpos = flattern_gcoord(ti %>% select(chrom=gchrom, pos=gpos), gcfg$chrom)
 qpos = flattern_gcoord(ti %>% select(chrom=qchrom, pos=qpos), gcfg$chrom)
-tp = ti %>% mutate(gpos=!!gpos, qpos=!!qpos)
-tps = t_pick[c(1,5,7),] %>% inner_join(tp, by = 'reg.gid') %>% filter(max.grp.size>3)
+tp = ti %>% mutate(gpos=!!gpos, qpos=!!qpos) %>%
+    mutate(ctag = str_to_title(ctag))
+tps = t_pick %>% filter(pick=='T') %>% inner_join(tp, by = 'reg.gid') %>% filter(max.grp.size>3)
 p0 = ggplot(tp, aes(qpos, gpos)) +
     geom_point(aes(color=ctag, shape=hit)) +
     geom_text_repel(data=tps, aes(label=gname), nudge_x=-2e8, direction='y', segment.size=.3, size=2.5) +
-    geom_vline(xintercept = tx$start, alpha=.1) +
-    geom_vline(xintercept = tx$end, alpha=.1) +
-    geom_hline(yintercept = tx$start, alpha=.1) +
-    geom_hline(yintercept = tx$end, alpha=.1) +
+    geom_vline(xintercept = tx$start, alpha=.1, size=.2) +
+    geom_vline(xintercept = tx$end, alpha=.1, size=.2) +
+    geom_hline(yintercept = tx$start, alpha=.1, size=.2) +
+    geom_hline(yintercept = tx$end, alpha=.1, size=.2) +
     #geom_abline(intercept = 0, slope = 1, alpha=.1) +
     scale_x_continuous(name='trans-eQTL hotsplot position', breaks=tx$pos, labels=tx$chrom, expand=c(0,0)) +
     scale_y_continuous(name='co-regulating TF position', breaks=tx$pos, labels=tx$chrom, expand=c(0,0)) +
@@ -2024,9 +2039,9 @@ tx = tv0 %>% #filter(reg.gid %in% t_pick$reg.gid) %>%
     ungroup() %>% mutate(p.tgt.hit = n.tgt.hit / n.tgt) %>%
     mutate(lab = sprintf("%s/%s", n.tgt.hit, n.tgt)) %>%
     select(-n.tgt, -n.tgt.hit, -ctag)
-tx %>% print(n=50, width=Inf)
+tx %>% print(n=80, width=Inf)
 
-t_pick = read_xlsx(f_pick)
+t_pick = read_xlsx(f_pick) %>% filter(pick=='T')
 #
 ty = tv0 %>% filter(reg.gid %in% t_pick$reg.gid) %>%
     filter(ctag == 'CornCyc') %>%

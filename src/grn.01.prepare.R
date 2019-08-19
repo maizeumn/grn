@@ -1,6 +1,5 @@
 source("functions.R")
-genome = 'B73'
-gcfg = read_genome_conf(genome)
+gcfg = read_genome_conf()
 tm = v3_to_v4()
 
 #{{{ ## map known TF targets

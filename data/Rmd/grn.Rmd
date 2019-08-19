@@ -107,7 +107,7 @@ Figure S8.  Hierarchical clustering of 44 GRNs.  Pairwise distance between netwo
 \pagebreak
 ![]($grn/data/14_eval_sum/09.go.heat.pdf){width=100%}
 
-Figure 4.  Hierarchical clustering of 140 Gene Ontology (Uniprot.Plants) terms using fold enrichment in different GRNs.  Only GO terms enriched in at least 5 out of the 44 networks were used for clustering.  Insignificant enrichment (p-value < 0.05) was treated as missing data and shown as white space in the figure.
+Figure 4.  Hierarchical clustering of 98 Gene Ontology (Uniprot.Plants, level 6) terms using fold enrichment in different GRNs.  Only GO terms enriched (i.e., P-value < 0.05 and fold change > 1, top 100k edges taken) in at least 3 out of the 44 networks were used for clustering.  Insignificant enrichment (p-value < 0.05) was treated as missing data and shown as white space in the figure.  Fold enrichment is determined as described in Figure 2.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.1.pdf){width=60%}
