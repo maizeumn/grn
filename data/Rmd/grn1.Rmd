@@ -1,0 +1,86 @@
+---
+title: "maize GRN figures and tables"
+output:
+  pdf_document:
+    citation_package: natbib
+    keep_tex: false
+    fig_caption: true
+    latex_engine: pdflatex
+    template: rmd-latex-ms.tex
+# author:
+# - name: Peng Zhou
+#  affiliation: University of Minnesota
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+geometry: margin=1in
+fontfamily: mathptmx
+fontsize: 11pt
+# spacing: double
+# biblio-style: apsr
+header-includes:
+- \usepackage{caption}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage[table]{xcolor}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{threeparttablex}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \captionsetup[figure]{labelformat=empty}
+- \captionsetup[table]{labelformat=empty}
+- \AtBeginDocument{\let\maketitle\relax}
+- \usepackage{lscape}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+---
+\pagenumbering{gobble}
+
+```{r, message=FALSE, echo=FALSE}
+dirw = '/home/springer/zhoux379/projects/grn/data/12_tables'
+```
+
+Table 1. GRNs built in this study.
+```{r, message=FALSE, echo=FALSE}
+readRDS(file.path(dirw, '01.t1.rds'))
+```
+
+\pagebreak
+![]($grn/data/14_eval_sum/05.pval.pdf){width=100%}
+
+Figure 1.  TF-target interactions predicted by GRNs are supported by knockout mutant RNA-Seq experiments. (A) direct targets of published TF studies; (B) For each one of the 21 maize TFs with knockout mutant RNA-Seq data available, differentially expressed genes between mutant and wildtype were identified using DESeq2 (p-value < 0.01).  Wilcox rank test were then performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs).  Numbers in each cell show the actual test P-value (-log10 transformed) with blank cells standing for “not significant” (P > 0.05). White cells stand for missing data where the TF being tested (knocked out) is not expressed in the corresponding GRN.  
+
+\pagebreak
+![]($grn/data/14_eval_sum/07.go.pdf){width=80%}
+
+Figure 2.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation).  (A) GO/CornCyc enrichment is shown for 4 selected networks.  (B) Heatmap showing enrichment of co-annotated GO/CornCyc terms in the first bin (i.e., top 100k) of edges in the GRNs.  See Figure S7 for the enrichment in all bins of all built GRNs.
+
+\pagebreak
+![]($grn/data/14_eval_sum/03.tsne.pdf){width=80%}
+
+Figure 3.  T-SNE clustering of 44 GRNs.  Top 500,000 TF-target predictions were extracted from each network to perform t-SNE clustering using parameter “perplexing=9, permutation=2000”.
+
+
+\pagebreak
+![]($grn/data/14_eval_sum/09.go.heat.pdf){width=100%}
+
+Figure 4.  Hierarchical clustering of 98 Gene Ontology (Uniprot.Plants, level 6) terms using fold enrichment in different GRNs.  Only GO terms enriched (i.e., P-value < 0.05 and fold change > 1, top 100k edges taken) in at least 3 out of the 44 networks were used for clustering.  Insignificant enrichment (p-value < 0.05) was treated as missing data and shown as white space in the figure.  Fold enrichment is determined as described in Figure 2.
+
+\pagebreak
+![]($grn/data/14_eval_sum/11.nv.1.pdf){width=60%}
+
+Figure 5.  TF-target validation of the combined tissue  network in three selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
+
+\pagebreak
+![]($grn/data/14_eval_sum/11.nv.3.pdf){width=100%}
+
+Figure 6.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  Color and number in each cell represents the enrichment P-value (-log10 transformed, hypergeometric test p-value) of (SPE TF regulated) target DE proportions relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
+
+\pagebreak
+![]($grn/data/14_eval_sum/fig6.pdf){width=100%}
+
+Figure 7.  Identification of acting transcription factors underlying trans-eQTL hotspots identified in previous studies.  (A) Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each dot represents a TF supported by at least two high quality networks to show significant co-regulation with at least one trans-eQTL hotspot, and are within 10-Mbp distance from the trans-eQTL hotspot location;  (B)-(D) Identification of R1 (Zm00001d026147), col11 (Zm00001d003162) and myc7 (Zm00001d030028) co-localizing previous trans-eQTL hotspots and acting as the master regulator of maize anthocyanin biosynthesis pathway, photosynthesis light reaction pathway and jasmonic acid biosynthesis pathway, respectively.
