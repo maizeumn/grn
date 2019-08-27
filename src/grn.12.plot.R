@@ -2211,4 +2211,45 @@ p1 = ggplot(tp, aes(lgd, y)) +
 ggsave(p1, filename = fo, width = 8, height = 8)
 #}}}
 
+# degree <-> kaks
+dirw = file.path(dird, '17_degree')
+fi = file.path(dirw, 'degree.rds')
+deg = readRDS(fi)
+#
+fk = '~/projects/genome/data/Zmays_B73/gene_mapping/maize-AGPv4-kaks.txt'
+tk = read_csv(fk) %>% rename(gid = 1, dnds = 2)
+
+tp = tk %>% inner_join(deg$tgt, by=c('gid'='tgt.gid')) %>%
+    filter(nid == 'nc01', score == 3) %>%
+    mutate(bin = ifelse(deg < 100, ifelse(deg < 50, ifelse(deg < 20,
+        ifelse(deg < 10, ifelse(deg < 5, ifelse(deg == 0, 0, 1), 2), 3), 4), 5), 6)) %>%
+    mutate(bin = as.character(bin)) %>%
+    mutate(bin = factor(bin, levels=0:6))
+#
+cmps <- list( c("0","6"), c("1","6"), c("2","6"),c('4','6'),c('5','6'))
+cmps <- list( c("0","3"), c("1","3"), c("2","3"))
+p <- ggviolin(tp, x="bin", y="dnds", fill="bin",
+        palette = pal_npg()(9),
+        add = "boxplot", add.params = list(fill = "white")) +
+    stat_compare_means(comparisons = cmps) +
+    stat_compare_means(label.y = 1.5)
+fo = file.path(dirw, 't.pdf')
+ggsave(p, file=fo, width=8, height=8)
+
+ty = read_syn(gcfg)
+
+tp = tk %>% inner_join(ty, by='gid')
+cmps <- list(c("subgenome1-fractionated","subgenome2-fractionated"),
+             c("subgenome1-retained","subgenome2-retained"),
+             c("subgenome1-fractionated","subgenome1-retained"),
+             c("subgenome2-fractionated","subgenome2-retained"))
+p <- ggviolin(tp, x="ftype", y="dnds", fill="ftype",
+        palette = pal_npg()(9),
+        add = "boxplot", add.params = list(fill = "white")) +
+    stat_compare_means(comparisons = cmps) +
+    stat_compare_means(label.y = 1.5) +
+    theme(axis.text.x=element_text(angle=30))
+fo = file.path(dirw, 't2.pdf')
+ggsave(p, file=fo, width=6, height=8)
+
 
