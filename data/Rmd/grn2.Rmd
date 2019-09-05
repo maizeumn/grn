@@ -76,12 +76,12 @@ Figure S6.  Evaluation (AUROC and Wilcox P-value) of constructed GRNs using four
 \pagebreak
 ![]($grn/data/14_eval_sum/07.go.all.pdf){width=100%}
 
-Figure S7.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal).
+Figure S7.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal). A total of six sources of GO annotation were used: GO_HC (high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_arabidopsis, GO_uniprot.plants, GO_Interproscan5, GO_pannzer and GO_argot2.5.
 
 \pagebreak
-![]($grn/data/14_eval_sum/03.hc.pdf){width=100%}
+![]($grn/data/14_eval_sum/03.tsne.pdf){width=80%}
 
-Figure S8.  Hierarchical clustering of 44 GRNs.  Pairwise distance between networks was determined by taking the top 100,000 TF-target predictions from each network and calculating the proportion of shared (common) predictions (using ‘dist()’ function in R with additional argument ‘method=binary’).  Hierarchical clustering was then performed based on the cross-network pairwise distance matrix using “ward.D” method.
+Figure S8.  T-SNE clustering of 44 GRNs.  Top 500,000 TF-target predictions were extracted from each network to perform t-SNE clustering using parameter “perplexing=9, permutation=2000”.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.1s.pdf){width=100%}

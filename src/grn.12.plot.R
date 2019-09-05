@@ -1137,7 +1137,7 @@ ggpubr::ggarrange(p1,
 #{{{ natural variation evaluation
 #{{{ read
 nv = readRDS('~/projects/grn/data/06_deg/all.rds')
-fv = sprintf("%s/%s.nv.rds", dirr, gopt)
+fv = sprintf("%s/rf.nv.rds", dirr)
 ev_nv = readRDS(fv)
 #
 fi = '~/projects/master.xlsx'
@@ -1175,11 +1175,13 @@ p1 = ggplot(tp) +
     scale_x_continuous(breaks=seq(2,10,2), expand=c(.05,.05), name='Edge score') +
     scale_y_continuous(name='Proportion targets that are DE', expand=expand_scale(mult=c(.15,.15))) +
     facet_wrap(~pan, ncol=2, scale='free') +
-    scale_color_d3() +
+    scale_color_d3(name = 'Level of DE in TF') +
     scale_shape_manual(values=0:5) +
     otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, xtick=T, ytick=T,
-           legend.pos = 'top.center.out', legend.dir = 'h') +
-    theme(legend.position = c(.5,1), legend.justification = c(.5,-.8))
+           margin = c(1.5, .1, .1, .1),
+           legend.pos = 'top.center.out', legend.dir = 'h', legend.title=T) +
+    theme(legend.position = c(.5,1), legend.justification = c(.5,-.3)) +
+    guides(color = guide_legend(title.position='top', title.hjust=.5))
 fo = file.path(dirw, '11.nv.1.pdf')
 ggsave(p1, file=fo, width=4, height=5)
 #}}}
