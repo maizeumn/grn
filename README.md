@@ -1,6 +1,6 @@
-# Please visit our [MaizeGRN project website](https://maizeumn.github.io/MaizeGRN)
+# Please visit our [MaizeGRN project website](https://maizeumn.github.io/maizeGRN)
 
-### This repository hosts code related to the [MaizeGRN project](https://maizeumn.github.io/maizegrn).
+### This repository hosts code related to the [MaizeGRN project](https://maizeumn.github.io/maizeGRN).
 
 * [GRNs built in this study](data/12_tables/01.t1.pdf)
 * [Maize transcription factor knockout mutant RNA-Seq datasetse](/data/12_tables/01.t2.pdf)
