@@ -1,107 +1,100 @@
 source("functions.R")
-dirw = file.path(dird, '91_stress_recovery')
+dirw = file.path(dird, '91_recovery')
 
-fi = file.path(dirw, 'recovery_RNAs_fpkm_for_Peng.csv')
-ti = read_csv(fi, skip=2) %>% rename(gid = 'Locus.Identifier')
-th = ti[,1:8]
-tm = ti[c(1,9:ncol(ti))] %>%
-    gather(cond0, fpkm, -gid) %>%
-    separate(cond0, c('cond1','suf'), sep='_') %>% select(-suf) %>%
-    separate(cond1, c('cond2','rep'), sep='[\\.](?=R[1-3]$)', extra='merge', fill='left')
-tm %>% distinct(cond2)
+#{{{ read data
+fi = file.path(dirw, '00.exp.mat.csv')
+em = read_csv(fi) %>% rename(gid = 1) %>%
+    gather(cond, cpm, -gid)
 
-write_genie3_input <- function(mid, t_cfg, diro, diri='~/projects/rnaseq/data', use_cpm=T) {
+ft = file.path(dirw, '00.tf.tsv')
+str_c_rm_na <- function(x, sep=',', collapse=',') {
     #{{{
-    fh1 = sprintf("%s/05_read_list/%s.tsv", diri, mid)
-    fh2 = sprintf("%s/05_read_list/%s.c.tsv", diri, mid)
-    fh = ifelse(file.exists(fh2), fh2, fh1)
-    stopifnot(file.exists(fh))
-    th = read_tsv(fh)
-    #
-    fi = sprintf("%s/08_raw_output/%s/cpm.rds", diri, mid)
-    stopifnot(file.exists(fi))
-    res = readRDS(fi)
-    tm = res$tm
-    #
-    if(mid %in% c('me99a','me99c')) {
-        ths = th %>% distinct(Tissue, Genotype, Treatment, inbred) %>%
-            mutate(nSampleID = sprintf("%s_%d", mid, 1:length(Tissue)))
-        th = th %>% inner_join(ths, by = c("Tissue","Genotype","Treatment",'inbred'))
-    } else {
-        ths = th %>% distinct(Tissue, Genotype, Treatment) %>%
-            mutate(nSampleID = sprintf("%s_%d", mid, 1:length(Tissue)))
-        th = th %>% inner_join(ths, by = c("Tissue","Genotype","Treatment"))
-    }
-    t_map = th %>% select(SampleID, nSampleID)
-    th = ths %>% mutate(SampleID=nSampleID) %>% select(-nSampleID)
-    #
-    tm = tm %>% inner_join(t_map, by = 'SampleID') %>%
-        mutate(SampleID = nSampleID) %>%
-        group_by(gid, SampleID) %>%
-        summarise(CPM = mean(CPM), FPKM = mean(FPKM)) %>%
-        ungroup()
-    #
-    tc = t_cfg %>% filter(mid == !!mid)
-    for (i in 1:nrow(tc)) {
-        nid = tc$nid[i]; tag = tc$note[i]
-        #{{{ get th1 and tm1
-        if(mid %in% c('me17a','me18a','me99c') &
-           ! nid %in% c('n17a','n18a','n99c')) {
-            th1 = th %>% filter(tolower(Tissue) == tolower(tag))
-        } else if(mid %in% c('me99b') & !nid %in% c('n99b')) {
-            th$Genotype[th$Genotype=='B73xMo17'] = 'BxM'
-            th1 = th %>% filter(Genotype == tag)
-        } else if(mid == 'me99a' & str_detect(nid, "_[1-5]$")) {
-            th1 = th %>% filter(Tissue == tag)
-        } else if(mid == 'me99a' & nid == 'n99a_6') {
-            th1 = th %>% filter(Tissue == 'seedling', inbred == T)
-        } else if(mid == 'me99a' & nid == 'n99a_7') {
-            th1 = th %>% filter(Tissue == 'seedling', inbred == F)
-        } else {
-            th1 = th
-        }
-        tm1 = tm %>% filter(SampleID %in% th1$SampleID)
-        #}}}
-        cat(sprintf('%s %d\n', nid, nrow(th1)))
-        fo = sprintf("%s/%s.pkl", diro, nid)
-        write_genie3_input1(tm1, th1, tf_ids, fo, use_cpm)
-    }
-    T
+    x2 = x[!is.na(x)]
+    ifelse(length(x2)==0, '', str_c(x2, sep=sep, collapse=collapse))
     #}}}
 }
-write_genie3_input1 <- function(t_exp, th, tf_ids, fo, use_cpm = T) {
-    #{{{
-    if(use_cpm) {
-        t_exp = t_exp %>% mutate(exp.val = asinh(CPM))
-    } else {
-        t_exp = t_exp %>% mutate(exp.val = asinh(FPKM))
-    }
-    nsam = length(unique(t_exp$SampleID))
-    gids = t_exp %>% group_by(gid) %>%
-        summarise(nsam_exp = sum(CPM >= 1)) %>%
-        filter(nsam_exp >= nsam * .1) %>%
-        pull(gid)
-    t_flt = t_exp %>% filter(gid %in% gids)
-    et = t_exp %>%
-        select(SampleID, gid, exp.val) %>%
-        spread(SampleID, exp.val)
-    et_f = t_flt %>%
-        select(SampleID, gid, exp.val) %>%
-        spread(SampleID, exp.val)
-    tids = et %>% pull(gid)
-    tids_f = et_f %>% pull(gid)
-    em = t(as.matrix(et[,-1]))
-    em_f = t(as.matrix(et_f[,-1]))
-    rids = unique(tf_ids[tf_ids %in% gids])
-    fo = normalizePath(fo, mustWork = F)
-    x = list(em_f, rids, tids_f, tids, em)
-    py_save_object(x, fo)
-    #}}}
-}
+tf = read_tsv(ft, col_names=F, col_types='ccccccccc') %>%
+    select(fam=1, gid=2, gname=3, note=4) %>%
+    mutate(gid = str_to_upper(gid)) %>%
+    group_by(fam, gid) %>%
+    summarise(gname = str_c_rm_na(gname), note=str_c_rm_na(note)) %>%
+    ungroup()
 
-diro = file.path(dird, '11_input')
-mids = t_cfg %>% filter(str_detect(mid,'^me')) %>% distinct(mid) %>% pull(mid)
-#mids = c('me17a','me18a',sprintf('me99%s',letters[1:3]))
-map_int(mids, write_genie3_input, t_cfg = t_cfg, diro = diro)
+fd = file.path(dirw, '00.decay.csv')
+decay = read_csv(fd) %>% select(gid=1, tid=2, note=3, type=4, gname=5)
+fr = file.path(dirw, '00.rbp.csv')
+rbp = read_csv(fr) %>% select(gid=1, gname=2, type=3) %>%
+    mutate(gid=str_to_upper(str_replace(gid, "\xca", '')))
+
+nrow(tf)
+sum(tf$gid %in% em$gid)
+nrow(decay)
+sum(decay$gid %in% em$gid)
+nrow(rbp)
+sum(rbp$gid %in% em$gid)
+
+tg = em %>% distinct(gid) %>% mutate(type = 'gene') %>%
+    mutate(type = ifelse(gid %in% tf$gid, str_c(type,'TF',sep=','), type)) %>%
+    mutate(type = ifelse(gid %in% rbp$gid, str_c(type,'RBP',sep=','), type)) %>%
+    mutate(type = ifelse(gid %in% decay$gid, str_c(type,'decay',sep=','), type))
+tg %>% count(type)
+
+res = list(em=em, tf=tf, rbp=rbp, decay=decay, tg=tg)
+fo = file.path(dirw, '05.raw.rds')
+saveRDS(res, file=fo)
+#}}}
+
+#{{{ filtering
+fi = file.path(dirw, '05.raw.rds')
+res = readRDS(fi)
+
+min_cpm = 1
+num_sam_on = 0
+pct_sam_on = .05
+min_var_p = 0
+ems = res$em %>% rename(val=cpm) %>% group_by(gid) %>%
+    summarise(nsam_on = sum(val >= min_cpm),
+              psam_on = nsam_on/n(),
+              val_sd = sd(val)) %>%
+    ungroup()
+gids = ems %>%
+    filter(nsam_on >= num_sam_on,
+           psam_on >= pct_sam_on,
+           val_sd >= 0) %>% pull(gid)
+
+ems2 = ems %>% filter(gid %in% gids)
+min_sd = quantile(ems2$val_sd, min_var_p)
+gids = ems2 %>% filter(val_sd >= as.numeric(min_sd)) %>% pull(gid)
+
+tg = res$tg %>% filter(gid %in% gids)
+tg %>% count(type)
+em = res$em %>% filter(gid %in% gids) %>%
+    mutate(cpm = asinh(cpm)) %>%
+    spread(cond, cpm)
+
+fo1 = file.path(dirw, '10.exp.mat.tsv')
+write_tsv(em, fo1)
+fo2 = file.path(dirw, '10.reg.txt')
+regs = tg %>% filter(type != 'gene') %>% pull(gid)
+write(regs, fo2)
+#}}}
+
+#{{{ get GRN output
+fi = file.path(dirw, '05.raw.rds')
+res = readRDS(fi)
+fi = file.path(dirw, '13.grn.rds')
+x = readRDS(fi)
+
+tn = x$tn %>% select(reg.gid, tgt.gid, score, pcc, pval.p, spc, pval.s) %>%
+    inner_join(res$tg, by=c('reg.gid'='gid')) %>% rename(reg.type=type) %>%
+    inner_join(res$tg, by=c('tgt.gid'='gid')) %>% rename(tgt.type=type) %>%
+    slice(1:1e6) %>% mutate(i = 1:1e6) %>%
+    select(i, reg.gid, tgt.gid, score, reg.type, tgt.type, everything())
+tn %>% slice(1:1e4) %>% count(reg.type)
+
+fo = file.path(dirw, '15.grn.tsv')
+write_tsv(tn, fo)
+#}}}
+
 
 

@@ -2,6 +2,25 @@ source("functions.R")
 gcfg = read_genome_conf()
 tm = v3_to_v4()
 
+#{{{ process Y1H results
+dirw = file.path(dird, '08_y1h')
+fi = file.path(dirw, 'phenolic.xlsx')
+ti = read_xlsx(fi, skip=2,
+               col_names=c('reg.name','reg.ogid','tgt.ogid','tgt.name')) %>%
+    inner_join(tm, by=c('reg.ogid'='ogid')) %>%
+    rename(reg.gid=gid, reg.type=type) %>%
+    inner_join(tm, by=c('tgt.ogid'='ogid')) %>%
+    rename(tgt.gid=gid, tgt.type=type) %>%
+    filter(reg.type %in% c('1-to-1','1-to-many')) %>%
+    filter(tgt.type %in% c('1-to-1','1-to-many')) %>%
+    distinct(reg.gid, tgt.gid, reg.type, tgt.type)
+ti %>% count(reg.type, tgt.type)
+
+to = ti %>% select(reg.gid, tgt.gid)
+fo = file.path(dirw, '01.y1h.tsv')
+write_tsv(to, fo)
+#}}}
+
 #{{{ ## map known TF targets
 dirw = file.path(dird, '07_known_tf')
 #{{{ KN1
@@ -176,6 +195,8 @@ tp = th %>% filter(nid %in% c("np16_1", sprintf("np18_%d", 1:4))) %>%
 pmap_lgl(tp, lift_previous_grn, tm)
 #}}}
 
+fi = file.path(dirw, '01.y1h.tsv')
+y1h = read_tsv(fi)
 tf = read_ko_direct()
 ko = read_ko()
 
@@ -198,10 +219,10 @@ fi = file.path(dirg, "07.corncyc.tsv")
 ti = read_tsv(fi)
 cc = ti %>% transmute(ctag = !!ctag, grp = pid, gid = gid, note = pname)
 #
-ctag = 'Y1H'
-fi = '~/projects/grn/data/08_y1h/01.rds'
-y1h = readRDS(fi)
-y1h = tibble(ctag = !!ctag, grp = 'Y1H', gid = y1h$tgt.gids, note = '')
+#ctag = 'Y1H'
+#fi = '~/projects/grn/data/08_y1h/01.rds'
+#y1h = readRDS(fi)
+#y1h = tibble(ctag = !!ctag, grp = 'Y1H', gid = y1h$tgt.gids, note = '')
 #
 ctag = "PPIM"
 fi = file.path(dirg, "08.ppim.tsv")
@@ -220,7 +241,7 @@ hs = tibble(ctag=ctags) %>%
     select(ctag, hs) %>% unnest() %>%
     select(ctag,grp=qid,gid) %>% mutate(note=NA)
 #
-fun_ann = rbind(go_hc, go, cc, hs, y1h)
+fun_ann = rbind(go_hc, go, cc, hs)
 fun_ann %>% distinct(ctag,grp) %>% count(ctag)
 #}}}
 
@@ -288,7 +309,7 @@ length(tf_ids)
 
 # build GRN gold-standard dataset
 res = list(tf=tf, tfbs=tfbs, ko=ko,
-           tf_fam=tf_fam, tf_ids=tf_ids, fun_ann=fun_ann, ppi=ppi)
+           tf_fam=tf_fam, tf_ids=tf_ids, fun_ann=fun_ann, y1h=y1h, ppi=ppi)
 fo = file.path(dird, '09.gs.rds')
 saveRDS(res, file=fo)
 ft = file.path(dird, '09.tf.txt')
