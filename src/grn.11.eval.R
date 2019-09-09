@@ -151,6 +151,26 @@ ctags_tf = tf$ctag
 rids_tf = tf %>% unnest() %>% distinct(reg.gid) %>% pull(reg.gid)
 tf_u = tf %>% unnest()
 #}}}
+#{{{ read y1h
+
+rids = gs$y1h %>% filter(reg.gid %in% gs$tf_ids) %>% distinct(reg.gid) %>% pull(reg.gid)
+tmp = gs$y1h %>% distinct(tgt.gid) %>% crossing(reg.gid = rids)
+nrow_positive <- function(ti) sum(ti$response == 1)
+yh = gs$y1h %>% mutate(response = 1) %>%
+    right_join(tmp, by=c('reg.gid','tgt.gid')) %>%
+    mutate(ctag = 'Y1H') %>%
+    replace_na(list(response=0)) %>%
+    group_by(ctag) %>% nest() %>%
+    rename(res = data) %>% arrange(ctag) %>%
+    mutate(n = map_dbl(res, nrow_positive)) %>%
+    mutate(ctag = as.character(ctag)) %>%
+    mutate(ctag = sprintf("%s [%s]", ctag, number(n))) %>%
+    mutate(ctag = factor(ctag, levels=ctag))
+ctags_yh = yh$ctag
+rids_yh = yh %>% unnest() %>% distinct(reg.gid) %>% pull(reg.gid)
+yh_u = yh %>% unnest()
+
+#}}}
 #{{{ read tfbs
 gids = gcfg$gene %>% filter(ttype=='mRNA') %>% pull(gid)
 tmp = gs$tfbs %>% distinct(ctag, reg.gid) %>% crossing(tgt.gid = gids)
@@ -176,6 +196,18 @@ complete_tn <- function(tn, tids, rids) {
         tibble()
     else {
         rids = rids[rids %in% tn$reg.gid]
+        crossing(reg.gid = rids, tgt.gid = tids) %>% as_tibble() %>%
+            left_join(tn, by=c('reg.gid','tgt.gid')) %>%
+            replace_na(list(score=0))
+    }
+    #}}}
+}
+complete_tn2 <- function(tn, rids, tids) {
+    #{{{
+    if(sum(tids %in% tn$tgt.gid)==0)
+        tibble()
+    else {
+        tids = tids[tids %in% tn$tgt.gid]
         crossing(reg.gid = rids, tgt.gid = tids) %>% as_tibble() %>%
             left_join(tn, by=c('reg.gid','tgt.gid')) %>%
             replace_na(list(score=0))
@@ -224,7 +256,17 @@ tp_tf = ev %>% select(gopt,nid,tids,tn) %>%
     nest() %>%
     mutate(auroc = map_dbl(data, get_auroc, fpr=.1)) %>%
     mutate(spc.pval = map_dbl(data, get_wil_pval)) %>% select(-data)
-#
+
+tp_yh = ev %>% select(gopt,nid,rids,tn) %>%
+    mutate(res = map2(tn, rids, complete_tn2, tids = unique(gs$y1h$tgt.gid))) %>%
+    select(gopt, nid, res) %>% unnest() %>%
+    select(gopt, nid, reg.gid, tgt.gid, score) %>%
+    inner_join(yh_u, by=c('reg.gid','tgt.gid')) %>%
+    group_by(gopt, nid, ctag) %>%
+    nest() %>%
+    mutate(auroc = map_dbl(data, get_auroc, fpr=.1)) %>%
+    mutate(spc.pval = map_dbl(data, get_wil_pval)) %>% select(-data)
+
 tp_ko = ev %>% select(gopt,nid,tids,tn) %>%
     mutate(res = map2(tn, tids, complete_tn, rids = rids_ko)) %>%
     select(gopt, nid, res) %>% unnest() %>%

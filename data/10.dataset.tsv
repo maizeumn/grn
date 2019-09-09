@@ -1,45 +1,45 @@
 nid	mid	study	note	subid	net_type	sample_size
-n16b	rn16b	stelpflug2016	B73	z	tissue	93
-n16c	rn16c	walley2016	B73	z	tissue	23
-n19c	rn19c	yi2019	seed dev	z	tissue	31
-nc01	rnc01	tissue atlas	combined	z	tissue	247
-n13c	rn13c	eichten2013	seedling_leaf3	z	genotype	62
-n13e	rn13e	fu2013	kernel	z	genotype	368
-n14a	rn14a	hirsch2014	seedling	z	genotype	503
-n15a	rn15a	leiboff2015	SAM	z	genotype	383
-n18d	rn18d	shaefer2018	root_GCN	z	genotype	48
-n19a	rn19a	mazaheri2019	seedling	z	genotype	453
-n17a	rn17a	lin2017	5*27	z	tissue*genotype	133
-n17a_1	rn17a	lin2017	ear	ear	genotype	26
-n17a_2	rn17a	lin2017	root	root	genotype	27
-n17a_3	rn17a	lin2017	shoot	shoot	genotype	27
-n17a_4	rn17a	lin2017	tassel	tassel	genotype	26
-n17a_5	rn17a	lin2017	SAM	SAM	genotype	27
-n18a	rn18a	kremling2018	7*237	z	tissue*genotype	1657
-n18a_1	rn18a	kremling2018	GRoot	GRoot	genotype	201
-n18a_2	rn18a	kremling2018	GShoot	GShoot	genotype	271
-n18a_3	rn18a	kremling2018	Kern	Kern	genotype	226
-n18a_4	rn18a	kremling2018	L3Base	L3Base	genotype	254
-n18a_5	rn18a	kremling2018	L3Tip	L3Tip	genotype	257
-n18a_6	rn18a	kremling2018	LMAD	LMAD	genotype	199
-n18a_7	rn18a	kremling2018	LMAN	LMAN	genotype	249
-n18e	rn18e	huang2018	4*300	z	tissue*genotype	1136
-n18e_1	rn18e	huang2018	leaf	leaf	genotype	394
-n18e_2	rn18e	huang2018	root	root	genotype	176
-n18e_3	rn18e	huang2018	SAM	SAM	genotype	406
-n18e_4	rn18e	huang2018	seed	seed	genotype	159
-n99a	rn99a	li2019	6*103	z	tissue*genotype	620
-n99a_1	rn99a	li2019	endosperm	E	genotype	121
-n99a_2	rn99a	li2019	internode	I	genotype	77
-n99a_3	rn99a	li2019	leaf	L	genotype	84
-n99a_4	rn99a	li2019	root	R	genotype	84
-n99a_5	rn99a	li2019	shoot	S	genotype	85
-n99a_6	rn99a	li2019	seedling	U	genotype	169
-n18g	rn18g	zhou2018	23*3	z	tissue*genotype	73
-n18g_1	rn18g	zhou2018	B73	B73	tissue	23
-n18g_2	rn18g	zhou2018	Mo17	Mo17	tissue	23
-n18g_3	rn18g	zhou2018	BxM	B73xMo17	tissue	23
-n13a	rn13a	li2013	B73 x Mo17	z	ril	107
-n15c	rn15c	baute2016	MAGIC	z	ril	102
-n15d	rn15d	baute2015	B73 x H99	z	ril	106
-n18c	rn18c	wang2018	W22 x Teosinte	z	ril	617
+n16b	rn16b	stelpflug2016	B73	z	Tissue	93
+n16c	rn16c	walley2016	B73	z	Tissue	23
+n19c	rn19c	yi2019	seed dev	z	Tissue	31
+nc01	rnc01	tissue atlas	combined	z	Tissue	247
+n13c	rn13c	eichten2013	seedling_leaf3	z	Genotype	62
+n13e	rn13e	fu2013	kernel	z	Genotype	368
+n14a	rn14a	hirsch2014	seedling	z	Genotype	503
+n15a	rn15a	leiboff2015	SAM	z	Genotype	383
+n18d	rn18d	shaefer2018	root_GCN	z	Genotype	48
+n19a	rn19a	mazaheri2019	seedling	z	Genotype	453
+n17a	rn17a	lin2017	5 tissues	z	Tissue*Genotype	133
+n17a_1	rn17a	lin2017	ear	ear	Genotype	26
+n17a_2	rn17a	lin2017	root	root	Genotype	27
+n17a_3	rn17a	lin2017	shoot	shoot	Genotype	27
+n17a_4	rn17a	lin2017	tassel	tassel	Genotype	26
+n17a_5	rn17a	lin2017	SAM	SAM	Genotype	27
+n18a	rn18a	kremling2018	7 tissues	z	Tissue*Genotype	1657
+n18a_1	rn18a	kremling2018	GRoot	GRoot	Genotype	201
+n18a_2	rn18a	kremling2018	GShoot	GShoot	Genotype	271
+n18a_3	rn18a	kremling2018	Kern	Kern	Genotype	226
+n18a_4	rn18a	kremling2018	L3Base	L3Base	Genotype	254
+n18a_5	rn18a	kremling2018	L3Tip	L3Tip	Genotype	257
+n18a_6	rn18a	kremling2018	LMAD	LMAD	Genotype	199
+n18a_7	rn18a	kremling2018	LMAN	LMAN	Genotype	249
+n18e	rn18e	huang2018	4 tissues	z	Tissue*Genotype	1136
+n18e_1	rn18e	huang2018	leaf	leaf	Genotype	394
+n18e_2	rn18e	huang2018	root	root	Genotype	176
+n18e_3	rn18e	huang2018	SAM	SAM	Genotype	406
+n18e_4	rn18e	huang2018	seed	seed	Genotype	159
+n99a	rn99a	li2019	6 tissues	z	Tissue*Genotype	620
+n99a_1	rn99a	li2019	endosperm	E	Genotype	121
+n99a_2	rn99a	li2019	internode	I	Genotype	77
+n99a_3	rn99a	li2019	leaf	L	Genotype	84
+n99a_4	rn99a	li2019	root	R	Genotype	84
+n99a_5	rn99a	li2019	shoot	S	Genotype	85
+n99a_6	rn99a	li2019	seedling	U	Genotype	169
+n18g	rn18g	zhou2018	B+M+F1	z	Tissue*Genotype	73
+n18g_1	rn18g	zhou2018	B73	B73	Tissue	23
+n18g_2	rn18g	zhou2018	Mo17	Mo17	Tissue	23
+n18g_3	rn18g	zhou2018	BxM	B73xMo17	Tissue	23
+n13a	rn13a	li2013	B73 x Mo17	z	RIL	107
+n15c	rn15c	baute2016	MAGIC	z	RIL	102
+n15d	rn15d	baute2015	B73 x H99	z	RIL	106
+n18c	rn18c	wang2018	W22 x Teosinte	z	RIL	617
