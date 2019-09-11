@@ -4,20 +4,29 @@ dirw = file.path(dird, '12_tables')
 
 #{{{ tables
 #{{{ GRN sum
+fv = sprintf("%s/rf.100k.rds", dirr)
+ev = readRDS(fv)
+
+tpv = ev %>% mutate(n_reg = map_int(rids, length)) %>%
+    mutate(n_tgt = map_int(tids, length)) %>%
+    select(nid, n_reg, n_tgt)
 tp = t_cfg %>% select(net_type,nid,study,note,sample_size,lgd,col) %>%
     mutate(study=str_replace(str_to_title(study), '(\\d+)$', ' et al. \\1')) %>%
+    inner_join(tpv, by='nid') %>%
     arrange(net_type, nid) %>%
     select(-nid)
 x = tp %>% select(-col) %>%
     mutate(net_type = cell_spec(net_type, color=tp$col),
            lgd = cell_spec(lgd, color=tp$col)) %>%
-    rename(`Network type`=net_type, Study=study, Note=note, N=sample_size, `Network label`=lgd) %>%
+    rename(`Network type`=net_type, Study=study, Note=note, N=sample_size,
+           `Network label`=lgd, `$TFs^*$`=n_reg, `$Targets^*$`=n_tgt) %>%
     kable(format='latex', escape=F, longtable=F, booktabs=T,
         format.args = list(big.mark = ",")) %>%
     kable_styling(latex_options = c("striped", "hold_position"),
         full_width=F, font_size = 9, position='left') %>%
     #column_spec(1, bold=T) %>%
-    collapse_rows(columns=c(1,2), latex_hline="major", valign="top")
+    collapse_rows(columns=c(1,2), latex_hline="major", valign="top") %>%
+    footnote(symbol = c('Top 100,000 predictions'))
 fo = file.path(dirw, '01.t1.pdf')
 x %>% save_kable(fo)
 fo = file.path(dirw, '01.t1.rds')
