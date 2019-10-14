@@ -1,0 +1,65 @@
+gid	hom	het	unk	w	na	reason	fam	note
+Zm00001d016674	2	3			1	multi-fam	HSF	Heat shock factor protein 2
+Zm00001d006701	2	1				eQTL	GRAS	GRAS transcription factor [Source:UniProtKB/TrEMBL;Acc:C0P6K9]
+Zm00001d032923	2					biomAP	HSF	Heat stress transcription factor A-6b
+Zm00001d047563	2					eQTL	EIL	ethylene insensitive-like1
+Zm00001d016154	1	1			1	eQTL,biomAP	bZIP	Basic leucine zipper 34
+Zm00001d012527	1			1		biomAP	NAC	NAC domain-containing protein 2
+Zm00001d046774	1					eQTL	C2H2	Zinc finger protein WIP2
+Zm00001d026094		4				biomAP,multi-fam	HSF	Heat stress transcription factor B-2b
+Zm00001d053890		2	1			multi-fam	SBP	Squamosa promoter-binding-like protein 2
+Zm00001d052847		2		5		eQTL,multi-fam	WRKY	Putative WRKY DNA-binding domain superfamily protein
+Zm00001d053369		2		5		multi-fam	WRKY	WRKY transcription factor 22
+Zm00001d042305		2		3	2	multi-fam	TCP	Transcription factor TCP11
+Zm00001d006619		2				eQTL	C3H	Zinc finger CCCH domain-containing protein 56
+Zm00001d013777		2				biomAP	MYB_related	""
+Zm00001d038843		2				biomAP	WRKY	Putative WRKY DNA-binding domain superfamily protein
+Zm00001d053855		2				biomAP	Whirly	DNA binding protein isoform 1; DNA binding protein isoform 2
+Zm00001d006682		1	1			eQTL	C2H2	Protein indeterminate-domain 11
+Zm00001d016520		1	1			multi-fam	HSF	Heat stress transcription factor A-5
+Zm00001d017784		1	1			eQTL	ZF-HD	Zinc-finger homeodomain protein 5
+Zm00001d006578		1		1		eQTL	bHLH	Transcription factor bHLH130
+Zm00001d016052		1		1		multi-fam	WRKY	WRKY transcription factor 22
+Zm00001d025669		1		1		multi-fam	WRKY	Putative WRKY DNA-binding domain superfamily protein
+Zm00001d033965		1		1		eQTL,multi-fam	WRKY	Protein WRKY1
+Zm00001d010048		1				eQTL	ERF	Dehydration-responsive element-binding protein 2A
+Zm00001d014863		1				biomAP	MYB_related	Protein REVEILLE 7
+Zm00001d029963		1				eQTL	MYB_related	myb-like transcription factor family protein
+Zm00001d036632		1				eQTL	MYB_related	Protein REVEILLE 6
+Zm00001d042463		1				eQTL	ARR-B	Two-component response regulator ARR11
+Zm00001d052798		1				eQTL	Trihelix	Homeodomain-like superfamily protein
+Zm00001d010956			3			biomAP	C3H	Zinc finger CCCH domain-containing protein 29
+Zm00001d002573			2			biomAP	GRAS	GRAS transcription factor [Source:UniProtKB/TrEMBL;Acc:A0A060CY61]
+Zm00001d005029			2			eQTL	GRAS	Protein SCARECROW
+Zm00001d013119			2			multi-fam	TCP	Transcription factor TCP2
+Zm00001d027757			2			multi-fam	HSF	Heat stress transcription factor A-6b
+Zm00001d053775			2			multi-fam	SBP	Squamosa promoter-binding-like protein 2
+Zm00001d008602			1	1		multi-fam	MYB	Duplicated homeodomain-like superfamily protein
+Zm00001d018178			1	1		biomAP	bZIP	ABSCISIC ACID-INSENSITIVE 5-like protein 5
+Zm00001d024268			1	1		eQTL	NAC	NAC domain-containing protein 21/22
+Zm00001d033876			1	1		biomAP	GRF	Growth-regulating factor 2
+Zm00001d052905			1		1	multi-fam	SBP	Squamosa promoter-binding protein-like (SBP domain) transcription factor family protein
+Zm00001d013465			1			eQTL	GRAS	Dwarf plant9
+Zm00001d016255			1			eQTL,biomAP	HSF	Heat stress transcription factor C-1
+Zm00001d020019			1			eQTL	G2-like	Protein PHR1-LIKE 3
+Zm00001d021927			1			eQTL	BES1	BES1/BZR1 protein
+Zm00001d030028			1			eQTL	bHLH	myc transcription factor7
+Zm00001d033680			1			biomAP	GRAS	dwarf plant8
+Zm00001d035470			1			eQTL	MYB_related	Putative MYB DNA-binding domain superfamily protein
+Zm00001d036536			1			eQTL	ERF	Ethylene-responsive transcription factor 7
+Zm00001d039371			1			multi-fam	TCP	Transcription factor TCP4
+Zm00001d045507			1			biomAP	GRAS	Scarecrow-like protein 28
+Zm00001d051018			1			eQTL	DBB	B-box zinc finger protein 24
+Zm00001d052288			1			biomAP	E2F/DP	E2F transcription factor-like E2FE
+Zm00001d053988			1			eQTL	bZIP	Ocs element-binding factor 1; Putative bZIP transcription factor superfamily protein
+Zm00001d041397				6		multi-fam	WRKY	Probable WRKY transcription factor 74
+Zm00001d016772				4	1	biomAP	FAR1	Protein FAR1-RELATED SEQUENCE 5
+Zm00001d052738				3		multi-fam	HSF	Heat stress transcription factor B-2b
+Zm00001d020881				2	1	eQTL	WRKY	Probable WRKY transcription factor 34
+Zm00001d006677				2		eQTL	BES1	Protein BRASSINAZOLE-RESISTANT 1
+Zm00001d012379				2		multi-fam	MYB	myb domain protein 109
+Zm00001d010309				1		multi-fam	SBP	Squamosa promoter-binding protein-like (SBP domain) transcription factor family protein
+Zm00001d011252				1		eQTL	MYB_related	Putative MYB-domain histone H1 family protein
+Zm00001d015743				1		biomAP	bZIP	Transcription factor HY5
+Zm00001d035965				1		eQTL	GRF	Growth-regulating factor 6
+Zm00001d034601					1	biomAP	NAC	NAC domain-containing protein 67; NAC1 transcription factor; SNAC1
