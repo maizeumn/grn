@@ -2001,6 +2001,15 @@ to = tz %>% filter(reg.gid %in% reg.gids) %>%
     arrange(reg.gid)
 to %>% print(n=50)
 
+tno = tn %>% inner_join(t_cfg[,c('nid','study')], by='nid') %>%
+    mutate(study=str_to_title(study), ctag=str_to_title(ctag)) %>%
+    group_by(reg.gid, tgt.gid) %>%
+    summarise(support_grn=str_c(study, collapse=','),
+        support_eQTL=str_c(ctag, collapse=','), reg.note=reg.note[1]) %>%
+    ungroup()
+
+fo = file.path(dirw, '34.edges.tsv')
+write_tsv(tno, fo)
 fo = file.path(dirw, '33.hit.tsv')
 write_tsv(to, fo)
 #}}}

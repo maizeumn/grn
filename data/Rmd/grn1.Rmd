@@ -80,6 +80,6 @@ Figure 5.  TF-target validation of the combined tissue  network in three selecte
 Figure 6.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  Color and number in each cell represents the enrichment P-value (-log10 transformed, hypergeometric test p-value) of (SPE TF regulated) target DE proportions relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
 
 \pagebreak
-![]($grn/data/14_eval_sum/fig6.pdf){width=100%}
+![]($grn/data/14_eval_sum/fig6.pdf){width=85%}
 
 Figure 7.  Identification of acting transcription factors underlying trans-eQTL hotspots identified in previous studies.  (A) Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each dot represents a TF supported by at least two high quality networks to show significant co-regulation with at least one trans-eQTL hotspot, and are within 10-Mbp distance from the trans-eQTL hotspot location;  (B)-(D) Identification of R1 (Zm00001d026147), col11 (Zm00001d003162) and myc7 (Zm00001d030028) co-localizing previous trans-eQTL hotspots and acting as the master regulator of maize anthocyanin biosynthesis pathway, photosynthesis light reaction pathway and jasmonic acid biosynthesis pathway, respectively.
