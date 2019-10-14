@@ -73,3 +73,8 @@ These stocks were checked for previous ordering history (from `Springer_UniformM
 
 [95 stocks to order](https://docs.google.com/spreadsheets/d/1O4fHFqv-60JWQNa0E55ePWOd7gGJdj89HCXyt8e1nVA/edit?usp=sharing)
 
+## 2019 summary
+* Genotyping results of 67 TF mutants (126 UfMu events)
+  * [Figure](75.summary2019.pdf)
+  * [Table](75.summary2019.tsv)
+
