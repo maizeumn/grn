@@ -40,7 +40,7 @@ Starting from 470 TFs with at least one CDS insertion(s), with additional column
 * `eQTL`: suported by at least one (out of three) previous eQTL studies (significantly co-regulate the targets of a trans-eQTL hotspot and located within 50Mb of its physical location)
 * Expression in 10 tissues from B, P and W were added
 
-[Table listing all 470 TFs with extra support information](20.tf.tsv)
+[Table listing all 470 TFs with extra support information](21.tf.note.tsv)
 
 ## Selection of TF mutants
 
