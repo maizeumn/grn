@@ -109,9 +109,40 @@ ggsave(p_tsne, filename = fp, width=10, height=10)
 #}}}
 #}}}
 
+tf = read_tf_info()
+#tfbs_regs = read_tfbs_regulations() %>% rename(reg.gid=tf, tgt.gid=gid)
+gids = gcfg$gene %>% filter(ttype=='mRNA') %>% pull(gid)
+tmp = tfbs_regs %>% distinct(ctag, reg.gid) %>% crossing(tgt.gid=gids)
+tf %>% select(tf, gid) %>% print(n=40)
+
+ev = tibble(gopt=gopts, fv=sprintf("%s/%s.100k.rds", dirr, gopts)) %>%
+    mutate(data = map(fv, readRDS)) %>% select(-fv) %>% unnest()
+
+gids_bx = tg %>% filter(pathway=='dimboa', role=='tgt') %>% pull(gid)
+
+tfbs_regs %>% filter(ctag=='cisbp',reg.gid==tg$gid[5])
+tfbs_regs %>% filter(ctag=='cisbp',reg.gid==tg$gid[18], tgt.gid %in% gids_bx)
+
+nrow_positive <- function(ti) sum(ti$response == 1)
+bs = tfbs_regs %>% rename(response = score) %>%
+    right_join(tmp, by=c('ctag','reg.gid','tgt.gid')) %>%
+    replace_na(list(response=0)) %>%
+    mutate(ctag=str_c(ctag, reg.gid, sep=' ')) %>%
+    group_by(ctag) %>% nest() %>%
+    rename(res = data) %>% arrange(ctag) %>%
+    mutate(n = map_dbl(res, nrow_positive)) %>%
+    filter(n >= 10) %>%
+    mutate(ctag = as.character(ctag)) %>%
+    mutate(ctag = sprintf("%s [%s]", ctag, number(n))) %>%
+    mutate(ctag = factor(ctag, levels=ctag))
+ctags_bs = bs$ctag
+rids_bs = bs %>% unnest() %>% distinct(reg.gid) %>% pull(reg.gid)
+bs_u = bs %>% unnest()
+
 #{{{ eval TF KO / TFBS AUROC [takes long]
 ev = tibble(gopt=gopts, fv=sprintf("%s/%s.1m.rds", dirr, gopts)) %>%
     mutate(data = map(fv, readRDS)) %>% select(-fv) %>% unnest()
+
 #{{{ read ko
 nrow_positive <- function(ti) sum(ti$response == 1)
 ko = read_ko() %>% filter(gene_alias != 'P1', gene_alias != 'fl3') %>%
@@ -152,7 +183,6 @@ rids_tf = tf %>% unnest() %>% distinct(reg.gid) %>% pull(reg.gid)
 tf_u = tf %>% unnest()
 #}}}
 #{{{ read y1h
-
 rids = gs$y1h %>% filter(reg.gid %in% gs$tf_ids) %>% distinct(reg.gid) %>% pull(reg.gid)
 tmp = gs$y1h %>% distinct(tgt.gid) %>% crossing(reg.gid = rids)
 nrow_positive <- function(ti) sum(ti$response == 1)
@@ -188,7 +218,7 @@ ctags_bs = bs$ctag
 rids_bs = bs %>% unnest() %>% distinct(reg.gid) %>% pull(reg.gid)
 bs_u = bs %>% unnest()
 #}}}
-#
+
 #{{{ functions
 complete_tn <- function(tn, tids, rids) {
     #{{{
@@ -224,7 +254,7 @@ filter_tn <- function(tn, rids) {
 }
 get_auroc <- function(ti, fpr=1) {
     #{{{
-    if(max(ti$response) == 0)
+    if(max(ti$response) == 0 || max(ti$score) == 0)
         NA
     else if (min(ti$response) == 1)
         NA
@@ -245,6 +275,50 @@ get_wil_pval <- function(ti) {
     #}}}
 }
 #}}}
+
+rids = tf$gid[13]
+rids = gs$bs %>% filter(str_detect(ctag, 'Ricci')) %>% distinct(reg.gid) %>% pull(reg.gid)
+
+x1 = gs$bs %>% filter(ctag == 'Ricci2019', reg.gid %in% rids) %>%
+    mutate(tf = reg.gid) %>%
+    group_by(ctag, tf) %>% nest()
+tne = ev %>% select(gopt,nid,rids,tids,tn) %>% filter(nid=='nc01', gopt=='rf')
+rids = unlist(tne$rids); tids = unlist(tne$tids); tn1 = tne$tn[[1]]
+
+ev2 = x1 %>%
+    mutate(enc = map(data, eval_bs1, tn=tn1, rids=rids, tids=tids))
+
+eval_bs1 <- function(t_bs, tn, rids, tids, net_size=1e7) {
+    #{{{
+    tb0 = t_bs %>% mutate(weight = T)
+    rids0 = rids[rids %in% tb0$reg.gid]
+    tt = complete_tn(tn, rids0, tids) %>%
+        filter(reg.gid %in% rids0) %>%
+        filter(reg.gid != tgt.gid) %>%
+        mutate(score = as.numeric(score)) %>%
+        mutate(score = ifelse(is.na(score), 0, score)) %>%
+        arrange(desc(score)) %>%
+        filter(row_number() <= net_size)
+    if(max(tt$score) == 0) tt$score[1] = 0.1
+    to = tt %>%
+        left_join(tb0, by = c('reg.gid','tgt.gid')) %>%
+        replace_na(list(weight=F))
+    resR = roc.curve(scores.class0=to$score, weights.class0=to$weight)
+    resP = pr.curve(scores.class0=to$score, weights.class0=to$weight)
+    scores1 = to %>% filter(weight) %>% pull(score)
+    scores2 = to %>% filter(!weight) %>% pull(score)
+    pval = NA
+    if(length(scores1) > 0 & length(scores2) > 0)
+        pval = wilcox.test(scores1, scores2, alternative='greater')$p.value
+    #roc = resR$curve %>% as_tibble() %>%
+        #transmute(TPR = V1, FPR = V2, score = V3)
+    #prc = resP$curve %>% as_tibble() %>%
+        #transmute(recall = V1, precision = V2, score = V3)
+    auroc = resR$auc
+    auprc = resP$auc.integral
+    list(auroc=auroc, auprc=auprc, pval=pval)
+    #}}}
+}
 
 #{{{ auroc + pval
 tp_tf = ev %>% select(gopt,nid,tids,tn) %>%

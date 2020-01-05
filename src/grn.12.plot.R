@@ -247,33 +247,6 @@ diro = file.path(dird, '17_degree')
 
 t_tf0 = gs$all_tf %>% mutate(tf = 'TF')
 t_tf = t_tf0 %>% inner_join(tsyn, by = 'gid')
-#{{{ TF - syntenic composition
-tp0 = tsyn %>% left_join(t_tf0, by = 'gid') %>%
-    replace_na(list(tf='non-TF'))
-tps = tp0 %>% count(tf) %>% mutate(lab = sprintf("%s (N=%s)", tf, number(n)))
-tp = tp0 %>%
-    group_by(tf, ftype) %>%
-    summarise(n = n()) %>%
-    mutate(freq = n / sum(n)) %>%
-    ungroup() %>%
-    mutate(lab = percent(freq, accuracy=2)) %>%
-    arrange(tf, desc(ftype)) %>%
-    group_by(tf) %>% mutate(y = cumsum(freq)) %>%
-    mutate(y = y - freq/2) %>% ungroup()
-
-cols5 = c('grey70', brewer.pal(6, 'Paired')[3:6])
-p1 = ggplot(tp) +
-    geom_bar(aes(x=tf, y=n, fill=ftype), stat='identity', position='fill', width=.8) +
-    geom_text(aes(x=tf, y=y, label=lab), color='black') +
-    scale_x_discrete(expand=c(0,0), breaks=tps$tf, labels=tps$lab) +
-    scale_y_continuous(expand=c(0,0)) +
-    scale_fill_manual(name='Syntenic status', values=cols5) +
-    otheme(legend.pos = 'top', legend.dir='v', legend.title = F,
-        xtick=T, ytick=F,
-        xtext=T, ytext=F)
-fo = file.path(diro, '01.tf.syn.pdf')
-ggsave(p1, file=fo, width=4, height=6)
-#}}}
 
 #{{{ summarise TF & target degree info
 fi = sprintf("%s/%s.500k.rds", dirr, gopt)
@@ -1868,6 +1841,11 @@ hs = tibble(qtag=qtags) %>%
     mutate(data=map(data, 'hs')) %>%
     select(qtag, data) %>% unnest() %>%
     select(qtag,qid,qchrom,qpos,n.tgt)
+hs.tgt = tibble(qtag=qtags) %>%
+    mutate(fi=sprintf('~/projects/genome/data2/%s/10.rds', qtag)) %>%
+    mutate(data=map(fi, readRDS)) %>%
+    mutate(data=map(data, 'hs.tgt')) %>%
+    select(qtag, data) %>% unnest()
 #
 fv = sprintf("%s/rf.50k.rds", dirr)
 ev = readRDS(fv)
@@ -2222,7 +2200,7 @@ p1 = ggplot(tp, aes(lgd, y)) +
 ggsave(p1, filename = fo, width = 8, height = 8)
 #}}}
 
-# degree <-> kaks
+#{{{ degree <-> kaks
 dirw = file.path(dird, '17_degree')
 fi = file.path(dirw, 'degree.rds')
 deg = readRDS(fi)
@@ -2262,5 +2240,5 @@ p <- ggviolin(tp, x="ftype", y="dnds", fill="ftype",
     theme(axis.text.x=element_text(angle=30))
 fo = file.path(dirw, 't2.pdf')
 ggsave(p, file=fo, width=6, height=8)
-
+#}}}
 

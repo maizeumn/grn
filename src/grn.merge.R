@@ -15,7 +15,7 @@ source("~/projects/grn/src/functions.R")
 dirw = file.path(dird, 'cache')
 diri = file.path(dirw, '15_grn_rds')
 
-tn = th %>% mutate(fi = sprintf("%s/%s.%s.rds", diri, gopt, nid)) %>%
+tn = t_cfg %>% mutate(fi = sprintf("%s/%s.%s.rds", diri, gopt, nid)) %>%
     mutate(res = map(fi, readRDS)) %>%
     mutate(rids = map(res, 'rids'),
            tids = map(res, 'tids'),

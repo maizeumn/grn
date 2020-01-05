@@ -204,96 +204,13 @@ eval_fun_ann <- function(f_net, gs, n_permut=permut, net_sizes=c(1e4,5e4,1e5,5e5
     #}}}
 }
 
-eval_go_1 <- function(perm=0, tn, fun_ann) {
-    #{{{
-    if(perm != 0) {
-        set.seed(perm)
-        tn = tn %>% mutate(tgt.gid = sample(tgt.gid))
-    }
-    tn2 = tn %>%
-        inner_join(fun_ann, by = c("tgt.gid" = 'gid')) %>%
-        count(ctag, grp, reg.gid)
-    enc1 = tn2 %>%
-        arrange(ctag, grp, desc(n), reg.gid) %>%
-        group_by(ctag, grp) %>%
-        summarise(coreg = sum(n*(n-1)/2),
-                  max.reg.gid=reg.gid[1], max.reg.size=n[1], n=sum(n)) %>%
-        ungroup()
-    enc2 = tn2 %>%
-        arrange(ctag, reg.gid, desc(n), grp) %>%
-        group_by(ctag, reg.gid) %>%
-        summarise(coreg = sum(n*(n-1)/2),
-                  max.grp=grp[1], max.grp.size=n[1], n=sum(n)) %>%
-        ungroup()
-    list(enc.grp = enc1, enc.reg = enc2)
-    #}}}
-}
-
-#' evaluate biomap dataset
-eval_biomap <- function(f_net, bm, net_size=5e4) {
-    #{{{
-    gts_exl = c("B73","Mo17")
-    gts_exl = c()
-    tm = bm %>%
-        filter(! Genotype %in% gts_exl) %>%
-        #mutate(CPM = asinh(CPM)) %>%
-        arrange(gid, Tissue, Genotype) %>%
-        group_by(gid, Tissue) %>%
-        summarise(v = list(CPM)) %>% ungroup()
-    y = readRDS(f_net)
-    rids=y$rids; tids=y$tids; tn=y$tn
-    if(!'pcc' %in% colnames(tn)) tn = tn %>% mutate(pcc = 1)
-    tn1 = tn %>%
-        filter(row_number() <= net_size) %>%
-        mutate(p.drc = ifelse(pcc < 0, -1, 1)) %>%
-        mutate(simu = F) %>%
-        select(simu,reg.gid,tgt.gid,p.drc)
-    # permutation
-    set.seed(001)
-    tn2 = tn1 %>% mutate(simu = T, tgt.gid = sample(tgt.gid))
-    tp = tn1 %>%
-        bind_rows(tn2) %>%
-        inner_join(tm, by = c('reg.gid'='gid')) %>%
-        rename(reg.v = v) %>%
-        inner_join(tm, by = c('tgt.gid'='gid','Tissue'='Tissue')) %>%
-        rename(tgt.v = v) %>%
-        mutate(bm.pval.spc = pmap_dbl(list(reg.v, tgt.v, p.drc), eval_bm_spc),
-               bm.pval.spe = pmap_dbl(list(reg.v, tgt.v, p.drc), eval_bm_spe)) %>%
-        select(-reg.v, -tgt.v)
-    tp
-    #}}}
-}
-eval_bm_spc <- function(reg.v, tgt.v, p.drc) {
-    #{{{
-    alt.hyp = ifelse(p.drc == -1, 'less', 'greater')
-    res = cor.test(reg.v, tgt.v, alt.hyp, 'spearman')
-    pval = res$p.value
-    pval
-    #}}}
-}
-eval_bm_spe <- function(reg.v, tgt.v, p.drc) {
-    #{{{
-    alt.hyp = ifelse(p.drc == -1, 'greater', 'less')
-    idxs1 = which(reg.v <= .1)
-    idxs2 = which(reg.v >= 1)
-    pval = NA
-    if(length(idxs1)>=3 & length(idxs2)>=3) {
-        #res = t.test(tgt.v[idxs1], tgt.v[idxs2], alternative=alt.hyp)
-        #res = t.test(tgt.v[idxs1], tgt.v[idxs2])
-        res = wilcox.test(tgt.v[idxs1], tgt.v[idxs2], alternative=alt.hyp)
-        pval = res$p.value
-    }
-    pval
-    #}}}
-}
-
 if(thread > 1) {
     plan(multiprocess, workers=thread)
     options(future.globals.maxSize=10e9)
 }
 
 #gs was already read
-if (opt == 'tf') {
+if (opt == 'bs') {
     #{{{ evaluate network stats, TF/target pairs, Y1H overlap
     require(PRROC)
     fi = file.path(dird, '08_y1h', '01.rds')

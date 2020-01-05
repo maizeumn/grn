@@ -21,7 +21,7 @@ fo = file.path(dirw, '01.y1h.tsv')
 write_tsv(to, fo)
 #}}}
 
-#{{{ ## map known TF targets
+#{{{ ## collect known TF targets
 dirw = file.path(dird, '07_known_tf')
 #{{{ KN1
 tag = 'KN1'
@@ -195,24 +195,41 @@ tp = th %>% filter(nid %in% c("np16_1", sprintf("np18_%d", 1:4))) %>%
 pmap_lgl(tp, lift_previous_grn, tm)
 #}}}
 
-fi = file.path(dirw, '01.y1h.tsv')
+fi = file.path(dird, '08_y1h', '01.y1h.tsv')
 y1h = read_tsv(fi)
-tf = read_ko_direct()
 ko = read_ko()
+
+#{{{ read chipseq/dapseq/tfbs -based predictions
+fi1 = '~/projects/grn/data/04_tfbs/15.regulations.tsv'
+ti1 = read_tsv(fi1) %>% rename(reg.gid=tf)
+#
+d07 = '~/projects/grn/data/07_mutants'
+tfs = c('KN1_ear','KN1_leaf','KN1_tassel','RA1','FEA4','O2','bZIP22')
+ti2 = tibble(ctag=tfs) %>%
+    mutate(ft=sprintf("%s/05.%s.tsv", d07, ctag)) %>%
+    mutate(data = map(ft, read_tsv)) %>% select(-ft) %>%
+    mutate(ctag = str_c("REF", ctag, sep="|")) %>% unnest()
+#
+bs = rbind(ti1, ti2)
+bs %>% count(ctag) %>% print(n=50)
+bs %>% count(ctag, reg.gid) %>% print(n=50)
+#}}}
 
 #{{{ functional annotation: GO CornCyc Y1H
 dirg = '~/data/genome/Zmays_B73/61_functional'
 fi = file.path(dirg, "02.go.gs.tsv")
 ti = read_tsv(fi)
-go_hc = ti %>% mutate(note = str_c(evidence, gotype)) %>%
+go_hc = ti %>% mutate(note = str_to_upper(evidence)) %>%
+    mutate(note = str_replace(note, '^IEF', 'IEP')) %>%
     mutate(ctag = 'GO_HC') %>% select(ctag, grp=goid, gid, note)
+go_hc_ne = go_hc %>% filter(note != 'IEP') %>% mutate(ctag=str_c(ctag, 'ne', sep='_'))
 #
 fi = file.path(dirg, "01.go.tsv")
 ti = read_tsv(fi)
 go = ti %>%
-    filter(!ctag %in% c('aggregate','fanngo'), gotype=='P') %>%
-    mutate(ctag = str_c("GO",ctag,sep="_")) %>%
-    select(ctag, grp=goid, gid, note=goname)
+    filter(!ctag %in% c('aggregate','fanngo')) %>%
+    mutate(ctag = str_c("GO",ctag,gotype, sep="_")) %>%
+    select(ctag, grp=goid, gid, note=evidence)
 #
 ctag = "CornCyc"
 fi = file.path(dirg, "07.corncyc.tsv")
@@ -241,11 +258,12 @@ hs = tibble(ctag=ctags) %>%
     select(ctag, hs) %>% unnest() %>%
     select(ctag,grp=qid,gid) %>% mutate(note=NA)
 #
-fun_ann = rbind(go_hc, go, cc, hs)
+fun_ann = rbind(go_hc,go_hc_ne, go, cc, hs)
+fun_ann %>% count(ctag)
 fun_ann %>% distinct(ctag,grp) %>% count(ctag)
 #}}}
 
-#{{{ FunTFBS regulations
+#{{{ FunTFBS regulations [obsolete]
 fi = file.path(dird, '03_tfbs', 'regulation_merged.txt')
 ti = read_tsv(fi, col_names=c("o.reg.gid",'relation','o.tgt.gid','org','evi'))
 ti %>% count(relation, org, evi)
@@ -270,21 +288,6 @@ tfbs = to %>% distinct(reg.gid, tgt.gid, evi) %>%
 tfbs %>% count(ctag)
 #}}}
 
-#{{{ # obsolete - FunTFBS
-fi = file.path(dird, '03_tfbs', 'TFBS_from_FunTFBS_inProm.gff')
-ti = read_tsv(fi, col_names=c('chr','src','type','beg','end','score','srd','phase','note'), col_types='cccdddccc')
-ti %>% count(src,type)
-
-to = ti %>% select(chr,beg,end,score,note) %>%
-    separate(note, c('gid','tid','corr','pval','seq'), sep=';', extra='drop') %>%
-    separate(gid, c('tag','gid'), sep='=', extra='drop') %>%
-    separate(tid, c('tag','tid'), sep='=', extra='drop') %>%
-    separate(corr, c('tag','corr'), sep='=', extra='drop') %>%
-    separate(pval, c('tag','pval'), sep='=', extra='drop') %>%
-    mutate(corr=as.numeric(corr), pval=as.numeric(pval)) %>%
-    select(chr,beg,end,score,tid,gid,corr,pval)
-#}}}
-
 #{{{ add additional TF IDs
 ff = '~/projects/genome/data/Zmays_B73/61_functional/06.tf.tsv'
 ti = read_tsv(ff)
@@ -298,6 +301,9 @@ ti = read_xlsx(fi, sheet='mutants') %>%
     select(yid,gene_id,gene_alias,gene_name)
 ti %>% print(n=40)
 
+x = bs %>% filter(!str_starts(ctag, 'plantregmap'), !str_starts(ctag, 'cisbp')) %>%
+    distinct(reg.gid) %>% mutate(x=reg.gid %in% tf_ids) %>% print(n=50)
+x$reg.gid[14]
 tf_ids_n = ti %>% distinct(gene_id) %>% filter(str_detect(gene_id, '^Zm0')) %>%
     filter(!gene_id %in% tf_ids) %>% pull(gene_id)
 tf_ids_n
@@ -308,7 +314,7 @@ length(tf_ids)
 # optional: run grn.91.tf45.R
 
 # build GRN gold-standard dataset
-res = list(tf=tf, tfbs=tfbs, ko=ko,
+res = list(bs=bs, ko=ko,
            tf_fam=tf_fam, tf_ids=tf_ids, fun_ann=fun_ann, y1h=y1h, ppi=ppi)
 fo = file.path(dird, '09.gs.rds')
 saveRDS(res, file=fo)

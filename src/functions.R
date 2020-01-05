@@ -21,12 +21,6 @@ net_cols = pal_aaas()(length(net_types))
 names(net_cols) = net_types
 nids_meta = c("n17a","n18a",'n18g',"n99a")
 t_cfg = t_cfg %>% select(-mid) %>%
-    #filter(net_type %in% net_types) %>%
-    #mutate(net_type = ifelse(nid %in% nids_meta, 'genotype', net_type)) %>%
-    #mutate(net_type = factor(net_type, levels = net_types)) %>%
-    #arrange(net_type, nid, sample_size) %>%
-    #mutate(net_type = as.character(net_type)) %>%
-    #mutate(net_type = ifelse(nid %in% nids_meta, 'tissue*genotype', net_type)) %>%
     mutate(net_type = factor(net_type, levels = net_types)) %>%
     mutate(col = net_cols[net_type]) %>%
     mutate(lgd = sprintf("%s %s [%d]", str_to_title(study),note,sample_size)) #%>%
@@ -36,23 +30,10 @@ gs = readRDS('~/projects/grn/data/09.gs.rds')
 cols100 = colorRampPalette(rev(brewer.pal(n = 6, name = "RdYlBu")))(100)
 cols100v = viridis_pal(direction=-1,option='magma')(100)
 
-read_ko_direct <- function() {
-    #{{{ known TF/target pairs
-    dirw = file.path(dird, '07_mutants')
-    fi = file.path(dirw, 'known_tf_targets.xlsx')
-    ti = read_xlsx(fi) %>%
-        fill(gene_alias, gene_name, gene_id, libtype, targets, reference) %>%
-        filter(gene_alias %in% c('KN1','RA1','FEA4','O2','bZIP22'))
-    #
-    tf = ti %>% mutate(tmp=ifelse(gene_alias=='KN1', str_c(gene_alias, tissue, sep='_'), gene_alias)) %>%
-        mutate(ft=sprintf("%s/05.%s.tsv", dirw, tmp)) %>%
-        mutate(data = map(ft, read_tsv)) %>% select(-tmp, -ft) %>%
-        mutate(n=map_int(data, nrow)) %>%
-        mutate(lab = sprintf("%s [%s] [%s]", gene_alias, tissue, n)) %>%
-        select(-n)
-    tf
-    #}}}
-}
+read_tf_info <- function(fi='~/projects/grn/data/tf_info.xlsx')
+    read_xlsx(fi)
+read_tfbs_regulations <- function(fi='~/projects/grn/data/04_tfbs/15.regulations.tsv')
+    read_tsv(fi)
 read_ko <- function(fd = file.path(dird, '07_mutants', 'degs.rds'))
     readRDS(fd)
 
