@@ -1,6 +1,7 @@
 nid	mid	study	note	subid	net_type	sample_size
 n16b	rn16b	stelpflug2016	B73	z	Tissue	93
 n16c	rn16c	walley2016	B73	z	Tissue	23
+n14e	rn14e	chen2014	B73	z	Tissue	53
 n19c	rn19c	yi2019	seed dev	z	Tissue	31
 nc01	rnc01	tissue atlas	combined	z	Tissue	247
 n13c	rn13c	eichten2013	seedling_leaf3	z	Genotype	62

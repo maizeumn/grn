@@ -27,9 +27,29 @@ x = tp %>% select(-col) %>%
     #column_spec(1, bold=T) %>%
     collapse_rows(columns=c(1,2), latex_hline="major", valign="top") %>%
     footnote(symbol = c('Top 100,000 predictions'))
-fo = file.path(dirw, '01.t1.pdf')
+fo = file.path(dirw, 't1.pdf')
 x %>% save_kable(fo)
-fo = file.path(dirw, '01.t1.rds')
+fo = file.path(dirw, 't1.rds')
+saveRDS(x, file=fo)
+#}}}
+
+#{{{ ChIP-Seq and DAP-Seq
+fi = file.path(dird, 'tf_info.xlsx')
+ti = read_xlsx(fi) %>%
+    replace_na(list(name='', tissue='', targets='')) %>%
+    mutate(tf = str_replace(tf, "_.*$", '')) %>%
+    select(-yid) %>%
+    select(`TF alias`=tf, `TF name`=name, `TF ID`=gid, `TF ID (v3)`=gid_v3,
+       Tissue=tissue, `Study Type`=libtype, Targets=targets,
+       Reference=reference)
+x = ti %>%
+    kable(format='latex', escape=F, longtable=F, booktabs=T, linesep="",
+        format.args = list(big.mark = ",")) %>%
+    kable_styling(latex_options = c("striped", "hold_position"),
+        full_width=F, font_size = 9, position='left')
+fo = file.path(dirw, 'st1.pdf')
+x %>% save_kable(fo)
+fo = file.path(dirw, 'st1.rds')
 saveRDS(x, file=fo)
 #}}}
 
@@ -39,6 +59,7 @@ tp = read_xlsx(fi, 'mutants') %>%
     mutate(accession=str_sub(accession, 1, 11)) %>%
     replace_na(list(author='')) %>%
     mutate(author=str_to_title(author)) %>%
+    filter(!gene_alias %in% c("cle7", "ra3")) %>%
     select(`TF alias`=gene_alias, `TF name`=gene_name, `TF ID`=gene_id,
            Study=author, Accession=accession, Tissue=tissue, N=n)
 x = tp %>%
@@ -46,9 +67,9 @@ x = tp %>%
         format.args = list(big.mark = ",")) %>%
     kable_styling(latex_options = c("striped", "hold_position"),
         full_width=F, font_size = 9, position='left')
-fo = file.path(dirw, '01.t2.pdf')
+fo = file.path(dirw, 'st2.pdf')
 x %>% save_kable(fo)
-fo = file.path(dirw, '01.t2.rds')
+fo = file.path(dirw, 'st2.rds')
 saveRDS(x, file=fo)
 #}}}
 
@@ -80,9 +101,9 @@ x = tp %>%
         full_width=F, font_size = 8, position='left') %>%
     #column_spec(1, italic = T) %>%
     collapse_rows(columns=c(1,2), latex_hline="major", valign="top")
-fo = file.path(dirw, '01.t3.pdf')
+fo = file.path(dirw, 'st3.pdf')
 x %>% save_kable(fo)
-fo = file.path(dirw, '01.t3.rds')
+fo = file.path(dirw, 'st3.rds')
 saveRDS(x, file=fo)
 #}}}
 
@@ -100,9 +121,9 @@ x = tp %>%
         full_width=T, font_size=8, position='left') %>%
     #column_spec(1:3, width = "1.85cm") %>%
     column_spec(5, width = "5cm")
-fo = file.path(dirw, '01.t9.pdf')
+fo = file.path(dirw, 'st9.pdf')
 x %>% save_kable(fo)
-fo = file.path(dirw, '01.t9.rds')
+fo = file.path(dirw, 'st9.rds')
 saveRDS(x, file=fo)
 #}}}
 #}}}

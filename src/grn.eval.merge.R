@@ -18,7 +18,9 @@ diri = file.path(dirw, '17_eval')
 ev0 = t_cfg %>%
     mutate(fi = sprintf("%s/%s.%s.%s.rds", diri, eopt, gopt, nid)) %>%
     mutate(res = map(fi, readRDS))
-if (eopt == 'tf') {
+if (eopt %in% c('bs','ko')) {
+    ev = ev0 %>% unnest()
+} else if (eopt == 'tf') {
     ev = ev0 %>%
         mutate(tf = map(res, 'tfstat'),
                tfbs = map(res, 'tfbsstat'),

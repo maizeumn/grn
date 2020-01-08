@@ -37,27 +37,81 @@ read_tfbs_regulations <- function(fi='~/projects/grn/data/04_tfbs/15.regulations
 read_ko <- function(fd = file.path(dird, '07_mutants', 'degs.rds'))
     readRDS(fd)
 
-read_tf_ko_bs <- function(fi = file.path(dird, '13_eval', '05.tf.ko.bs.rds')) {
+read_eval_ko <- function(dird='~/projects/grn/data') {
     #{{{
-    ev = readRDS(fi)
-    ev1 = ev$tf %>% mutate(eopt='tf') %>%
-        gather(key, score, -gopt,-eopt,-nid,-ctag,-gene_alias,-tissue)
-    ctags1 = sort(unique(ev$tf$ctag))
-    ev2 = ev$ko %>% mutate(eopt='ko') %>% select(-kid) %>%
-        gather(key, score, -gopt,-eopt,-nid,-ctag,-gene_alias,-tissue)
-    ctags2 = sort(unique(ev$ko$ctag))
-    ev3 = ev$bs %>% mutate(eopt='bs') %>% mutate(gene_alias=NA,tissue=NA) %>%
-        gather(key, score, -gopt,-eopt,-nid,-ctag,-gene_alias,-tissue)
-    ctags3 = as.character(sort(unique(ev$bs$ctag)))
-    ctags = c(ctags1, ctags2, ctags3)
+    nrow_positive <- function(ti) sum(ti$response == 1)
+    ko = read_ko() %>% filter(!gene_alias %in% c('P1','fl3','cle7','ra3')) %>%
+        mutate(kid=1:n()) %>%
+        select(kid,gene_id,gene_alias,tissue=Tissue,ds) %>%
+        unnest(ds) %>%
+        mutate(response=ifelse(padj < .01, 1, 0)) %>%
+        rename(reg.gid = gene_id, tgt.gid = gid) %>%
+        group_by(kid,gene_alias,tissue) %>% nest() %>% rename(res = data) %>%
+        mutate(n_tot = map_dbl(res, nrow)) %>%
+        mutate(n_de = map_dbl(res, nrow_positive)) %>%
+        mutate(prop_de=n_de/n_tot) %>%
+        mutate(ctag=sprintf("%s [%s] [%s] [%s]", gene_alias, tissue, number(n_de), percent(prop_de, accuracy=.1))) %>%
+        select(kid, gene_alias, tissue, ctag)
+    ctags = ko$ctag
     #
-    ev = rbind(ev1, ev2, ev3) %>%
+    ev = tibble(gopt = gopts) %>%
+        mutate(fi = sprintf('%s/raw/%s.ko.rds', dird, gopt)) %>%
+        mutate(data = map(fi, readRDS)) %>% select(-fi) %>% unnest(data) %>%
+        select(gopt, nid, gene_alias,tissue,auroc,pval,auroc0,auprc) %>%
+        inner_join(ko, by=c("gene_alias", "tissue")) %>%
         mutate(gopt = str_to_upper(gopt)) %>%
-        mutate(score = ifelse(key=='auroc', score*1000, score)) %>%
         mutate(ctag = factor(ctag, levels=ctags)) %>%
-        mutate(lab = number(score, accuracy=1)) %>%
-        mutate(lab = str_remove(lab, '^0+')) %>%
-        mutate(lab = ifelse(key=='spc.pval' & score < -log10(.05), '', lab))
+        group_by(gopt, ctag) %>%
+        mutate(padj = p.adjust(pval, method='BH')) %>%
+        ungroup() %>%
+        mutate(score1 = auroc * 1000) %>%
+        mutate(lab1 = str_remove(number(score1, accuracy=1), '^0+')) %>%
+        mutate(score2 = -log10(padj)) %>%
+        mutate(lab2 = str_remove(number(score2, accuracy=1), '^0+')) %>%
+        mutate(lab2 = ifelse(padj < .05, lab2, '')) %>%
+        mutate(score3 = auroc0) %>%
+        mutate(lab3 = str_remove(number(score3, accuracy=.01), '^0+')) %>%
+        mutate(score4 = auprc) %>%
+        mutate(lab4 = str_remove(number(score4, accuracy=.01), '^0+'))
+    ev
+    #}}}
+}
+read_eval_bs <- function() {
+    #{{{
+    tf = read_tf_info() %>% distinct(tf, gid) %>% rename(reg.gid=gid, name=tf)
+    bs = gs$bs %>% count(ctag, reg.gid) %>%
+        left_join(tf, by='reg.gid') %>%
+        rename(tf = reg.gid) %>%
+        mutate(name = ifelse(str_detect(ctag, '^REF'), str_replace(ctag, 'REF\\|', ''), name)) %>%
+        mutate(xlab = sprintf("%s (%s)", name, number(n))) %>%
+        select(ctag, tf, n, xlab)
+    #
+    ev = tibble(gopt = gopts) %>%
+        mutate(fi = sprintf('%s/raw/%s.bs.rds', dird, gopt)) %>%
+        mutate(data = map(fi, readRDS)) %>% select(-fi) %>% unnest(data) %>%
+        select(gopt, nid, ctag, tf, auroc, pval, auroc0, auprc) %>%
+        inner_join(bs, by=c("ctag",'tf')) %>%
+        mutate(gopt = str_to_upper(gopt)) %>%
+        group_by(gopt, ctag, tf) %>%
+        mutate(padj = p.adjust(pval, method='BH')) %>%
+        ungroup() %>%
+        mutate(score1 = auroc * 1000) %>%
+        mutate(lab1 = str_remove(number(score1, accuracy=1), '^0+')) %>%
+        mutate(score2 = -log10(padj)) %>%
+        mutate(lab2 = str_remove(number(score2, accuracy=1), '^0+')) %>%
+        mutate(lab2 = ifelse(padj < .05, lab2, '')) %>%
+        mutate(score3 = auroc0) %>%
+        mutate(lab3 = str_remove(number(score3, accuracy=.01), '^0+')) %>%
+        mutate(score4 = auprc) %>%
+        mutate(lab4 = str_remove(number(score4, accuracy=.01), '^0+'))
+    ev
+    #}}}
+}
+read_eval_go <- function() {
+    #{{{
+    ev = tibble(gopt = gopts) %>%
+        mutate(fi = sprintf("%s/%s.go.rds", dirr, gopt)) %>%
+        mutate(data = map(fi, readRDS)) %>% select(-fi) %>% unnest(data)
     ev
     #}}}
 }
@@ -67,19 +121,23 @@ plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
         inner_join(t_cfg, by = 'nid') %>%
         mutate(lgd = factor(lgd, levels=rev(t_cfg$lgd)))
     tps = t_cfg %>% distinct(lgd, col)
-    swit = max(tp$score) / 2
+    swit = (min(tp$score) + max(tp$score)) / 2
     #
     if(lgd.opt == 1)
         lgd = bquote('AUC'~x10^3~'(FPR<=0.1)')
     else if(lgd.opt == 2)
-        lgd = bquote(-log[10]~'(Wilcox P-value)')
+        lgd = bquote(-log[10]~'(Wilcox P-value adjusted)')
+    else if(lgd.opt == 3)
+        lgd = 'AUROC'
+    else if(lgd.opt == 4)
+        lgd = 'AUPRC'
     #
     if(col.opt == 1)
         cols = cols100v
     else if(col.opt == 2)
         cols = cols100
     #
-    p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=score)) +
+    p1 = ggplot(tp, aes(x=xlab, y=lgd, fill=score)) +
         geom_tile() +
         geom_text(aes(label=lab, color=score>swit), hjust=.5, size=2) +
         scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
@@ -89,6 +147,9 @@ plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
         otheme(legend.pos='top.center.out', legend.dir='h', legend.title=T,
                ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
         theme(axis.text.x = element_text(angle=30, hjust=1, vjust=1, size=7)) +
+        theme(legend.title=element_text(size=8)) +
+        theme(legend.text=element_text(size=7)) +
+        #theme(legend.key.size = unit(.5, 'lines')) +
         guides(color=F)
     if(ytext)
         p1 = p1 + theme(axis.text.y = element_text(color=rev(tps$col), size=7))

@@ -328,38 +328,73 @@ fo = file.path(dirw, '11.support.edges.tsv')
 write_tsv(to, fo, na='')
 #}}}
 
-#{{{ TF KO / TFBS AUROC
+#{{{ TF ChIP-Seq / DAP-Seq / KO / TFBS AUROC
+#ev_ko = read_eval_ko()
+#ev_bs = read_eval_bs()
+#ev_go = read_eval_go()
 gopt = 'RF'
-ev = read_tf_ko_bs()
+evc = ev_bs %>% filter(gopt==!!gopt) %>% select(-gopt) %>%
+    filter(str_detect(ctag, '^REF'))
+evk = ev_ko %>% filter(gopt==!!gopt) %>% select(-gopt) %>%
+    mutate(xlab=ctag)
+evd = ev_bs %>% filter(gopt==!!gopt) %>% select(-gopt) %>%
+    filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)$'))
 
-tp1a = ev %>% filter(gopt==!!gopt, eopt=='tf', key=='auroc')
-tp1b = ev %>% filter(gopt==!!gopt, eopt=='tf', key=='spc.pval')
-tp2a = ev %>% filter(gopt==!!gopt, eopt=='ko', key=='auroc')
-tp2b = ev %>% filter(gopt==!!gopt, eopt=='ko', key=='spc.pval')
-tp3a = ev %>% filter(gopt==!!gopt, eopt=='bs', key=='auroc')
-tp3b = ev %>% filter(gopt==!!gopt, eopt=='bs', key=='spc.pval')
+#{{{ plot components
+tpc1 = evc %>% rename(score=score1, lab=lab1)
+tpc2 = evc %>% rename(score=score2, lab=lab2)
+tpc3 = evc %>% rename(score=score3, lab=lab3)
+tpc4 = evc %>% rename(score=score4, lab=lab4)
+tpk1 = evk %>% rename(score=score1, lab=lab1)
+tpk2 = evk %>% rename(score=score2, lab=lab2)
+tpk3 = evk %>% rename(score=score3, lab=lab3)
+tpk4 = evk %>% rename(score=score4, lab=lab4)
+tpd1 = evd %>% rename(score=score1, lab=lab1)
+tpd2 = evd %>% rename(score=score2, lab=lab2)
+tpd3 = evd %>% rename(score=score3, lab=lab3)
+tpd4 = evd %>% rename(score=score4, lab=lab4)
 
-p1a = plot_tile(tp1a, t_cfg, lgd.opt=1)
-p1b = plot_tile(tp1b, t_cfg, lgd.opt=2)
-p2a = plot_tile(tp2a, t_cfg, lgd.opt=1, ytext=F)
-p2b = plot_tile(tp2b, t_cfg, lgd.opt=2, ytext=F)
-p3a = plot_tile(tp3a, t_cfg, lgd.opt=1, ytext=T)
-p3b = plot_tile(tp3b, t_cfg, lgd.opt=2, ytext=T)
+p1a = plot_tile(tpc1, t_cfg, lgd.opt=1)
+p1b = plot_tile(tpk1, t_cfg, lgd.opt=1, ytext=F)
+p2a = plot_tile(tpc2, t_cfg, lgd.opt=2)
+p2b = plot_tile(tpk2, t_cfg, lgd.opt=2, ytext=F)
 
-fo = sprintf('%s/05.auc.pdf', dirw)
-ggarrange(p1a, p2a, align='h', common.legend = T,
+p3a = plot_tile(tpc1, t_cfg, lgd.opt=1)
+p3b = plot_tile(tpc2, t_cfg, lgd.opt=2, ytext=F)
+p3c = plot_tile(tpc3, t_cfg, lgd.opt=3)
+p3d = plot_tile(tpc4, t_cfg, lgd.opt=4, ytext=F)
+p4a = plot_tile(tpk1, t_cfg, lgd.opt=1)
+p4b = plot_tile(tpk2, t_cfg, lgd.opt=2, ytext=F)
+p4c = plot_tile(tpk3, t_cfg, lgd.opt=3)
+p4d = plot_tile(tpk4, t_cfg, lgd.opt=4, ytext=F)
+p5a = plot_tile(tpd1, t_cfg, lgd.opt=1)
+p5b = plot_tile(tpd2, t_cfg, lgd.opt=2, ytext=F)
+p5c = plot_tile(tpd3, t_cfg, lgd.opt=3)
+p5d = plot_tile(tpd4, t_cfg, lgd.opt=4, ytext=F)
+#}}}
+
+pa = p1a; pb = p1b; tag = 'auc'
+pa = p2a; pb = p2b; tag = 'pval'
+fo = sprintf('%s/05.%s.pdf', dirw, tag)
+ggarrange(pa, pb, align='h', common.legend = T,
     nrow=1, ncol=2, labels=LETTERS[1:5], widths=c(3,5), heights=c(2,2)) %>%
     ggexport(filename = fo, width=8, height=6)
-fo = sprintf('%s/05.pval.pdf', dirw)
-ggarrange(p1b, p2b, align='h', common.legend = T,
-    nrow=1, ncol=2, labels=LETTERS[1:5], widths=c(3,5), heights=c(2,2)) %>%
-    ggexport(filename = fo, width=8, height=6)
+
+pa=p3a; pb=p3b; pc=p3c; pd=p3d; tag='cp'; wd=6; ht=10
+pa=p4a; pb=p4b; pc=p4c; pd=p4d; tag='ko'; wd=10; ht=10
+pa=p5a; pb=p5b; pc=p5c; pd=p5d; tag='dp'; wd=10; ht=10
+fo = sprintf('%s/05.%s.pdf', dirw, tag)
+ggarrange(pa, pb, pc, pd, align='h', common.legend = F,
+    nrow=2, ncol=2, labels=LETTERS[1:5], widths=c(4,3), heights=c(2,2)) %>%
+    ggexport(filename = fo, width=wd, height=ht)
+
 
 fo = sprintf('%s/06.tfbs.pdf', dirw)
-ggarrange(p3a, p3b, align='h', common.legend = F,
+ggarrange(pa, pb, align='h', common.legend = F,
     nrow=1, ncol=2, labels=LETTERS[1:5], widths=c(2,2), heights=c(2,2)) %>%
     ggexport(filename = fo, width=6, height=6)
 
+#### ---- all obsolete
 #{{{ ko direct targets: auroc + pval
 tf0 = read_ko_direct()
 ko0 = ko %>% rename(tissue=Tissue) %>%
@@ -596,89 +631,6 @@ fo = file.path(dirw, "05.roc_prc.dev.pdf")
 ggpubr::ggarrange(p1, p2, nrow = 2, ncol = 1, heights = c(1,1))  %>%
     ggpubr::ggexport(filename = fo, width = 10, height = 5)
 #}}}
-#{{{ # [obsolete] aupr/auroc bar-plot
-levs = c("AUROC", "AUPR")
-tp = ev_tf %>% select(nid, ko) %>% unnest() %>%
-    inner_join(dss, by=c('gene_alias','Tissue')) %>%
-    filter(ctag %in% ctags) %>%
-    select(nid,ctag,auroc,auprc) %>%
-    mutate(auroc = as.numeric(auroc), auprc = as.numeric(auprc)) %>%
-    rename(AUPR = auprc, AUROC = auroc) %>%
-    gather(type, auc, -nid,  -ctag) %>%
-    mutate(auc = as.numeric(auc)) %>% filter(!is.na(auc)) %>%
-    group_by(type) %>% mutate(auc.norm = scale(auc)) %>% ungroup() %>%
-    mutate(lab = str_remove(sprintf("%.03f", auc), '^0+')) %>%
-    mutate(type = factor(type, levels = levs)) %>%
-    mutate(ctag = factor(ctag, levels = ctags)) %>%
-    inner_join(t_cfg, by = 'nid') %>%
-    mutate(lgd = factor(lgd, levels = rev(t_cfg$lgd)))
-p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=auc.norm)) +
-    geom_tile() +
-    geom_text(aes(x=ctag, y=lgd, label=lab), hjust=.5, size=2) +
-    scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
-    scale_y_discrete(expand=c(0,0)) +
-    #scale_fill_viridis(name="Area Under Curve (AUC)", begin = .4) +
-    scale_fill_gradientn(name = 'Area Under Curve (AUC)', colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100)) +
-    facet_wrap(~type, nrow = 1) +
-    otheme(strip.size=8, legend.pos='none', margin=c(.2,.2,.2,.2),
-           ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
-    theme(axis.text.x = element_text(angle = 30, hjust=1, vjust=1, size=7)) +
-    theme(axis.text.y = element_text(color=rev(t_cfg$col)))
-fp = sprintf('%s/05.tf.auc.pdf', dirw)
-ggsave(p1, file = fp, width = 11, height = 7)
-#}}}
-#{{{ # [obsolete] TFBS
-tv = ev_tf %>% select(nid, tfbs) %>% unnest() %>% filter(!is.na(pval))
-tp = tv %>%
-    mutate(lab = ifelse(pval<.05, number(-log10(pval),accuracy=2), '')) %>%
-    mutate(pval=-log10(pval)) %>%
-    select(nid,ctag,pval,lab) %>%
-    #mutate(ctag = factor(ctag, levels = ctags)) %>%
-    inner_join(t_cfg, by = 'nid') %>%
-    mutate(lgd = factor(lgd, levels=rev(t_cfg$lgd)))
-pval.max = max(tp$pval)
-p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=pval)) +
-    geom_tile() +
-    geom_text(aes(label=lab, col=abs(pval-pval.max/2)<pval.max*3/8), hjust=.5, size=2) +
-    scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
-    scale_y_discrete(expand=c(0,0)) +
-    #scale_fill_viridis(name="-log10(P-value)", begin = .4) +
-    scale_color_manual(values = c('white','black')) +
-    scale_fill_gradientn(name = '-log10(P-value)', colors = cols100) +
-    otheme(strip.size=8, legend.pos='none', margin=c(.2,.2,.2,.2),
-           ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
-    theme(axis.text.x = element_text(angle = 30, hjust=1, vjust=1, size=7)) +
-    theme(axis.text.y = element_text(color=rev(t_cfg$col)))
-fo = sprintf('%s/06.tfbs.pval.pdf', dirw)
-ggsave(p1, file = fo, width = 5, height = 7)
-
-levs = c("AUROC", "AUPR")
-tp = ev_tf %>% select(nid, tfbs) %>% unnest() %>%
-    select(nid,ctag,auroc,auprc) %>%
-    mutate(auroc = as.numeric(auroc), auprc = as.numeric(auprc)) %>%
-    rename(AUPR = auprc, AUROC = auroc) %>%
-    gather(type, auc, -nid,  -ctag) %>%
-    mutate(auc = as.numeric(auc)) %>% filter(!is.na(auc)) %>%
-    group_by(type) %>% mutate(auc.norm = scale(auc)) %>% ungroup() %>%
-    mutate(lab = str_remove(sprintf("%.03f", auc), '^0+')) %>%
-    mutate(type = factor(type, levels = levs)) %>%
-    inner_join(t_cfg, by = 'nid') %>%
-    mutate(lgd = factor(lgd, levels = rev(t_cfg$lgd)))
-p1 = ggplot(tp, aes(x=ctag, y=lgd, fill=auc.norm)) +
-    geom_tile() +
-    geom_text(aes(x=ctag, y=lgd, label=lab), hjust=.5, size=2) +
-    scale_x_discrete(expand=expand_scale(mult=c(0,0))) +
-    scale_y_discrete(expand=c(0,0)) +
-    #scale_fill_viridis(name="Area Under Curve (AUC)", begin = .4) +
-    scale_fill_gradientn(name = 'Area Under Curve (AUC)', colors = cols100) +
-    facet_wrap(~type, nrow = 1) +
-    otheme(strip.size=8, legend.pos='none', margin=c(.2,.2,.2,.2),
-           ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
-    theme(axis.text.x = element_text(angle = 30, hjust=1, vjust=1, size=7)) +
-    theme(axis.text.y = element_text(color=rev(t_cfg$col)))
-fp = sprintf('%s/06.tfbs.auc.pdf', dirw)
-ggsave(p1, file = fp, width = 6, height = 6)
-#}}}
 #}}}
 
 #{{{ GO/CornCyc
@@ -686,9 +638,9 @@ fv = sprintf("%s/rf.go.rds", dirr)
 ev_go = readRDS(fv)
 
 #{{{ enrichment [selected]
-ctags = c("GO_HC", "GO_arabidopsis","CornCyc")
+ctags = c("GO_HC", "GO_arabidopsis_P","CornCyc")
 nids = c("nc01","n13c",'n99a','n15d')
-tp = ev_go %>% select(nid, enrich) %>% unnest() %>%
+tp = ev_go %>% select(nid, enrich) %>% unnest(enrich) %>%
     filter(ctag %in% ctags, nid %in% nids) %>%
     mutate(ctag = factor(ctag, levels = ctags)) %>%
     inner_join(t_cfg, by='nid') %>%
@@ -728,9 +680,11 @@ fo = file.path(dirw, "07.go.selected.pdf")
 #}}}
 
 #{{{ enrichment [all]
-ctags = c("GO_HC", "GO_arabidopsis","GO_uniprot.plants","CornCyc",
-    "GO_Interproscan5","GO_pannzer","GO_argot2.5")
-tp = ev_go %>% select(nid, enrich) %>% unnest() %>%
+ctags = c("GO_HC", "GO_HC_ne")
+fo = file.path(dirw, "07.go.all.ne.pdf")
+ctags = c("GO_HC", "GO_arabidopsis_P","GO_uniprot.plants_P","CornCyc","GO_Interproscan5_P","GO_pannzer_P","GO_argot2.5_P")
+fo = file.path(dirw, "07.go.all.pdf")
+tp = ev_go %>% select(nid, enrich) %>% unnest(enrich) %>%
     filter(ctag %in% ctags) %>%
     mutate(ctag = factor(ctag, levels = ctags)) %>%
     inner_join(t_cfg, by='nid') %>%
@@ -763,13 +717,12 @@ for (i in 1:nrow(tps)) {
     pg$grobs[[idx]]$grobs[[1]]$children[[1]]$gp = gpar(fill=tps$col[i], alpha=.9)
     pg$grobs[[idx]]$grobs[[1]]$children[[2]]$children[[1]]$gp$col = 'white'
 }
-fo = file.path(dirw, "07.go.all.pdf")
 ggsave(pg, filename = fo, width = 8, height = 10)
 #}}}
 
 #{{{ enrichment [heatmap]
-ctags = c("GO_HC","GO_arabidopsis","GO_uniprot.plants","CornCyc")
-tp = ev_go %>% select(nid, enrich) %>% unnest() %>%
+ctags = c("GO_HC","GO_arabidopsis_P","GO_uniprot.plants_P","CornCyc")
+tp = ev_go %>% select(nid, enrich) %>% unnest(enrich) %>%
     filter(ctag %in% ctags, score == 10) %>%
     group_by(ctag) %>%
     #mutate(fcn = scale(fc)) %>% ungroup() %>%
@@ -803,7 +756,7 @@ ggarrange(pg, p2, common.legend = F,
 
 #{{{ enrichment [all eQTL]
 ctags = c("li2013","liu2017","wang2018")
-tp = ev_go %>% select(nid, enrich) %>% unnest() %>%
+tp = ev_go %>% select(nid, enrich) %>% unnest(enrich) %>%
     filter(ctag %in% ctags) %>%
     mutate(ctag = factor(ctag, levels = ctags)) %>%
     inner_join(t_cfg, by='nid') %>%
@@ -845,7 +798,7 @@ nids_hc = c("nc01", 'n13a','n15c','n15d','n18c',
     'n17a','n18a','n18e','n99a','n18g',
     'n13c','n13e','n15a','n19a','n18d')
 ctags = c("li2013","liu2017","wang2018")
-tp = ev_go %>% select(nid, enrich) %>% unnest() %>%
+tp = ev_go %>% select(nid, enrich) %>% unnest(enrich) %>%
     filter(ctag %in% ctags, score == 10) %>%
     group_by(ctag) %>%
     #mutate(fcn = scale(fc)) %>% ungroup() %>%
@@ -1137,6 +1090,7 @@ tp = ev_nv %>% filter(nid == 'nc01') %>%
     group_by(score, yid,cond,group1,group2,reg.DE) %>%
     summarise(prop.de = sum(n[tgt.DE!='non_DE'])/sum(n), n=sum(n)) %>%
     ungroup() %>% filter(n>=50) %>%
+    mutate(txt = ifelse(reg.DE == 'SPE', n, '')) %>%
     inner_join(t_cfg_rn, by='yid') %>%
     mutate(pan = sprintf("%s %s:\n%s vs %s", str_to_title(author), cond, group1, group2))
 tps = tp %>% distinct(yid,cond,group1,group2,pan) %>%
@@ -1145,6 +1099,7 @@ p1 = ggplot(tp) +
     geom_hline(data=tps, aes(yintercept=bg.de), linetype='dotted', size=.5) +
     geom_point(aes(x=score,y=prop.de,color=reg.DE, shape=reg.DE), size=1) +
     geom_line(aes(x=score,y=prop.de,color=reg.DE), size=.5) +
+    geom_text_repel(aes(x=score,y=prop.de,label=txt), size=2) +
     scale_x_continuous(breaks=seq(2,10,2), expand=c(.05,.05), name='Edge score') +
     scale_y_continuous(name='Proportion targets that are DE', expand=expand_scale(mult=c(.15,.15))) +
     facet_wrap(~pan, ncol=2, scale='free') +
@@ -1167,6 +1122,7 @@ tp = ev_nv %>% filter(nid == 'nc01') %>%
     group_by(score, yid,cond,group1,group2,reg.DE) %>%
     summarise(prop.de = sum(n[tgt.DE!='non_DE'])/sum(n), n=sum(n)) %>%
     ungroup() %>% filter(n>=50) %>%
+    mutate(txt = ifelse(reg.DE == 'SPE', n, '')) %>%
     inner_join(t_cfg_rn, by='yid') %>%
     mutate(pan = sprintf("%s %s:\n%s vs %s", str_to_title(author), cond, group1, group2))
 tps = tp %>% distinct(yid,cond,group1,group2,pan) %>%
@@ -1175,6 +1131,7 @@ p1 = ggplot(tp) +
     geom_hline(data=tps, aes(yintercept=bg.de), linetype='dotted', size=.5) +
     geom_point(aes(x=score,y=prop.de,color=reg.DE, shape=reg.DE), size=1) +
     geom_line(aes(x=score,y=prop.de,color=reg.DE), size=.5) +
+    geom_text_repel(aes(x=score,y=prop.de,label=txt), size=2) +
     scale_x_continuous(breaks=seq(2,10,2), expand=c(.05,.05), name='Edge score') +
     scale_y_continuous(name='Proportion targets that are DE', expand=expand_scale(mult=c(.15,.15))) +
     facet_wrap(~pan, ncol=5, scale='free') +
@@ -1198,10 +1155,13 @@ tp = ev_nv %>%
     ungroup() %>% filter(sampleSize>=40) %>%
     inner_join(nvs, by=c('yid','cond','group1','group2')) %>%
     mutate(pval = pmap_dbl(list(hitInSample-1,hitInPop,popSize-hitInPop,sampleSize), phyper, lower.tail=F)) %>%
-    mutate(pval = ifelse(pval==0, min(pval[pval!=0]), pval)) %>%
-    mutate(logp = -log10(pval)) %>%
+    select(-sampleSize,-hitInSample,-popSize,-hitInPop,-bg.de) %>%
+    group_by(yid, cond, group1, group2, reg.DE) %>%
+    mutate(padj = p.adjust(pval, method='BH')) %>% ungroup() %>%
+    mutate(padj = ifelse(padj==0, min(padj[padj!=0]), padj)) %>%
+    mutate(logp = -log10(padj)) %>%
     mutate(lab = str_remove(sprintf("%.0f", logp), '^0+')) %>%
-    mutate(lab = ifelse(pval<.05, lab, '')) %>%
+    mutate(lab = ifelse(padj<.05, lab, '')) %>%
     inner_join(t_cfg_rn, by='yid') %>%
     mutate(author = str_to_title(author)) %>%
     mutate(xlab0 = sprintf("%s %s: %s vs %s", author, cond, group1, group2)) %>%
@@ -1215,7 +1175,7 @@ tpx = tp %>% distinct(author, cond, xlab0, xlab1, xlab2, group2) %>%
 tpx1 = tpx %>% group_by(author,cond) %>% summarise(xs=min(x),xe=max(x),x=mean(x)) %>% ungroup()
 tpx2 = tpx %>% group_by(author) %>% summarise(xs=min(x),xe=max(x),x=mean(x)) %>% ungroup()
 tpy = tp %>% distinct(lgd, col) %>% arrange(lgd)
-leg = 'Enrichment in Proportion Target DE (-log10 phyper):'
+leg = 'Enrichment in Proportion Target DE (-log10(adjust p-value)):'
 swit = max(tp$logp)/2
 p1 = ggplot(tp) +
     geom_tile(aes(x=xlab0, y=lgd, fill=logp)) +

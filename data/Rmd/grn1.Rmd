@@ -46,13 +46,13 @@ dirw = '/home/springer/zhoux379/projects/grn/data/12_tables'
 
 Table 1. GRNs built in this study.
 ```{r, message=FALSE, echo=FALSE}
-readRDS(file.path(dirw, '01.t1.rds'))
+readRDS(file.path(dirw, 't1.rds'))
 ```
 
 \pagebreak
 ![]($grn/data/14_eval_sum/05.pval.pdf){width=100%}
 
-Figure 1.  TF-target interactions predicted by GRNs are supported by knockout mutant RNA-Seq experiments. (A) direct targets of published TF studies; (B) For each one of the 21 maize TFs with knockout mutant RNA-Seq data available, differentially expressed genes between mutant and wildtype were identified using DESeq2 (p-value < 0.01).  Wilcox rank test were then performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs).  Numbers in each cell show the actual test P-value (-log10 transformed) with blank cells standing for “not significant” (P > 0.05). White cells stand for missing data where the TF being tested (knocked out) is not expressed in the corresponding GRN.  Y-axis labels correspond to the different networks listed in Table 1.  X-axis labels show the common name for each TF, the tissue in which the TF is expressed, number of direct targets (Panel A) or number and proportion of differentially expressed genes in TF mutant (Panel B) as listed in Table S1.
+Figure 1.  TF-target interactions predicted by GRNs are supported by knockout mutant RNA-Seq experiments. (A) direct targets of published TF studies; (B) For each one of the 21 maize TFs with knockout mutant RNA-Seq data available, differentially expressed genes between mutant and wildtype were identified using DESeq2 (p-value < 0.01).  Wilcox rank test were then performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs).  P-values were adjusted by the Benjamini-Hochberg method implemented in R.  Numbers in each cell show the adjusted test P-value (-log10 transformed) with blank cells standing for “not significant” (P > 0.05). White cells stand for missing data where the TF being tested (knocked out) is not expressed in the corresponding GRN.  Y-axis labels correspond to the different networks listed in Table 1.  X-axis labels show the common name for each TF, the tissue in which the TF is expressed, number of direct targets (Panel A) or number and proportion of differentially expressed genes in TF mutant (Panel B) as listed in Table S1.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/07.go.pdf){width=80%}
@@ -62,7 +62,7 @@ Figure 2.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network t
 \pagebreak
 ![]($grn/data/14_eval_sum/03.hc.pdf){width=100%}
 
-Figure 3.  Hierarchical clustering of 44 GRNs.  Pairwise distance between networks was determined by taking the top 100,000 TF-target predictions from each network and calculating the proportion of shared (common) predictions (using ‘dist()’ function in R with additional argument ‘method=binary’).  Hierarchical clustering was then performed based on the cross-network pairwise distance matrix using “ward.D” method.
+Figure 3.  Hierarchical clustering of 45 GRNs.  Pairwise distance between networks was determined by taking the top 100,000 TF-target predictions from each network and calculating the proportion of shared (common) predictions (using ‘dist()’ function in R with additional argument ‘method=binary’).  Hierarchical clustering was then performed based on the cross-network pairwise distance matrix using “ward.D” method.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/09.go.heat.pdf){width=100%}
@@ -77,7 +77,7 @@ Figure 5.  TF-target validation of the combined tissue  network in three selecte
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.3.pdf){width=100%}
 
-Figure 6.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  Color and number in each cell represents the enrichment P-value (-log10 transformed, hypergeometric test p-value) of (SPE TF regulated) target DE proportions relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
+Figure 6.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  Color and number in each cell represents the enrichment P-value (-log10 transformed, Benjamin-Hhochberg adjusted hypergeometric test p-value) of (SPE TF regulated) target DE proportions relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/fig6.pdf){width=85%}
