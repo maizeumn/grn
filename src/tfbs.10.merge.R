@@ -60,7 +60,7 @@ d04 = file.path(dird, '04_tfbs')
 fi = file.path(d04, "P1/00.xlsx")
 ti = read_xlsx(fi) %>%
     select(chip_v2=1, chip_v4=2, dap_M=3, dap_deM=4, rna_mutant=5, rna_proto=6,
-        chip_rna=7, dap_rna_proto=8) %>%
+        chip_rna=7, dap_rna_proto=8, true_tgts=9) %>%
     gather(ctag, gid) %>%
     mutate(ctag = str_c("P1", ctag, sep="|")) %>%
     filter(!is.na(gid)) %>%
@@ -71,18 +71,13 @@ fo = file.path(dirw, "P1/10.tsv")
 #}}}
 
 to = rbind(t1, t2, t3a, t3b, t9)
-tof = to %>% count(ctag, tf) %>% filter(n >= 30) %>% select(ctag, tf)
+tof = to %>% count(ctag, tf) %>% filter(ctag=='P1|true_tgts' | n >= 30) %>% select(ctag, tf)
 to = to %>% inner_join(tof, by=c('ctag','tf'))
 to %>% count(ctag, tf) %>% arrange(n)
-to %>% count(ctag, tf) %>% filter(str_starts(ctag, 'Ricci'))
+to %>% count(ctag, tf) %>% filter(str_starts(ctag, 'Ricci')) %>% mutate(x=map_int(tf, nchar)) %>% print(n=50)
 to %>% count(ctag, tf) %>% filter(str_starts(ctag, 'P1'))
 
 fo = file.path(diro, '15.regulations.tsv')
 write_tsv(to, fo)
 #}}}
-
-
-
-
-
 

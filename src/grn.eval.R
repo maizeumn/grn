@@ -50,16 +50,17 @@ complete_tn2 <- function(tn, rids, tids) {
     }
     #}}}
 }
-eval_tf1 <- function(ti, tn, rids, tids, fpr=.1, net_size=1e7) {
+eval_tf1 <- function(ti, net_size, tn, rids, tids, fpr=.1) {
     #{{{
     rids0 = rids[rids %in% ti$reg.gid]
-    tt = complete_tn(tn, tids, rids0) %>%
-        filter(reg.gid %in% rids0) %>%
+    tn0 = tn %>% filter(row_number() <= net_size)
+    tt = complete_tn(tn0, tids, rids0)
+    if(nrow(tt) == 0) return(list(auroc=NA,pval=NA,auroc0=NA,auprc=NA))
+    tt = tt %>% filter(reg.gid %in% rids0) %>%
         filter(reg.gid != tgt.gid) %>%
         mutate(score = as.numeric(score)) %>%
         mutate(score = ifelse(is.na(score), 0, score)) %>%
-        arrange(desc(score)) %>%
-        filter(row_number() <= net_size)
+        arrange(desc(score))
     if(max(tt$score) == 0) tt$score[1] = 0.1
     to = tt %>%
         left_join(ti, by = c('reg.gid','tgt.gid')) %>%
@@ -112,41 +113,34 @@ if(thread > 1) {
     options(future.globals.maxSize=10e9)
 }
 
-#gs was already read
-if (opt == 'bs') {
-    #{{{ ChIP-Seq / DAP-Seq / PWM-TFBS
+if (opt %in% c('bs','ko')) {
+    #{{{ ChIP-Seq / DAP-Seq / PWM-TFBS | knock-out mutant
     require(PRROC)
     require(pROC)
-    net_size = 1e7; fpr = .1
-    x1 = gs$bs %>% filter(reg.gid %in% rids) %>%
-        mutate(tf = reg.gid, response = 1) %>%
-        group_by(ctag, tf) %>% nest()
-    res = x1 %>%
-        mutate(r = map(data, eval_tf1, tn=tn, rids=rids, tids=tids, fpr=fpr, net_size=net_size)) %>%
-        mutate(auroc=map_dbl(r, 'auroc')) %>%
-        mutate(pval=map_dbl(r, 'pval')) %>%
-        mutate(auroc0=map_dbl(r, 'auroc0')) %>%
-        mutate(auprc=map_dbl(r, 'auprc')) %>%
-        select(ctag, tf, auroc, pval, auroc0, auprc)
-    #}}}
-} else if (opt == 'ko') {
-    #{{{ TF knockout mutant RNA-Seq
-    require(PRROC)
-    require(pROC)
-    net_size = 1e7; fpr = .1
-    x1 = gs$ko %>% mutate(reg.gid=gene_id) %>% filter(reg.gid %in% rids) %>%
-        rename(tissue=Tissue) %>% unnest() %>%
-        rename(tgt.gid=gid) %>%
-        mutate(response = ifelse(padj < .01, 1, 0)) %>%
-        select(-disp, -padj, -log2fc) %>%
-        group_by(gene_id,gene_alias,gene_name,tissue) %>% nest()
-    res = x1 %>%
-        mutate(r = map(data, eval_tf1, tn=tn, rids=rids, tids=tids, fpr=fpr, net_size=net_size)) %>%
-        mutate(auroc=map_dbl(r, 'auroc')) %>%
-        mutate(pval=map_dbl(r, 'pval')) %>%
-        mutate(auroc0=map_dbl(r, 'auroc0')) %>%
-        mutate(auprc=map_dbl(r, 'auprc')) %>%
-        select(gene_id,gene_alias,gene_name,tissue,auroc,pval,auroc0,auprc)
+    fpr = .1; net_sizes = c(1e5, 1e6, 1e7)
+    x1 = gs[[opt]] %>% filter(reg.gid %in% rids)
+    if(nrow(x1) == 0) {
+        res = NULL
+    } else {
+        if(opt == 'bs') {
+            x2 = x1 %>%
+                mutate(tf = reg.gid, response = 1) %>%
+                group_by(ctag, tf) %>% nest()
+        } else if(opt == 'ko') {
+            x2 = x1 %>%
+                unnest(ds) %>% rename(tgt.gid=gid) %>%
+                mutate(response = ifelse(padj < .01, 1, 0)) %>%
+                select(-padj, -log2fc) %>%
+                group_by(yid,author,tf,tissue) %>% nest()
+        }
+        res = x2 %>% crossing(net_size = net_sizes) %>%
+            mutate(r = map2(data, net_size, eval_tf1, tn=tn, rids=rids, tids=tids, fpr=fpr)) %>%
+            mutate(auroc=map_dbl(r, 'auroc')) %>%
+            mutate(pval=map_dbl(r, 'pval')) %>%
+            mutate(auroc0=map_dbl(r, 'auroc0')) %>%
+            mutate(auprc=map_dbl(r, 'auprc')) %>%
+            select(-data, -r)
+    }
     #}}}
 } else if (opt == 'go') {
     #{{{

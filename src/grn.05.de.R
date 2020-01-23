@@ -1,43 +1,37 @@
 require(DESeq2)
-require(edgeR)
+#require(edgeR)
 source("functions.R")
+fh = '~/projects/master.xlsx'
+th = read_xlsx(fh, sheet='barn', col_names=T) %>%
+    filter(libtype == 'rnaseq', str_detect(yid, "^cp")) %>%
+    select(yid,author,tf=alias)
 
 #{{{ call DEGs for mutant RNA-Seq
-fi= '~/projects/barn/data/01.cfg.xlsx'
-ti = read_xlsx(fi, sheet='mutants') %>%
-    select(yid,gene_id,gene_alias,gene_name)
-ti %>% print(n=40)
-#
-diri = '~/projects/rnaseq/data/11_qc'
-fi = file.path(diri, 'rn12a', 'cpm.rds')
-x = readRDS(fi)
+x = th %>% filter(yid != 'cp15b2') %>% mutate(x=map(yid, rnaseq_cpm)) %>%
+    mutate(th = map(x, 'th'), tm = map(x, 'tm')) %>%
+    select(yid, author, tf, th, tm)
 
-tm = x$tm
-th = x$th %>%
-    filter(! Treatment %in% c('mads47','o2_b')) %>%
-    filter(Genotype != 'kn1_het') %>%
-    filter(Genotype != 'sil') %>%
-    filter(Tissue != 'silk') %>%
-    filter(! Tissue %in% c("blade","ligule","sheath",'L1_blade','L1_ligule','L1_sheath'))
-# repeat ra2 & ra3
-th2 = th %>% filter(Treatment=='ra1',Genotype=='WT') %>% mutate(Treatment='ra2')
-th3 = th %>% filter(Treatment=='ra1',Genotype=='WT') %>% mutate(Treatment='ra3')
-th = rbind(th,th2,th3)
-th %>% dplyr::count(Treatment, Tissue, Genotype) %>% print(n=60)
+x$th[[1]] = x$th[[1]] %>% filter(Genotype != 'kn1_het')
+x$th[[2]] = x$th[[2]] %>% filter(Tissue != 'silk')
+x$th[[3]] = x$th[[3]] %>% filter(Tissue %in% c("ear_1mm", "ear_2mm"))
+x$th[[9]] = x$th[[9]] %>% filter(Tissue %in% str_c("tiller_buds", c("8DAP","12DAP"), sep='_')) %>% mutate(Genotype=str_replace(Genotype,'^B73$','wt'))
 
-th = ti %>%
-    inner_join(th, by = c('gene_alias'='Treatment')) %>%
-    select(-MergeID,-paired,-spots,-avgLength) %>%
-    mutate(Genotype = ifelse(Genotype == 'WT', Genotype, 'mutant'))
-th %>% dplyr::count(gene_alias, Tissue, Genotype) %>% print(n=62)
+x$th[[5]] %>% dplyr::count(Tissue, Genotype)
 
-ds = th %>% distinct(gene_id, gene_alias, gene_name, Tissue) %>%
-    mutate(ds=map2(gene_alias,Tissue, run_deseq2, tm=tm, th=th))
-ds %>% unnest() %>% filter(padj < .01) %>% dplyr::count(gene_alias, Tissue) %>%
+ds = x %>% mutate(data=map2(th, tm, run_deseq2))
+
+tf = read_tf_info() %>% distinct(tf, gid)
+ko = ds %>% select(-th, -tm) %>% unnest(data) %>% select(-cond, -condR) %>%
+    mutate(tf = ifelse(tf=='RA1', str_to_upper(Genotype), tf)) %>%
+    mutate(tf = ifelse(tf=='TB1' & Genotype=='gt', 'GT1', tf)) %>%
+    select(-Genotype)  %>% dplyr::rename(tissue=Tissue) %>%
+    left_join(tf, by='tf') %>% select(yid,author,tf,tissue,reg.gid=gid,ds)
+ko %>% print(n=30)
+ko %>% unnest(ds) %>% filter(padj < .01) %>% dplyr::count(tf, tissue) %>%
     print(n=31)
 
-fo = file.path(dird, '07_mutants', 'degs.rds')
-saveRDS(ds, file=fo)
+fo = file.path(dird, '07_known_tf', 'degs.rds')
+saveRDS(ko, file=fo)
 #}}}
 
 #{{{ DEGs for natural variation data

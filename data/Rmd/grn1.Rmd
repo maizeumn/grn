@@ -50,7 +50,7 @@ readRDS(file.path(dirw, 't1.rds'))
 ```
 
 \pagebreak
-![]($grn/data/14_eval_sum/05.pval.pdf){width=100%}
+![]($grn/data/14_eval_sum/05.100k.pval.pdf){width=100%}
 
 Figure 1.  TF-target interactions predicted by GRNs are supported by knockout mutant RNA-Seq experiments. (A) direct targets of published TF studies; (B) For each one of the 21 maize TFs with knockout mutant RNA-Seq data available, differentially expressed genes between mutant and wildtype were identified using DESeq2 (p-value < 0.01).  Wilcox rank test were then performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs).  P-values were adjusted by the Benjamini-Hochberg method implemented in R.  Numbers in each cell show the adjusted test P-value (-log10 transformed) with blank cells standing for “not significant” (P > 0.05). White cells stand for missing data where the TF being tested (knocked out) is not expressed in the corresponding GRN.  Y-axis labels correspond to the different networks listed in Table 1.  X-axis labels show the common name for each TF, the tissue in which the TF is expressed, number of direct targets (Panel A) or number and proportion of differentially expressed genes in TF mutant (Panel B) as listed in Table S1.
 
@@ -59,15 +59,22 @@ Figure 1.  TF-target interactions predicted by GRNs are supported by knockout mu
 
 Figure 2.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation).  (A) GO/CornCyc enrichment is shown for 4 selected networks.  (B) Heatmap showing enrichment of co-annotated GO/CornCyc terms in the first bin (i.e., top 100k) of edges in the GRNs.  See Figure S7 for the enrichment in all bins of all built GRNs.  A total of six sources of GO annotation were used but only three were shown here: GO_HC (high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_arabidopsis and GO_uniprot.plants (check Figure S7 for a complete list)
 
-\pagebreak
-![]($grn/data/14_eval_sum/03.hc.pdf){width=100%}
-
-Figure 3.  Hierarchical clustering of 45 GRNs.  Pairwise distance between networks was determined by taking the top 100,000 TF-target predictions from each network and calculating the proportion of shared (common) predictions (using ‘dist()’ function in R with additional argument ‘method=binary’).  Hierarchical clustering was then performed based on the cross-network pairwise distance matrix using “ward.D” method.
 
 \pagebreak
-![]($grn/data/14_eval_sum/09.go.heat.pdf){width=100%}
+![]($grn/data/16_pathways/22.pdf){width=100%}
 
-Figure 4.  Hierarchical clustering of 98 Gene Ontology (Uniprot.Plants, level 6) terms using fold enrichment in different GRNs.  Only GO terms enriched (i.e., P-value < 0.05 and fold change > 1, top 100k edges taken) in at least 3 out of the 44 networks were used for clustering.  Insignificant enrichment (p-value < 0.05) was treated as missing data and shown as white space in the figure.  Fold enrichment is determined as described in Figure 2.
+Figure 3.  GRN predictions show enrichment of documented transcriptional regulations from Arabidopsis.  (A) Permutation analysis showing the number of random TF-target interactions supported by at least one of the 45 GRNs (histogram) as compared to the actual regulations (transferred from Arabidopsis) with GRN support (red dashed line).  (B) The abscisic acid (ABA) pathway transferred from Arabidopsis showed support for 12 out of the 20 edges.  (C) 6 out of the 11 HY5 (Elongated Hypocotyl 5) targets transferred from Arabidopsis showed support in at least one GRN.
+
+\pagebreak
+![]($grn/data/16_pathways/24.pdf){width=100%}
+
+Figure 3.5.  GRN predictions found known and unknown regulators of classic metabolic pathways.  (A) The anthocyanin biosynthesis pathway.  (B) The teosinte branched1 (tb1)-mediated pathway regulating bud dormancy and growth repression.  (C) The DIMBOA pathway.  (D) The glycolysis pathway.
+
+\pagebreak
+![]($grn/data/16_pathways/26.pdf){width=100%}
+
+Figure 4.  Different coexpression-based GRNs capture distinct parts of CornCyc metabolic pathways.  (A-B) The zealexin biosynthesis pathway regulated by a WRKY-transcription factor 34 (wrky34, Zm00001d009939).  (C-D) The methylerythritol phosphate pathway regulated by a C2C2-CO-like-transcription factor 11 (col11, Zm00001d003162).  (E-F) The chlorophyllide biosynthesis pathway regulated by a homeobox-transcription factor 26 (hb26, Zm00001d008612). 
+
 
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.1.pdf){width=60%}

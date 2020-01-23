@@ -26,42 +26,44 @@ t_cfg = t_cfg %>% select(-mid) %>%
     mutate(lgd = sprintf("%s %s [%d]", str_to_title(study),note,sample_size)) #%>%
     #select(-study,-note,-sample_size)
 tsyn = read_syn(gcfg)
+symb = read_symbol() %>% mutate(symbol=ifelse(gid=='Zm00001d026147','R1',symbol))
 gs = readRDS('~/projects/grn/data/09.gs.rds')
 cols100 = colorRampPalette(rev(brewer.pal(n = 6, name = "RdYlBu")))(100)
 cols100v = viridis_pal(direction=-1,option='magma')(100)
 
+trim_gid <- function(gid, opt=1) str_replace(str_replace(gid,'^Zm00001[de]',''), '^GRMZM2G','')
 read_tf_info <- function(fi='~/projects/grn/data/tf_info.xlsx')
     read_xlsx(fi)
 read_tfbs_regulations <- function(fi='~/projects/grn/data/04_tfbs/15.regulations.tsv')
     read_tsv(fi)
-read_ko <- function(fd = file.path(dird, '07_mutants', 'degs.rds'))
+read_ko <- function(fd = file.path(dird, '07_known_tf', 'degs.rds'))
     readRDS(fd)
 
-read_eval_ko <- function(dird='~/projects/grn/data') {
+read_eval_ko <- function(dird='~/projects/grn/data',gopts=c("et","rf",'xgb')) {
     #{{{
     nrow_positive <- function(ti) sum(ti$response == 1)
-    ko = read_ko() %>% filter(!gene_alias %in% c('P1','fl3','cle7','ra3')) %>%
+    ko = read_ko() %>% filter(!tf %in% c('RA3')) %>%
         mutate(kid=1:n()) %>%
-        select(kid,gene_id,gene_alias,tissue=Tissue,ds) %>%
+        select(kid,tf,tissue,reg.gid,ds) %>%
         unnest(ds) %>%
         mutate(response=ifelse(padj < .01, 1, 0)) %>%
-        rename(reg.gid = gene_id, tgt.gid = gid) %>%
-        group_by(kid,gene_alias,tissue) %>% nest() %>% rename(res = data) %>%
+        rename(tgt.gid = gid) %>%
+        group_by(kid,tf,tissue) %>% nest() %>% rename(res = data) %>%
         mutate(n_tot = map_dbl(res, nrow)) %>%
         mutate(n_de = map_dbl(res, nrow_positive)) %>%
         mutate(prop_de=n_de/n_tot) %>%
-        mutate(ctag=sprintf("%s [%s] [%s] [%s]", gene_alias, tissue, number(n_de), percent(prop_de, accuracy=.1))) %>%
-        select(kid, gene_alias, tissue, ctag)
+        mutate(ctag=sprintf("%s_%s [%s] [%s]", tf, tissue, number(n_de), percent(prop_de, accuracy=.1))) %>%
+        select(kid, tf, tissue, ctag)
     ctags = ko$ctag
     #
     ev = tibble(gopt = gopts) %>%
         mutate(fi = sprintf('%s/raw/%s.ko.rds', dird, gopt)) %>%
         mutate(data = map(fi, readRDS)) %>% select(-fi) %>% unnest(data) %>%
-        select(gopt, nid, gene_alias,tissue,auroc,pval,auroc0,auprc) %>%
-        inner_join(ko, by=c("gene_alias", "tissue")) %>%
+        select(gopt,nid,net_size,tf,tissue,auroc,pval,auroc0,auprc) %>%
+        inner_join(ko, by=c("tf", "tissue")) %>%
         mutate(gopt = str_to_upper(gopt)) %>%
         mutate(ctag = factor(ctag, levels=ctags)) %>%
-        group_by(gopt, ctag) %>%
+        group_by(gopt, net_size, ctag) %>%
         mutate(padj = p.adjust(pval, method='BH')) %>%
         ungroup() %>%
         mutate(score1 = auroc * 1000) %>%
@@ -76,23 +78,24 @@ read_eval_ko <- function(dird='~/projects/grn/data') {
     ev
     #}}}
 }
-read_eval_bs <- function() {
+read_eval_bs <- function(gopts=c("et",'rf','xgb')) {
     #{{{
     tf = read_tf_info() %>% distinct(tf, gid) %>% rename(reg.gid=gid, name=tf)
     bs = gs$bs %>% count(ctag, reg.gid) %>%
         left_join(tf, by='reg.gid') %>%
         rename(tf = reg.gid) %>%
         mutate(name = ifelse(str_detect(ctag, '^REF'), str_replace(ctag, 'REF\\|', ''), name)) %>%
+        mutate(name = ifelse(str_detect(ctag, '^P1'), ctag, name)) %>%
         mutate(xlab = sprintf("%s (%s)", name, number(n))) %>%
         select(ctag, tf, n, xlab)
     #
     ev = tibble(gopt = gopts) %>%
         mutate(fi = sprintf('%s/raw/%s.bs.rds', dird, gopt)) %>%
         mutate(data = map(fi, readRDS)) %>% select(-fi) %>% unnest(data) %>%
-        select(gopt, nid, ctag, tf, auroc, pval, auroc0, auprc) %>%
+        select(gopt, nid, net_size, ctag, tf, auroc, pval, auroc0, auprc) %>%
         inner_join(bs, by=c("ctag",'tf')) %>%
         mutate(gopt = str_to_upper(gopt)) %>%
-        group_by(gopt, ctag, tf) %>%
+        group_by(gopt, net_size, ctag, tf) %>%
         mutate(padj = p.adjust(pval, method='BH')) %>%
         ungroup() %>%
         mutate(score1 = auroc * 1000) %>%
@@ -117,7 +120,7 @@ read_eval_go <- function() {
 }
 plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
     #{{{
-    tp = tp %>%
+    tp = tp %>% filter(!is.na(score)) %>%
         inner_join(t_cfg, by = 'nid') %>%
         mutate(lgd = factor(lgd, levels=rev(t_cfg$lgd)))
     tps = t_cfg %>% distinct(lgd, col)
@@ -150,7 +153,7 @@ plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
         theme(legend.title=element_text(size=8)) +
         theme(legend.text=element_text(size=7)) +
         #theme(legend.key.size = unit(.5, 'lines')) +
-        guides(color=F)
+        guides(color=F, fill = guide_colourbar(barheight=.6))
     if(ytext)
         p1 = p1 + theme(axis.text.y = element_text(color=rev(tps$col), size=7))
     else
@@ -209,13 +212,22 @@ radian.rescale <- function(x, start=0, direction=1) {
       c.rotate <- function(x) (x + start) %% (2 * pi) * direction
   c.rotate(scales::rescale(x, c(0, 2 * pi), range(x)))
 }
-run_deseq2 <- function(gene_alias, Tissue, tm, th) {
+get_ds <- function(condR, cond, dds, gids) {
     #{{{
-    require(DESeq2)
-    require(edgeR)
-    cat(sprintf('--> working on %s - %s\n', gene_alias, Tissue))
-    th1 = th %>% filter(gene_alias == !!gene_alias, Tissue == !!Tissue)
+    res1 = results(dds, contrast = c("cond",condR,cond), pAdjustMethod='fdr')
+    stopifnot(rownames(res1) == gids)
+    tibble(gid = gids, padj = res1$padj, log2fc = res1$log2FoldChange) %>%
+        replace_na(list(padj = 1))
+    #}}}
+}
+run_deseq2 <- function(th, tm) {
+    #{{{
+    #cat(sprintf('--> working on %s - %s\n', gene_alias, Tissue))
+    th1 = th %>% mutate(Genotype=str_replace(Genotype, 'WT', 'wt')) %>%
+        mutate(cond = str_c(Tissue, Genotype, sep="."))
     tm1 = tm %>% filter(SampleID %in% th1$SampleID)
+    ct = th1 %>% distinct(Tissue,Genotype,cond) %>% filter(Genotype != 'wt') %>%
+        mutate(condR = str_c(Tissue, 'wt', sep="."))
     #{{{ prepare data
     vh = th1 %>% mutate(Genotype = factor(Genotype)) %>% arrange(SampleID)
     vh.d = column_to_rownames(as.data.frame(vh), var = 'SampleID')
@@ -231,21 +243,15 @@ run_deseq2 <- function(gene_alias, Tissue, tm, th) {
     stopifnot(identical(rownames(vh.d), colnames(vm.d)))
     #}}}
     # DESeq2
-    dds = DESeqDataSetFromMatrix(countData=vm.d, colData=vh.d, design=~Genotype)
+    dds = DESeqDataSetFromMatrix(countData=vm.d, colData=vh.d, design=~cond)
     dds = estimateSizeFactors(dds)
     dds = estimateDispersions(dds, fitType = 'parametric')
     disp = dispersions(dds)
     #dds = nbinomLRT(dds, reduced = ~ 1)
     dds = nbinomWaldTest(dds)
     resultsNames(dds)
-    res1 = results(dds, contrast=c("Genotype","WT",'mutant'), pAdjustMethod="fdr")
-    stopifnot(rownames(res1) == gids)
-    #
-    t_ds = tibble(gid = gids, disp = disp,
-                padj = res1$padj, log2fc = res1$log2FoldChange,
-                ) %>%
-        replace_na(list(padj = 1))
-    t_ds
+    res = ct %>% mutate(ds = map2(condR, cond, get_ds, dds = dds, gids = gids))
+    res
     #}}}
 }
 

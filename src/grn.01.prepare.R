@@ -21,7 +21,7 @@ fo = file.path(dirw, '01.y1h.tsv')
 write_tsv(to, fo)
 #}}}
 
-#{{{ ## collect known TF targets
+#{{{ # collect known TF targets
 dirw = file.path(dird, '07_known_tf')
 #{{{ KN1
 tag = 'KN1'
@@ -42,31 +42,24 @@ tib = ti %>% filter(fdr_tassel < .01) %>% mutate(tag = 'KN1_tassel')
 tic = ti %>% filter(fdr_leaf < .01) %>% mutate(tag = 'KN1_leaf')
 tid = ti %>% filter(fdr_ear<.01, fdr_tassel<.01, fdr_leaf<.01) %>% mutate(tag = 'KN1_any')
 tie = ti %>% filter(fdr_ear<.01 | fdr_tassel<.01 | fdr_leaf<.01) %>% mutate(tag = 'KN1_all')
-ti2 = rbind(tia, tib, tic, tid, tie)
+ti2 = rbind(tia, tib, tic)
 ti2 %>% count(tag)
 
 ti3 = ti2 %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
 ti4 = ti3 %>% filter(type == '1-to-1')
 ti4 %>% count(tag)
-sum(ti4$gid %in% tg$gid)
+sum(ti4$gid %in% gcfg$gene$gid)
+kn1 = ti4 %>% select(tag, tgt.gid = gid)
+kn1 %>% count(tag)
+kn1 %>% distinct(tag, tgt.gid) %>% count(tag)
+#}}}
 
-tfid = 'Zm00001d033859'
-tags = unique(ti4$tag)
-for (tag in tags) {
-    to = ti4 %>% filter(tag == !!tag) %>%
-        distinct(gid) %>%
-        transmute(reg.gid = tfid, tgt.gid = gid)
-    fo = sprintf("%s/05.%s.tsv", dirw, tag)
-    write_tsv(to, fo)
-}
-
-to = ti4 %>%
-    distinct(gid) %>%
-    transmute(reg.gid = tfid, tgt.gid = gid)
-tag = 'KN1'
-fo = sprintf("%s/05.%s.tsv", dirw, tag)
-write_tsv(to, fo)
+#{{{ P1
+fi = file.path(dird, "04_tfbs", "P1/00.xlsx")
+p1 = read_xlsx(fi) %>%
+    select(tgt.gid = 9) %>% mutate(tag = 'P1') %>%
+    filter(!is.na(tgt.gid)) %>% select(tag, tgt.gid)
 #}}}
 
 #{{{ FEA4
@@ -78,13 +71,10 @@ ti2 = ti %>%
     filter(DE == 'yes')
 ti3 = ti2 %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
-ti4 = ti3 %>% filter(type == '1-to-1') 
-sum(ti4$gid %in% tg$gid)
-
-tfid = 'Zm00001d037317'
-to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
-fo = sprintf("%s/05.%s.tsv", dirw, tag)
-write_tsv(to, fo)
+ti4 = ti3 %>% filter(type == '1-to-1')
+sum(ti4$gid %in% gcfg$gene$gid)
+fea4 = ti4 %>% mutate(tag=tag) %>% select(tag, tgt.gid = gid)
+fea4 %>% count(tag)
 #}}}
 
 #{{{ O2
@@ -100,12 +90,9 @@ ti = read_tsv(fi, col_names = F) %>%
 ti3 = ti %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
 ti4 = ti3 %>% filter(type == '1-to-1')
-sum(ti4$gid %in% tg$gid)
-
-tfid = 'Zm00001d018971'
-to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
-fo = sprintf("%s/05.%s.tsv", dirw, tag)
-write_tsv(to, fo)
+sum(ti4$gid %in% gcfg$gene$gid)
+o2 = ti4 %>% mutate(tag=tag) %>% select(tag, tgt.gid = gid)
+o2 %>% count(tag)
 #}}}
 
 #{{{ RA1
@@ -117,13 +104,10 @@ ti2 = ti %>% transmute(ogid = X2, de1 = X5 ,de2 = X7) %>%
 nrow(ti2)
 ti3 = ti2 %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
-ti4 = ti3 %>% filter(type == '1-to-1') 
-sum(ti4$gid %in% tg$gid)
-
-tfid = 'Zm00001d020430'
-to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
-fo = sprintf("%s/05.%s.tsv", dirw, tag)
-write_tsv(to, fo)
+ti4 = ti3 %>% filter(type == '1-to-1')
+sum(ti4$gid %in% gcfg$gene$gid)
+ra1 = ti4 %>% mutate(tag=tag) %>% select(tag, tgt.gid = gid)
+ra1 %>% count(tag)
 #}}}
 
 #{{{ HDA101
@@ -135,12 +119,9 @@ nrow(ti2)
 ti3 = ti2 %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
 ti4 = ti3 %>% filter(type == '1-to-1')
-sum(ti4$gid %in% tg$gid)
-
-tfid = 'Zm00001d053595'
-to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
-fo = sprintf("%s/05.%s.tsv", dirw, tag)
-write_tsv(to, fo)
+sum(ti4$gid %in% gcfg$gene$gid)
+hda101 = ti4 %>% mutate(tag=tag) %>% select(tag, tgt.gid = gid)
+hda101 %>% count(tag)
 #}}}
 
 #{{{ bZIP22
@@ -152,13 +133,32 @@ ti2 = ti %>% transmute(ogid = X2)
 nrow(ti2)
 ti3 = ti2 %>% inner_join(tm, by = 'ogid')
 ti3 %>% count(type)
-ti4 = ti3 #%>% filter(type == '1-to-1')
-sum(ti4$gid %in% t_gs$gid)
-
-to = tibble(reg.gid = tfid, tgt.gid = unique(ti4$gid))
-fo = sprintf("%s/05.%s.tsv", dirw, tag)
-write_tsv(to, fo)
+ti4 = ti3 %>% filter(type == '1-to-1')
+sum(ti4$gid %in% gcfg$gene$gid)
+bzip22 = ti4 %>% mutate(tag=tag) %>% select(tag, tgt.gid = gid)
+bzip22 %>% count(tag)
 #}}}
+
+#{{{ TB1
+tag = 'TB1'
+fi = sprintf("%s/raw/%s.xlsx", dirw, tag)
+ti = read_xlsx(fi, skip=1)
+ti2 = ti %>% select(ogid = 1)
+ti3 = ti2 %>% inner_join(tm, by = 'ogid')
+ti3 %>% count(type)
+ti4 = ti3 %>% filter(type == '1-to-1')
+sum(ti4$gid %in% gcfg$gene$gid)
+tb1 = ti4 %>% mutate(tag=tag) %>% select(tag, tgt.gid = gid)
+tb1 %>% count(tag)
+#}}}
+
+tf = read_tf_info() %>% distinct(tf, gid) %>% rename(reg.gid=gid)
+to = rbind(kn1, p1, fea4, o2, ra1, hda101, bzip22, tb1) %>%
+    mutate(tf = str_replace(tag, "_.*$", '')) %>%
+    left_join(tf, by='tf') %>% select(tag, reg.gid, tgt.gid)
+to %>% count(tag, reg.gid)
+fo = file.path(dirw, '10.known.tf.tgts.tsv')
+write_tsv(to, fo)
 #}}}
 
 #{{{ ## Walley2016 and Huang2018 GRNs
@@ -201,14 +201,12 @@ ko = read_ko()
 
 #{{{ read chipseq/dapseq/tfbs -based predictions
 fi1 = '~/projects/grn/data/04_tfbs/15.regulations.tsv'
-ti1 = read_tsv(fi1) %>% rename(reg.gid=tf)
+ti1 = read_tsv(fi1) %>% rename(reg.gid=tf) %>%
+    filter(!str_detect(ctag, '^(cisbp)|(plantregmap)'))
 #
-d07 = '~/projects/grn/data/07_mutants'
-tfs = c('KN1_ear','KN1_leaf','KN1_tassel','RA1','FEA4','O2','bZIP22')
-ti2 = tibble(ctag=tfs) %>%
-    mutate(ft=sprintf("%s/05.%s.tsv", d07, ctag)) %>%
-    mutate(data = map(ft, read_tsv)) %>% select(-ft) %>%
-    mutate(ctag = str_c("REF", ctag, sep="|")) %>% unnest()
+f07 = '~/projects/grn/data/07_known_tf/10.known.tf.tgts.tsv'
+ti2 = read_tsv(f07) %>% rename(ctag = tag) %>%
+    mutate(ctag = str_c("REF", ctag, sep="|"))
 #
 bs = rbind(ti1, ti2)
 bs %>% count(ctag) %>% print(n=50)
@@ -255,7 +253,7 @@ hs = tibble(ctag=ctags) %>%
     mutate(fi=file.path('~/projects/genome/data2',ctag,'10.rds')) %>%
     mutate(data = map(fi, readRDS)) %>%
     mutate(hs = map(data, 'hs.tgt')) %>%
-    select(ctag, hs) %>% unnest() %>%
+    select(ctag, hs) %>% unnest(hs) %>%
     select(ctag,grp=qid,gid) %>% mutate(note=NA)
 #
 fun_ann = rbind(go_hc,go_hc_ne, go, cc, hs)
@@ -296,17 +294,17 @@ tf_ids = ti$gid
 length(tf_ids)
 length(unique(tf_ids))
 
-fi= '~/projects/barn/data/01.cfg.xlsx'
-ti = read_xlsx(fi, sheet='mutants') %>%
-    select(yid,gene_id,gene_alias,gene_name)
+ti = read_tf_info() %>%
+    select(yid, tf, gid)
 ti %>% print(n=40)
 
 x = bs %>% filter(!str_starts(ctag, 'plantregmap'), !str_starts(ctag, 'cisbp')) %>%
     distinct(reg.gid) %>% mutate(x=reg.gid %in% tf_ids) %>% print(n=50)
 x$reg.gid[14]
-tf_ids_n = ti %>% distinct(gene_id) %>% filter(str_detect(gene_id, '^Zm0')) %>%
-    filter(!gene_id %in% tf_ids) %>% pull(gene_id)
+tf_ids_n = ti %>% distinct(gid) %>% filter(str_detect(gid, '^Zm0')) %>%
+    filter(!gid %in% tf_ids) %>% pull(gid)
 tf_ids_n
+read_tf_info() %>% filter(gid %in% tf_ids_n)
 tf_ids = c(tf_ids, tf_ids_n)
 length(tf_ids)
 #}}}

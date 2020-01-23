@@ -115,20 +115,20 @@ ev_ko = read_eval_ko()
 ev_bs = read_eval_bs()
 ev_go = read_eval_go()
 
-evk = ev_ko %>% mutate(xlab=ctag)
-evc = ev_bs %>% filter(str_detect(ctag, '^REF'))
-evd = ev_bs %>% filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)$'))
-evdu = ev_bs %>% filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)_umr$'))
-evde = ev_bs %>% filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)_acrE$'))
-evdl = ev_bs %>% filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)_acrL$'))
-evbc = ev_bs %>% filter(str_detect(ctag, '^cisbp'))
-evbp = ev_bs %>% filter(str_detect(ctag, '^plantregmap'))
+evk = ev_ko %>% filter(net_size==1e7) %>%  mutate(xlab=ctag)
+evc = ev_bs %>% filter(net_size==1e7) %>% filter(str_detect(ctag, '^REF'))
+evd = ev_bs %>% filter(net_size==1e7) %>% filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)$'))
+evdu = ev_bs %>% filter(net_size==1e7) %>% filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)_umr$'))
+evde = ev_bs %>% filter(net_size==1e7) %>% filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)_acrE$'))
+evdl = ev_bs %>% filter(net_size==1e7) %>% filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)_acrL$'))
+evbc = ev_bs %>% filter(net_size==1e7) %>% filter(str_detect(ctag, '^cisbp'))
+evbp = ev_bs %>% filter(net_size==1e7) %>% filter(str_detect(ctag, '^plantregmap'))
 #}}}
 
 #{{{ plot chip / dap / ko / bs
 ev = evc; eopt = 'cp'; wid=6; hei=10
-ev = evd; eopt = 'dp'; wid=15; hei=10
 ev = evk; eopt = 'ko'; wid=12; hei=10
+ev = evd; eopt = 'dp'; wid=15; hei=10
 
 tp1 = ev %>% rename(score=score1, lab=lab1)
 tp2 = ev %>% rename(score=score2, lab=lab2)
@@ -147,10 +147,6 @@ ggarrange(p3, p4,
     nrow = 2, ncol = 1, labels = LETTERS[1:2], heights = c(2,2)) %>%
     ggexport(filename = fo, width = wid, height = hei)
 #}}}
-
-ev_bs %>% filter(gopt=='RF', nid=='nc01', str_detect(ctag, '^cisbp')) %>%
-    select(nid, tf, ctag, score2) %>% spread(ctag, score2) %>%
-    filter(!is.na(cisbp), !is.na(cisbp_acrL)) %>% count(cisbp > cisbp_acrL)
 
 #{{{ GO evaluation
 #{{{ enrichment [heatmap]

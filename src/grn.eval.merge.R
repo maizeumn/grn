@@ -19,7 +19,7 @@ ev0 = t_cfg %>%
     mutate(fi = sprintf("%s/%s.%s.%s.rds", diri, eopt, gopt, nid)) %>%
     mutate(res = map(fi, readRDS))
 if (eopt %in% c('bs','ko')) {
-    ev = ev0 %>% unnest()
+    ev = ev0 %>% unnest(res)
 } else if (eopt == 'tf') {
     ev = ev0 %>%
         mutate(tf = map(res, 'tfstat'),
@@ -47,7 +47,7 @@ if (eopt %in% c('bs','ko')) {
     ev = evr
 } else if (eopt == 'bm') {
     ev = ev0 %>%
-        select(nid,res) %>% unnest()
+        select(nid,res) %>% unnest(res)
 } else {
     stop(sprintf("unknown option: %s\n", opt))
 }

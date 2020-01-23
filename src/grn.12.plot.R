@@ -332,12 +332,12 @@ write_tsv(to, fo, na='')
 #ev_ko = read_eval_ko()
 #ev_bs = read_eval_bs()
 #ev_go = read_eval_go()
-gopt = 'RF'
-evc = ev_bs %>% filter(gopt==!!gopt) %>% select(-gopt) %>%
+gopt = 'RF'; ns = 1e7
+evc = ev_bs %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
     filter(str_detect(ctag, '^REF'))
-evk = ev_ko %>% filter(gopt==!!gopt) %>% select(-gopt) %>%
+evk = ev_ko %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
     mutate(xlab=ctag)
-evd = ev_bs %>% filter(gopt==!!gopt) %>% select(-gopt) %>%
+evd = ev_bs %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
     filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)$'))
 
 #{{{ plot components
@@ -373,21 +373,41 @@ p5c = plot_tile(tpd3, t_cfg, lgd.opt=3)
 p5d = plot_tile(tpd4, t_cfg, lgd.opt=4, ytext=F)
 #}}}
 
-pa = p1a; pb = p1b; tag = 'auc'
 pa = p2a; pb = p2b; tag = 'pval'
-fo = sprintf('%s/05.%s.pdf', dirw, tag)
+pa = p1a; pb = p1b; tag = 'auc'
+fo = sprintf('%s/05.10m.%s.pdf', dirw, tag)
 ggarrange(pa, pb, align='h', common.legend = T,
-    nrow=1, ncol=2, labels=LETTERS[1:5], widths=c(3,5), heights=c(2,2)) %>%
-    ggexport(filename = fo, width=8, height=6)
+    nrow=1, ncol=2, labels=LETTERS[1:5], widths=c(3,4), heights=c(2,2)) %>%
+    ggexport(filename = fo, width=7, height=6)
 
-pa=p3a; pb=p3b; pc=p3c; pd=p3d; tag='cp'; wd=6; ht=10
-pa=p4a; pb=p4b; pc=p4c; pd=p4d; tag='ko'; wd=10; ht=10
-pa=p5a; pb=p5b; pc=p5c; pd=p5d; tag='dp'; wd=10; ht=10
+pa=p5a; pb=p5b; pc=p5c; pd=p5d; tag='dp'; wd=11; ht=10; wr=.75
+pa=p4a; pb=p4b; pc=p4c; pd=p4d; tag='ko'; wd=9; ht=10; wr=.75
+pa=p3a; pb=p3b; pc=p3c; pd=p3d; tag='cp'; wd=7; ht=10; wr=.67
 fo = sprintf('%s/05.%s.pdf', dirw, tag)
 ggarrange(pa, pb, pc, pd, align='h', common.legend = F,
-    nrow=2, ncol=2, labels=LETTERS[1:5], widths=c(4,3), heights=c(2,2)) %>%
+    nrow=2, ncol=2, labels=LETTERS[1:5], widths=c(1,wr), heights=c(2,2)) %>%
     ggexport(filename = fo, width=wd, height=ht)
 
+#{{{ P1 targets
+gopt = 'RF'
+evp = ev_bs %>% filter(gopt==!!gopt) %>% select(-gopt) %>%
+    filter(str_detect(ctag, '^P1'))
+evp = evp %>% mutate(xlab = factor(xlab, levels=unique(evp$xlab)))
+tpp1 = evp %>% rename(score=score1, lab=lab1)
+tpp2 = evp %>% rename(score=score2, lab=lab2)
+tpp3 = evp %>% rename(score=score3, lab=lab3)
+tpp4 = evp %>% rename(score=score4, lab=lab4)
+
+pa = plot_tile(tpp1, t_cfg, lgd.opt=1)
+pb = plot_tile(tpp2, t_cfg, lgd.opt=2, ytext=F)
+pc = plot_tile(tpp3, t_cfg, lgd.opt=3)
+pd = plot_tile(tpp4, t_cfg, lgd.opt=4, ytext=F)
+tag = 'p1'; wd=5; ht=10
+fo = sprintf('%s/05.%s.pdf', dirw, tag)
+ggarrange(pa, pb, pc, pd, align='h', common.legend = F,
+    nrow=2, ncol=2, labels=LETTERS[1:5], widths=c(5,3), heights=c(2,2)) %>%
+    ggexport(filename = fo, width=wd, height=ht)
+#}}}
 
 fo = sprintf('%s/06.tfbs.pdf', dirw)
 ggarrange(pa, pb, align='h', common.legend = F,

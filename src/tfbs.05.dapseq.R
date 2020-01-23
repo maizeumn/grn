@@ -51,7 +51,7 @@ ti = read_tsv(fi, col_names='fname') %>%
 
 to = ti %>%
     mutate(data=map(fi, read_tsv, col_names=c('chrom','start','end'))) %>%
-    select(tf,data) %>% unnest() %>%
+    select(tf,data) %>% unnest(data) %>%
     select(chrom,start,end,tf)
 fo = file.path(dirw, 'Ricci2019_tmp/01.raw.bed')
 write_tsv(to, fo, col_names=F)

@@ -35,11 +35,11 @@ saveRDS(x, file=fo)
 
 #{{{ ChIP-Seq and DAP-Seq
 fi = file.path(dird, 'tf_info.xlsx')
-ti = read_xlsx(fi) %>%
+ti = read_xlsx(fi) %>% filter(libtype != 'RNA-seq', reference != 'Li2015') %>%
     replace_na(list(name='', tissue='', targets='')) %>%
     mutate(tf = str_replace(tf, "_.*$", '')) %>%
     select(-yid) %>%
-    select(`TF alias`=tf, `TF name`=name, `TF ID`=gid, `TF ID (v3)`=gid_v3,
+    select(`TF alias`=tf, `TF name`=name, `TF ID`=gid, #`TF ID (v3)`=gid_v3,
        Tissue=tissue, `Study Type`=libtype, Targets=targets,
        Reference=reference)
 x = ti %>%
@@ -54,15 +54,14 @@ saveRDS(x, file=fo)
 #}}}
 
 #{{{ TF mutant
-fi = '~/projects/barn/data/01.cfg.xlsx'
-tp = read_xlsx(fi, 'mutants') %>%
-    mutate(accession=str_sub(accession, 1, 11)) %>%
-    replace_na(list(author='')) %>%
-    mutate(author=str_to_title(author)) %>%
-    filter(!gene_alias %in% c("cle7", "ra3")) %>%
-    select(`TF alias`=gene_alias, `TF name`=gene_name, `TF ID`=gene_id,
-           Study=author, Accession=accession, Tissue=tissue, N=n)
-x = tp %>%
+fi = file.path(dird, 'tf_info.xlsx')
+ti = read_xlsx(fi) %>% filter(libtype != 'DAP-seq', reference != 'Li2015') %>%
+    replace_na(list(name='', tissue='', targets='')) %>%
+    select(-yid) %>%
+    select(`TF alias`=tf, `TF name`=name, `TF ID`=gid, #`TF ID (v3)`=gid_v3,
+       Tissue=tissue,
+       Reference=reference)
+x = ti %>%
     kable(format='latex', escape=F, longtable=F, booktabs=T, linesep="",
         format.args = list(big.mark = ",")) %>%
     kable_styling(latex_options = c("striped", "hold_position"),
