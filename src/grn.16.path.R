@@ -117,7 +117,7 @@ plot_network_2 <- function(ti, th, tfs, ta=symb, nc=3, lay='kk') {
     e1 = e0 %>% group_by(from, to) %>% summarise(lgd = 'All_combined', score=max(score)) %>% ungroup()
     #
     g = as_tbl_graph(rbind(e0, e1))
-    pg = ggraph(g, layout=lay) +
+    p1 = ggraph(g, layout=lay) +
         #geom_node_point(aes(color=name %in% at.tfs), alpha=.2) +
         geom_edge_link(arrow=arrow(length=unit(.2,'cm'), angle=20, type='closed'), lwd=.1, start_cap=circle(.25,'cm'), end_cap=circle(.25,'cm')) +
         geom_node_text(aes(label=name, color=name %in% tfs), vjust=.4, size=2.5, repel=T, point.padding=NA, box.padding=0, force=.1)+
@@ -125,6 +125,13 @@ plot_network_2 <- function(ti, th, tfs, ta=symb, nc=3, lay='kk') {
         facet_edges(~lgd) +
         otheme() +
         guides(color=F)
+    pg = ggplot_gtable(ggplot_build(p1))
+    i = 1
+    r = floor((i-1)/nc) + 1; c = (i-1) %% nc + 1
+    strip = sprintf("strip-t-%d-%d", c, r)
+    idx = grep(pattern=strip, pg$layout$name)
+    pg$grobs[[idx]]$grobs[[1]]$children[[1]] = rectGrob(gp=gpar(fill='#228B22'))
+    pg$grobs[[idx]]$grobs[[1]]$children[[2]]$children[[1]]$gp$col='white'
     pg
     #}}}
 }
@@ -203,8 +210,8 @@ ti1 = read_tsv(fi)
 fi = file.path(dirw, '10.at.maize.rds')
 ti2 = readRDS(fi)
 
-tit = 'hy5'; at.tfs = c("HY5"); wr=.7; nc=4; wd=8; ht=8
 tit = 'aba'; at.tfs = c("ABI2","ABI3","ABI4","ABI5"); wr=.7; nc=4; wd=8; ht=8
+tit = 'hy5'; at.tfs = c("HY5"); wr=.7; nc=4; wd=8; ht=8
 x0 = ti2 %>% filter(at.tf %in% at.tfs, at.tf != at.tgt) %>%
     arrange(at.tf) %>% select(at.tf, at.tgt, data) %>%
     unnest(data) %>% select(reg.gid=at.tf, tgt.gid=at.tgt, nid, score)
@@ -255,6 +262,49 @@ fo = sprintf("%s/21.%s.pdf", dirw, tit)
 ggsave(p1, file=fo, width=wd, height=ht)
 #}}}
 #}}}
+#}}}
+
+#{{{ known pathways
+str_split_s <- function(s, sep='') str_split(s, sep)[[1]]
+tp = read_xlsx(fp, 'path') %>% mutate(tfs = map(tf, str_split_s, ' ')) %>%
+    mutate(tgts = map(tgt, str_split_s, ' '))
+i=4
+path=tp$path[i]; tfs=tp$tfs[[i]]; tgts=tp$tgts[[i]]
+nc=tp$nc[i]; wr=tp$wr[i]; lay1=tp$lay1[i]; lay2=tp$lay2[i]
+wd1=tp$wd1[i]; ht1=tp$ht1[i]; wd2=tp$wd2[i]; ht2=tp$ht2[i]
+x = tx %>% filter(reg.gid %in% tfs, tgt.gid %in% tgts)
+#
+p1 = plot_network_1(x, th, tfs, symb, wr, lay1)
+p2 = plot_network_2(x, th, tfs, symb, nc, lay2)
+fo = sprintf("%s/23.%s_1.pdf", dirw, path)
+ggarrange(p1$pg, p1$pt, nrow=1, ncol=2, widths=c(wr,1-wr)) %>%
+    ggexport(filename = fo, width=wd1, height=ht1)
+fo = sprintf("%s/23.%s_2.pdf", dirw, path)
+ggsave(p2, file=fo, width=wd2, height=ht2)
+#{{{ save for multi-panel plot
+if(i == 1) {
+    p11 = p1$pg; p12 = p1$pt
+} else if(i == 2) {
+    p21 = p1$pg; p22 = p1$pt
+} else if(i == 3) {
+    p31 = p1$pg; p32 = p1$pt
+} else if(i == 4) {
+    p41 = p1$pg; p42 = p1$pt
+}
+#}}}
+
+fo = sprintf("%s/24.pdf", dirw)
+ggarrange(
+    ggarrange(
+        ggarrange(p11, p12, ncol=2, widths=c(1,.5)),
+        ggarrange(p41, p42, ncol=2, widths=c(1,.5)),
+        labels=c('A','B'), widths=c(1.4,1)),
+    ggarrange(
+        ggarrange(p21, p22, ncol=2, widths=c(1,.5)),
+        ggarrange(p31, p32, ncol=2, widths=c(1,.5)),
+        labels=c('C','D'), widths=c(1,1)),
+    nrow=2, ncol=1, heights=c(1,1.7)) %>%
+    ggexport(filename = fo, width=8, height=10)
 #}}}
 
 #{{{ CornCyc examples
@@ -310,49 +360,6 @@ ggarrange(
     ggarrange(p31, p32, p33, ncol=3, labels=c('E','F'), widths=c(1,1,.5)),
     nrow=3, ncol=1, heights=c(1,1.4,3)) %>%
     ggexport(filename = fo, width=8, height=10.5)
-#}}}
-
-#{{{ known pathways
-str_split_s <- function(s, sep='') str_split(s, sep)[[1]]
-tp = read_xlsx(fp, 'path') %>% mutate(tfs = map(tf, str_split_s, ' ')) %>%
-    mutate(tgts = map(tgt, str_split_s, ' '))
-i=1
-path=tp$path[i]; tfs=tp$tfs[[i]]; tgts=tp$tgts[[i]]
-nc=tp$nc[i]; wr=tp$wr[i]; lay1=tp$lay1[i]; lay2=tp$lay2[i]
-wd1=tp$wd1[i]; ht1=tp$ht1[i]; wd2=tp$wd2[i]; ht2=tp$ht2[i]
-x = tx %>% filter(reg.gid %in% tfs, tgt.gid %in% tgts)
-#
-p1 = plot_network_1(x, th, tfs, symb, wr, lay1)
-p2 = plot_network_2(x, th, tfs, symb, nc, lay2)
-fo = sprintf("%s/23.%s_1.pdf", dirw, path)
-ggarrange(p1$pg, p1$pt, nrow=1, ncol=2, widths=c(wr,1-wr)) %>%
-    ggexport(filename = fo, width=wd1, height=ht1)
-fo = sprintf("%s/23.%s_2.pdf", dirw, path)
-ggsave(p2, file=fo, width=wd2, height=ht2)
-#{{{ save for multi-panel plot
-if(i == 1) {
-    p11 = p1$pg; p12 = p1$pt
-} else if(i == 2) {
-    p21 = p1$pg; p22 = p1$pt
-} else if(i == 3) {
-    p31 = p1$pg; p32 = p1$pt
-} else if(i == 4) {
-    p41 = p1$pg; p42 = p1$pt
-}
-#}}}
-
-fo = sprintf("%s/24.pdf", dirw)
-ggarrange(
-    ggarrange(
-        ggarrange(p11, p12, ncol=2, widths=c(1,.5)),
-        ggarrange(p41, p42, ncol=2, widths=c(1,.5)),
-        labels=c('A','B'), widths=c(1.4,1)),
-    ggarrange(
-        ggarrange(p21, p22, ncol=2, widths=c(1,.5)),
-        ggarrange(p31, p32, ncol=2, widths=c(1,.5)),
-        labels=c('C','D'), widths=c(1,1)),
-    nrow=2, ncol=1, heights=c(1,1.7)) %>%
-    ggexport(filename = fo, width=8, height=10)
 #}}}
 
 

@@ -97,12 +97,12 @@ Figure S6.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network 
 Figure S7.  Enrichment of co-annotated GO terms in co-regulated network targets.  Two sources of GO annotation were used: GO_HC (1,623 high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_HC_ne (1,537 high quality GO terms after removing 86 expression-based terms from the GO_HC set).
 
 \pagebreak
-![]($grn/data/16_pathways/21.aba_2.pdf){width=100%}
+![]($grn/data/16_pathways/21.aba_2.pdf){width=80%}
 
 Figure S8_1.  GRN shows support for the abscisic acid (ABA) pathway transferred from Arabidopsis.
 
 \pagebreak
-![]($grn/data/16_pathways/21.hy5_2.pdf){width=100%}
+![]($grn/data/16_pathways/21.hy5_2.pdf){width=90%}
 
 Figure S8_2.  GRN shows suport for the HY5 (Elongated Hypocotyl 5) targets transferred from Arabidopsis.
 
@@ -133,7 +133,7 @@ Figure S12.  Hierarchical clustering of 98 Gene Ontology (Uniprot.Plants, level 
 Figure S13_1.  GRN shows support for the anthocyanin biosynthesis pathway.
 
 \pagebreak
-![]($grn/data/16_pathways/23.tb1_2.pdf){width=100%}
+![]($grn/data/16_pathways/23.tb1_2.pdf){width=75%}
 
 Figure S13_2.  GRN shows support for the teosinte branched1 (tb1)-mediated pathway.
 
@@ -148,12 +148,12 @@ Figure S13_3.  GRN shows support for the DIMBOA pathway.
 Figure S13_4.  GRN shows support for the glycolysis pathway.
 
 \pagebreak
-![]($grn/data/16_pathways/25.wrky34_2.pdf){width=100%}
+![]($grn/data/16_pathways/25.wrky34_2.pdf){width=65%}
 
 Figure S13_5.  GRN shows support for the zealexin biosynthesis pathway regulated by a WRKY-transcription factor 34 (wrky34, Zm00001d009939).
 
 \pagebreak
-![]($grn/data/16_pathways/25.col11_2.pdf){width=100%}
+![]($grn/data/16_pathways/25.col11_2.pdf){width=75%}
 
 Figure S13_6.  GRN shows support for the methylerythritol phosphate pathway regulated by a C2C2-CO-like-transcription factor 11 (col11, Zm00001d003162).
 
