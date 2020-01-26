@@ -139,7 +139,7 @@ plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
     else if(lgd.opt == 4)
         lgd = 'AUPRC'
     else if(lgd.opt == 5)
-        lgd = 'Proportion True Targets'
+        lgd = 'Prop. True Targets'
     #
     if(col.opt == 1)
         cols = cols100v

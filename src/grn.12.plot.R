@@ -330,10 +330,12 @@ write_tsv(to, fo, na='')
 
 #{{{ TF ChIP-Seq / DAP-Seq / KO / TFBS AUROC
 #{{{ read
-ev_ko = read_eval_ko('rf')
-ev_bs = read_eval_bs('rf')
-ev_go = read_eval_go('rf')
-gopt = 'RF'; ns = 1e5
+#ev_ko = read_eval_ko('rf')
+#ev_bs = read_eval_bs('rf')
+#ev_go = read_eval_go('rf')
+gopt='RF'; ns=1e6; tagn='1m'
+gopt='RF'; ns=1e5; tagn='100k'
+gopt='RF'; ns=1e7; tagn='10m'
 evc = ev_bs %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
     filter(str_detect(ctag, '^REF'))
 evk = ev_ko %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
@@ -383,8 +385,8 @@ p5d = plot_tile(tpd4, t_cfg, lgd.opt=4, ytext=F)
 pa = p12a; pb = p12b; tag = 'pval'; wd=7; ht=6
 pa = p1a; pb = p1b; tag = 'auc'; wd=7; ht=6
 pa = p13a; pb = p13b; tag = 'tp'; wd=7; ht=6
-fo = sprintf('%s/05.100k.%s.pdf', dirw, tag)
-ggarrange(pa, pb, align='h', common.legend = T,
+fo = sprintf('%s/05.%s.%s.pdf', dirw, tagn, tag)
+ggarrange(pa, pb, align='h', common.legend = F,
     nrow=1, ncol=2, labels=LETTERS[1:5], widths=c(3,4), heights=c(2,2)) %>%
     ggexport(filename = fo, width=wd, height=ht)
 
