@@ -329,35 +329,42 @@ write_tsv(to, fo, na='')
 #}}}
 
 #{{{ TF ChIP-Seq / DAP-Seq / KO / TFBS AUROC
-#ev_ko = read_eval_ko()
-#ev_bs = read_eval_bs()
-#ev_go = read_eval_go()
-gopt = 'RF'; ns = 1e7
+#{{{ read
+ev_ko = read_eval_ko('rf')
+ev_bs = read_eval_bs('rf')
+ev_go = read_eval_go('rf')
+gopt = 'RF'; ns = 1e5
 evc = ev_bs %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
     filter(str_detect(ctag, '^REF'))
 evk = ev_ko %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
     mutate(xlab=ctag)
 evd = ev_bs %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
     filter(str_detect(ctag, '^(Galli2018)|(Ricci2019)$'))
+#}}}
 
 #{{{ plot components
 tpc1 = evc %>% rename(score=score1, lab=lab1)
 tpc2 = evc %>% rename(score=score2, lab=lab2)
 tpc3 = evc %>% rename(score=score3, lab=lab3)
 tpc4 = evc %>% rename(score=score4, lab=lab4)
+tpc5 = evc %>% rename(score=score5, lab=lab5)
 tpk1 = evk %>% rename(score=score1, lab=lab1)
 tpk2 = evk %>% rename(score=score2, lab=lab2)
 tpk3 = evk %>% rename(score=score3, lab=lab3)
 tpk4 = evk %>% rename(score=score4, lab=lab4)
+tpk5 = evk %>% rename(score=score5, lab=lab5)
 tpd1 = evd %>% rename(score=score1, lab=lab1)
 tpd2 = evd %>% rename(score=score2, lab=lab2)
 tpd3 = evd %>% rename(score=score3, lab=lab3)
 tpd4 = evd %>% rename(score=score4, lab=lab4)
+tpd5 = evd %>% rename(score=score5, lab=lab5)
 
 p1a = plot_tile(tpc1, t_cfg, lgd.opt=1)
 p1b = plot_tile(tpk1, t_cfg, lgd.opt=1, ytext=F)
-p2a = plot_tile(tpc2, t_cfg, lgd.opt=2)
-p2b = plot_tile(tpk2, t_cfg, lgd.opt=2, ytext=F)
+p12a = plot_tile(tpc2, t_cfg, lgd.opt=2)
+p12b = plot_tile(tpk2, t_cfg, lgd.opt=2, ytext=F)
+p13a = plot_tile(tpc5, t_cfg, lgd.opt=5)
+p13b = plot_tile(tpk5, t_cfg, lgd.opt=5, ytext=F)
 
 p3a = plot_tile(tpc1, t_cfg, lgd.opt=1)
 p3b = plot_tile(tpc2, t_cfg, lgd.opt=2, ytext=F)
@@ -373,12 +380,13 @@ p5c = plot_tile(tpd3, t_cfg, lgd.opt=3)
 p5d = plot_tile(tpd4, t_cfg, lgd.opt=4, ytext=F)
 #}}}
 
-pa = p2a; pb = p2b; tag = 'pval'
-pa = p1a; pb = p1b; tag = 'auc'
-fo = sprintf('%s/05.10m.%s.pdf', dirw, tag)
+pa = p12a; pb = p12b; tag = 'pval'; wd=7; ht=6
+pa = p1a; pb = p1b; tag = 'auc'; wd=7; ht=6
+pa = p13a; pb = p13b; tag = 'tp'; wd=7; ht=6
+fo = sprintf('%s/05.100k.%s.pdf', dirw, tag)
 ggarrange(pa, pb, align='h', common.legend = T,
     nrow=1, ncol=2, labels=LETTERS[1:5], widths=c(3,4), heights=c(2,2)) %>%
-    ggexport(filename = fo, width=7, height=6)
+    ggexport(filename = fo, width=wd, height=ht)
 
 pa=p5a; pb=p5b; pc=p5c; pd=p5d; tag='dp'; wd=11; ht=10; wr=.75
 pa=p4a; pb=p4b; pc=p4c; pd=p4d; tag='ko'; wd=9; ht=10; wr=.75

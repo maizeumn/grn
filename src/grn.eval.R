@@ -55,7 +55,7 @@ eval_tf1 <- function(ti, net_size, tn, rids, tids, fpr=.1) {
     rids0 = rids[rids %in% ti$reg.gid]
     tn0 = tn %>% filter(row_number() <= net_size)
     tt = complete_tn(tn0, tids, rids0)
-    if(nrow(tt) == 0) return(list(auroc=NA,pval=NA,auroc0=NA,auprc=NA))
+    if(nrow(tt) == 0) return(list(auroc=NA,pval=NA,auroc0=NA,auprc=NA,tp=NA,fp=NA))
     tt = tt %>% filter(reg.gid %in% rids0) %>%
         filter(reg.gid != tgt.gid) %>%
         mutate(score = as.numeric(score)) %>%
@@ -78,9 +78,10 @@ eval_tf1 <- function(ti, net_size, tn, rids, tids, fpr=.1) {
     pval = NA
     scores1 = to %>% filter(response==1) %>% pull(score)
     scores2 = to %>% filter(response==0) %>% pull(score)
+    tp = sum(scores1 > 0); fp = sum(scores1 == 0)
     if(length(scores1) > 0 & length(scores2) > 0)
         pval = wilcox.test(scores1, scores2, alternative='greater')$p.value
-    list(auroc=auroc, pval=pval, auroc0=auroc0, auprc=auprc)
+    list(auroc=auroc, pval=pval, auroc0=auroc0, auprc=auprc, tp=tp, fp=fp)
     #}}}
 }
 eval_go_1 <- function(perm=0, tn, fun_ann) {
@@ -139,6 +140,8 @@ if (opt %in% c('bs','ko')) {
             mutate(pval=map_dbl(r, 'pval')) %>%
             mutate(auroc0=map_dbl(r, 'auroc0')) %>%
             mutate(auprc=map_dbl(r, 'auprc')) %>%
+            mutate(tp=map_dbl(r, 'tp')) %>%
+            mutate(fp=map_dbl(r, 'fp')) %>%
             select(-data, -r)
     }
     #}}}

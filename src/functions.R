@@ -39,7 +39,7 @@ read_tfbs_regulations <- function(fi='~/projects/grn/data/04_tfbs/15.regulations
 read_ko <- function(fd = file.path(dird, '07_known_tf', 'degs.rds'))
     readRDS(fd)
 
-read_eval_ko <- function(dird='~/projects/grn/data',gopts=c("et","rf",'xgb')) {
+read_eval_ko <- function(gopts=c("et","rf",'xgb')) {
     #{{{
     nrow_positive <- function(ti) sum(ti$response == 1)
     ko = read_ko() %>% filter(!tf %in% c('RA3')) %>%
@@ -53,17 +53,17 @@ read_eval_ko <- function(dird='~/projects/grn/data',gopts=c("et","rf",'xgb')) {
         mutate(n_de = map_dbl(res, nrow_positive)) %>%
         mutate(prop_de=n_de/n_tot) %>%
         mutate(ctag=sprintf("%s_%s [%s] [%s]", tf, tissue, number(n_de), percent(prop_de, accuracy=.1))) %>%
-        select(kid, tf, tissue, ctag)
+        select(kid, tf, tissue, ctag, n_de)
     ctags = ko$ctag
     #
     ev = tibble(gopt = gopts) %>%
         mutate(fi = sprintf('%s/raw/%s.ko.rds', dird, gopt)) %>%
         mutate(data = map(fi, readRDS)) %>% select(-fi) %>% unnest(data) %>%
-        select(gopt,nid,net_size,tf,tissue,auroc,pval,auroc0,auprc) %>%
+        select(gopt,nid,net_size,tf,tissue,auroc,pval,auroc0,auprc,tp,fp) %>%
         inner_join(ko, by=c("tf", "tissue")) %>%
         mutate(gopt = str_to_upper(gopt)) %>%
         mutate(ctag = factor(ctag, levels=ctags)) %>%
-        group_by(gopt, net_size, ctag) %>%
+        group_by(gopt, net_size, ctag, n_de) %>%
         mutate(padj = p.adjust(pval, method='BH')) %>%
         ungroup() %>%
         mutate(score1 = auroc * 1000) %>%
@@ -74,7 +74,9 @@ read_eval_ko <- function(dird='~/projects/grn/data',gopts=c("et","rf",'xgb')) {
         mutate(score3 = auroc0) %>%
         mutate(lab3 = str_remove(number(score3, accuracy=.01), '^0+')) %>%
         mutate(score4 = auprc) %>%
-        mutate(lab4 = str_remove(number(score4, accuracy=.01), '^0+'))
+        mutate(lab4 = str_remove(number(score4, accuracy=.01), '^0+')) %>%
+        mutate(score5 = tp / n_de) %>%
+        mutate(lab5 = number(tp, big.mark=','))
     ev
     #}}}
 }
@@ -92,10 +94,10 @@ read_eval_bs <- function(gopts=c("et",'rf','xgb')) {
     ev = tibble(gopt = gopts) %>%
         mutate(fi = sprintf('%s/raw/%s.bs.rds', dird, gopt)) %>%
         mutate(data = map(fi, readRDS)) %>% select(-fi) %>% unnest(data) %>%
-        select(gopt, nid, net_size, ctag, tf, auroc, pval, auroc0, auprc) %>%
+        select(gopt, nid, net_size, ctag, tf, auroc, pval, auroc0, auprc,tp,fp) %>%
         inner_join(bs, by=c("ctag",'tf')) %>%
         mutate(gopt = str_to_upper(gopt)) %>%
-        group_by(gopt, net_size, ctag, tf) %>%
+        group_by(gopt, net_size, ctag, tf, n) %>%
         mutate(padj = p.adjust(pval, method='BH')) %>%
         ungroup() %>%
         mutate(score1 = auroc * 1000) %>%
@@ -106,11 +108,13 @@ read_eval_bs <- function(gopts=c("et",'rf','xgb')) {
         mutate(score3 = auroc0) %>%
         mutate(lab3 = str_remove(number(score3, accuracy=.01), '^0+')) %>%
         mutate(score4 = auprc) %>%
-        mutate(lab4 = str_remove(number(score4, accuracy=.01), '^0+'))
+        mutate(lab4 = str_remove(number(score4, accuracy=.01), '^0+')) %>%
+        mutate(score5 = tp / n) %>%
+        mutate(lab5 = number(tp, big.mark=','))
     ev
     #}}}
 }
-read_eval_go <- function() {
+read_eval_go <- function(gopts=c('et','rf','xgb')) {
     #{{{
     ev = tibble(gopt = gopts) %>%
         mutate(fi = sprintf("%s/%s.go.rds", dirr, gopt)) %>%
@@ -134,6 +138,8 @@ plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
         lgd = 'AUROC'
     else if(lgd.opt == 4)
         lgd = 'AUPRC'
+    else if(lgd.opt == 5)
+        lgd = 'Proportion True Targets'
     #
     if(col.opt == 1)
         cols = cols100v

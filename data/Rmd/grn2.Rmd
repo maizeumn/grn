@@ -44,144 +44,111 @@ header-includes:
 dirw = '/home/springer/zhoux379/projects/grn/data/12_tables'
 ```
 
-![]($grn/data/13_eval/02.gopt.1.hc.pdf){width=95%}
-
-Figure S1. Hierarchical clustering of 135 GRNs (45 expression dataset * 3 methods).  Each of the three regression-based method (RF - random forest, ET - extra trees, XGB - gradient boosted) was used to build a network for each RNA-Seq dataset.  Pairwise distance between networks was determined by taking the top 100,000 TF-target predictions from each network and calculating the proportion of shared (common) predictions (using ‘dist()’ function in R with additional argument ‘method=binary’).  Hierarchical clustering was then performed based on the cross-network pairwise distance matrix using “ward.D” option.
-
-\pagebreak
-![]($grn/data/13_eval/11.cp.pdf){width=100%}
-
-Figure S2.  Comparison of GRNs built with different methods using supports from known direct targets of published TF studies in maize.  Direct targets of 7 TFs were obtained from literature and treated as ground truth to evaluate: (A) Area under receiver-operating characteristic curve (AUROC) evaluated for each GRN (until an False Positive Rate of 0.1 is reached) and (B) Wilcox rank test using the predicted (TF-target) interaction scores between the group of true targets and non-targets. Numbers in each cell show the actual AUROC values / test P-value (-log10 transformed) with blank cells standing for “not significant” (P > 0.05). White cells stand for missing data where the TF being evaluated is not expressed in the corresponding GRN.  Each GRN was built using three regression methods: RF (random forest), ET (extra trees) and XGB (gradient boosting).
-
-\pagebreak
-![]($grn/data/13_eval/11.ko.pdf){width=100%}
-
-Figure S3.  Comparison of GRNs built with different methods using supports from TF knockout mutant RNA-Seq data.  Differentially expressed genes between each one of the 21 TF knockout mutants and the wildtype were identified using DESeq2 (p-value < 0.01) and treated as ground truth to evaluate: (A) Area under receiver-operating characteristic curve (AUROC) evaluated for each GRN (until an False Positive Rate of 0.1 is reached) and (B) Wilcox rank test using the predicted (TF-target) interaction scores between the group of true targets and non-targets. Numbers in each cell show the actual AUROC values / test P-value (-log10 transformed) with blank cells standing for “not significant” (P > 0.05). White cells stand for missing data where the TF being evaluated is not expressed in the corresponding GRN.  Each GRN was built using three regression methods: RF (random forest), ET (extra trees) and XGB (gradient boosting).
-
-\pagebreak
 ![]($grn/data/13_eval/15.go.heat.pdf){width=80%}
 
-Figure S4.  Comparison of GRNs built with different methods according to enrichment of functional annotations (Gene Ontology, CornCyc, etc).  For each network only the top 100,000 predicted TF-target associations were taken.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal).  Each GRN was built using three regression methods: RF (random forest), ET (extra trees) and XGB (gradient boosting).
+Figure S1.  Comparison of GRNs built with different methods according to enrichment of functional annotations (Gene Ontology, CornCyc, etc).  For each network only the top 100,000 predicted TF-target associations were taken.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal).  Each GRN was built using three regression methods: RF (random forest), ET (extra trees) and XGB (gradient boosting).
 
 \pagebreak
-![]($grn/data/14_eval_sum/05.auc.pdf){width=100%}
+![]($grn/data/14_eval_sum/05.100k.pval.pdf){width=100%}
 
-Figure S5_0 (remove). Area under receiver-operating characteristic curve (AUROC) evaluated for each GRN (until an False Positive Rate of 0.1 is reached) using support from (A) direct TF targets and (B) 21 maize TF knockout mutants as ground truth.  Differentially expressed genes between each TF knockout mutant and the wildtype were identified using DESeq2 (p-value < 0.01) and treated as ground truth to evaluate GRN performance.  Numbers in each cell show the actual AUROC values with white cells indicating missing data (the TF being filtered from the expression matrix due to invariable expression).
+Figure S2.  TF-target interactions predicted by GRNs are supported by experimentally derived TF targets (A) and knockout mutant RNA-Seq experiments (B).  Numbers in each cell represent the number of true targets captured by each GRN (top 100k edges) in each evaluation.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/05.cp.pdf){width=80%}
 
-Figure S5_1. Evaluation of GRNs using support from direct targets of 7 known TFs. (A) Area under receiver-operating characteristic curve (AUROC) until an False Positive Rate of 0.1 is reached; (B) Wilcox rank test performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs); (C) Area under receiver-operating characteristic curve (AUROC) and (D) Area under precision-recall curve (AUPRC).
+Figure S2. Evaluation of GRNs using support from direct targets of 8 known TFs. (A) Area under receiver-operating characteristic curve (AUROC) until an False Positive Rate of 0.1 is reached; (B) Wilcox rank test performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs); (C) Area under receiver-operating characteristic curve (AUROC) and (D) Area under precision-recall curve (AUPRC).  Light yellow cells with no numbers stand for “not significant” (P > 0.05), while blank (white) cells stand for missing data where the TF being evaluated is not expressed or not variable (i.e., zero variance) in the corresponding GRN.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/05.dp.pdf){width=100%}
 
-Figure S5_2. Evaluation of GRNs using support from 31 maize TF DAP-Seq datasets. (A) Area under receiver-operating characteristic curve (AUROC) until an False Positive Rate of 0.1 is reached; (B) Wilcox rank test performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs); (C) Area under receiver-operating characteristic curve (AUROC) and (D) Area under precision-recall curve (AUPRC).
+Figure S3. Evaluation of GRNs using support from 31 maize TF DAP-Seq datasets. (A) Area under receiver-operating characteristic curve (AUROC) until an False Positive Rate of 0.1 is reached; (B) Wilcox rank test performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs); (C) Area under receiver-operating characteristic curve (AUROC) and (D) Area under precision-recall curve (AUPRC).  Light yellow cells with no numbers stand for “not significant” (P > 0.05), while blank (white) cells stand for missing data where the TF being evaluated is not expressed or not variable (i.e., zero variance) in the corresponding GRN.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/05.ko.pdf){width=100%}
 
-Figure S5_3. Evaluation of GRNs using support from 21 maize TF knockout mutants RNA-Seq datasets. (A) Area under receiver-operating characteristic curve (AUROC) until an False Positive Rate of 0.1 is reached; (B) Wilcox rank test performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs); (C) Area under receiver-operating characteristic curve (AUROC) and (D) Area under precision-recall curve (AUPRC).
-
+Figure S4. Evaluation of GRNs using support from 21 maize TF knockout mutants RNA-Seq datasets. (A) Area under receiver-operating characteristic curve (AUROC) until an False Positive Rate of 0.1 is reached; (B) Wilcox rank test performed using the predicted (TF-target) interaction scores between the group of true targets (DEGs) and non-targets (non-DEGs); (C) Area under receiver-operating characteristic curve (AUROC) and (D) Area under precision-recall curve (AUPRC).  Light yellow cells with no numbers stand for “not significant” (P > 0.05), while blank (white) cells stand for missing data where the TF being evaluated is not expressed or not variable (i.e., zero variance) in the corresponding GRN.
 
 
 \pagebreak
 ![]($grn/data/14_eval_sum/07.go.all.pdf){width=100%}
 
-Figure S6.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal). A total of six sources of GO annotation were used: GO_HC (high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_arabidopsis, GO_uniprot.plants, GO_Interproscan5, GO_pannzer and GO_argot2.5.
+Figure S5.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal). A total of six sources of GO annotation were used: GO_HC (high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_arabidopsis, GO_uniprot.plants, GO_Interproscan5, GO_pannzer and GO_argot2.5.
 
 
 \pagebreak
 ![]($grn/data/14_eval_sum/07.go.all.ne.pdf){width=100%}
 
-Figure S7.  Enrichment of co-annotated GO terms in co-regulated network targets.  Two sources of GO annotation were used: GO_HC (1,623 high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_HC_ne (1,537 high quality GO terms after removing 86 expression-based terms from the GO_HC set).
+Figure S6.  Enrichment of co-annotated GO terms in co-regulated network targets.  Two sources of GO annotation were used: GO_HC (1,623 high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_HC_ne (1,537 high quality GO terms after removing 86 expression-based terms from the GO_HC set).
 
 \pagebreak
-![]($grn/data/16_pathways/21.aba_2.pdf){width=80%}
+![]($grn/data/16_pathways/22b.pdf){width=100%}
 
-Figure S8_1.  GRN shows support for the abscisic acid (ABA) pathway transferred from Arabidopsis.
-
-\pagebreak
-![]($grn/data/16_pathways/21.hy5_2.pdf){width=90%}
-
-Figure S8_2.  GRN shows suport for the HY5 (Elongated Hypocotyl 5) targets transferred from Arabidopsis.
-
+Figure S7.  Different GRNs capture distinct parts of documented transcriptional regulations from Arabidopsis for the abscisic acid (ABA) pathway (A) and HY5 (Elongated Hypocotyl 5) regulated pathway (B).
 
 \pagebreak
 ![]($grn/data/14_eval_sum/06.tfbs.pdf){width=80%}
 
-Figure S9.  Evaluation (AUROC and Wilcox P-value) of constructed GRNs using four sets of predicted TF-target interactions based on TF-binding site motif, conserved element of TFBS motif or FunTFBS.  There are 202,670 “motif”-based predictions, 37,699 predictions based on motif and cross-species conservation, 7,459 predictions based on motif and FunTFBS as well as 4,115 predictions based on all three evidences.
+Figure S8.  Evaluation (AUROC and Wilcox P-value) of constructed GRNs using four sets of predicted TF-target interactions based on TF-binding site motif, conserved element of TFBS motif or FunTFBS.  There are 202,670 “motif”-based predictions, 37,699 predictions based on motif and cross-species conservation, 7,459 predictions based on motif and FunTFBS as well as 4,115 predictions based on all three evidences.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/03.hc.pdf){width=100%}
 
-Figure S10.  Hierarchical clustering of 45 GRNs.  Pairwise distance between networks was determined by taking the top 100,000 TF-target predictions from each network and calculating the proportion of shared (common) predictions (using ‘dist()’ function in R with additional argument ‘method=binary’).  Hierarchical clustering was then performed based on the cross-network pairwise distance matrix using “ward.D” method.
+Figure S9.  Hierarchical clustering of 45 GRNs.  Pairwise distance between networks was determined by taking the top 100,000 TF-target predictions from each network and calculating the proportion of shared (common) predictions (using ‘dist()’ function in R with additional argument ‘method=binary’).  Hierarchical clustering was then performed based on the cross-network pairwise distance matrix using “ward.D” method.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/03.tsne.pdf){width=80%}
 
-Figure S11.  T-SNE clustering of 45 GRNs.  Top 500,000 TF-target predictions were extracted from each network to perform t-SNE clustering using parameter “perplexing=9, permutation=2000”.
+Figure S10.  T-SNE clustering of 45 GRNs.  Top 500,000 TF-target predictions were extracted from each network to perform t-SNE clustering using parameter “perplexing=9, permutation=2000”. [interpret a bit more]
 
 \pagebreak
 ![]($grn/data/14_eval_sum/09.go.heat.pdf){width=100%}
 
-Figure S12.  Hierarchical clustering of 98 Gene Ontology (Uniprot.Plants, level 6) terms using fold enrichment in different GRNs.  Only GO terms enriched (i.e., P-value < 0.05 and fold change > 1, top 100k edges taken) in at least 3 out of the 44 networks were used for clustering.  Insignificant enrichment (p-value < 0.05) was treated as missing data and shown as white space in the figure.  Fold enrichment is determined as described in Figure 2.
+Figure S11.  Hierarchical clustering of 98 Gene Ontology (Uniprot.Plants, level 6) terms using fold enrichment in different GRNs.  Only GO terms enriched (i.e., P-value < 0.05 and fold change > 1, top 100k edges taken) in at least 3 out of the 44 networks were used for clustering.  Insignificant enrichment (p-value < 0.05) was treated as missing data and shown as white space in the figure.  Fold enrichment is determined as described in Figure 2.
 
 \pagebreak
-![]($grn/data/16_pathways/23.antho_2.pdf){width=100%}
+![]($grn/data/16_pathways/25.antho.pdf){width=100%}
 
-Figure S13_1.  GRN shows support for the anthocyanin biosynthesis pathway.
-
-\pagebreak
-![]($grn/data/16_pathways/23.tb1_2.pdf){width=75%}
-
-Figure S13_2.  GRN shows support for the teosinte branched1 (tb1)-mediated pathway.
+Figure S12.  Different GRNs support different parts of the anthocyanin biosynthesis pathway.
 
 \pagebreak
-![]($grn/data/16_pathways/23.dimboa_2.pdf){width=100%}
+![]($grn/data/16_pathways/25.dimboa.pdf){width=100%}
 
-Figure S13_3.  GRN shows support for the DIMBOA pathway.
-
-\pagebreak
-![]($grn/data/16_pathways/23.glu_2.pdf){width=100%}
-
-Figure S13_4.  GRN shows support for the glycolysis pathway.
+Figure S13.  Different GRNs support different parts of the DIMBOA pathway.
 
 \pagebreak
-![]($grn/data/16_pathways/25.wrky34_2.pdf){width=65%}
+![]($grn/data/16_pathways/25.hb26.pdf){width=100%}
 
-Figure S13_5.  GRN shows support for the zealexin biosynthesis pathway regulated by a WRKY-transcription factor 34 (wrky34, Zm00001d009939).
-
-\pagebreak
-![]($grn/data/16_pathways/25.col11_2.pdf){width=75%}
-
-Figure S13_6.  GRN shows support for the methylerythritol phosphate pathway regulated by a C2C2-CO-like-transcription factor 11 (col11, Zm00001d003162).
+Figure S14.  Different GRNs support different parts of the chlorophyllide biosynthesis pathway regulated by a homeobox-transcription factor 26 (hb26, Zm00001d008612).
 
 \pagebreak
-![]($grn/data/16_pathways/25.hb26_2.pdf){width=100%}
+![]($grn/data/16_pathways/26.pdf){width=100%}
 
-Figure S13_7.  GRN shows support for the chlorophyllide biosynthesis pathway regulated by a homeobox-transcription factor 26 (hb26, Zm00001d008612).
+Figure S15.  Different coexpression-based GRNs capture distinct parts of classic and CornCyc metabolic pathways.  (A) The teosinte branched1 (tb1)-mediated pathway regulating bud dormancy and growth repression.  (B) The glycolysis pathway.  (C-D) The zealexin biosynthesis pathway (C) regulated by a WRKY-transcription factor 34 (wrky34, Zm00001d009939) (D).  (E-F) The methylerythritol phosphate pathway (E) regulated by a C2C2-CO-like-transcription factor 11 (col11, Zm00001d003162) (F).  
+  
+\pagebreak
+![]($grn/data/16_pathways/26b.pdf){width=100%}
 
+Figure S16.  Different GRNs support different parts of classic and CornCyc metabolic pathways.  (A) The teosinte branched1 (tb1)-mediated pathway regulating bud dormancy and growth repression.  (B) The glycolysis pathway.  (C) The zealexin biosynthesis pathway and (D) The methylerythritol phosphate pathway.  
 
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.1s.pdf){width=100%}
 
-Figure S14.  TF-target validation of the combined tissue  network in all six selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
+Figure S17.  TF-target validation of the combined tissue  network in all six selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/30.eQTL.pdf){width=100%}
 
-Figure S15. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Fold enrichment is determined by the same permutation approach described in Figure 2.
+Figure S18. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Fold enrichment is determined by the same permutation approach described in Figure 2.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/31.eQTL.heat.pdf){width=50%}
 
-Figure S16. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and only the first bin (top 100k edges) were used to assess enrichment.  15 high quality networks (marked with crosses) were selected to identify the main TF regulators underlying trans-eQTL hotspots (see Methods).
+Figure S19. Enrichment of co-regulated targets between previously identified trans-eQTL hotspots and TF-target associations predicted by GRNs.  For each network the top 1 million predicted TF-target associations were binned to 10 bins and only the first bin (top 100k edges) were used to assess enrichment.  15 high quality networks (marked with crosses) were selected to identify the main TF regulators underlying trans-eQTL hotspots (see Methods).
 
 \pagebreak
 ![]($grn/data/14_eval_sum/32.hs.pdf){width=100%}
 
-Figure S17.  Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each trans-eQTL hotspot were first tested for significant overlap in targets with any TFs (hypergeometric enrichment test as implemented in the phyper() function in R).  To control for false positives, only TFs identified in at least two (out of 8 high quality networks, see Methods) that show significant co-regulation with at least one trans-eQTL hotspot (p < 0.01) were kept.  Trans-eQTL hotspots identified in previous maize assemblies were lifted over to the AGPv4 assembly coordinates.  Co-localization of a TF and a trans-eQTL is determined if the two coordinates are within 10-Mbp distance.  Color of each dot represents the number of common targets between the predicted TF regulator and the trans-eQTL hotspot.
+Figure S20.  Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each trans-eQTL hotspot were first tested for significant overlap in targets with any TFs (hypergeometric enrichment test as implemented in the phyper() function in R).  To control for false positives, only TFs identified in at least two (out of 8 high quality networks, see Methods) that show significant co-regulation with at least one trans-eQTL hotspot (p < 0.01) were kept.  Trans-eQTL hotspots identified in previous maize assemblies were lifted over to the AGPv4 assembly coordinates.  Co-localization of a TF and a trans-eQTL is determined if the two coordinates are within 50-Mbp distance.  Color of each dot represents the number of common targets between the predicted TF regulator and the trans-eQTL hotspot.
 
 \pagebreak
 Table S1. ChIP-Seq and DAP-Seq datasets used in this study.
