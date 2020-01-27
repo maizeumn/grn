@@ -122,7 +122,7 @@ read_eval_go <- function(gopts=c('et','rf','xgb')) {
     ev
     #}}}
 }
-plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
+plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T, xtext=T) {
     #{{{
     tp = tp %>% filter(!is.na(score)) %>%
         inner_join(t_cfg, by = 'nid') %>%
@@ -155,11 +155,14 @@ plot_tile <- function(tp, t_cfg, lgd.opt=1, col.opt=1, faceting=F, ytext=T) {
         scale_color_manual(values=c('black','white')) +
         otheme(legend.pos='top.center.out', legend.dir='h', legend.title=T,
                ygrid=T, xtick=T, ytick=T, xtitle=F, xtext=T, ytext=T) +
-        theme(axis.text.x = element_text(angle=30, hjust=1, vjust=1, size=7)) +
         theme(legend.title=element_text(size=8)) +
         theme(legend.text=element_text(size=7)) +
         #theme(legend.key.size = unit(.5, 'lines')) +
         guides(color=F, fill = guide_colourbar(barheight=.6))
+    if(xtext)
+        p1 = p1 + theme(axis.text.x = element_text(angle=30, hjust=1, vjust=1, size=7))
+    else
+        p1 = p1 + theme(axis.text.x = element_blank())
     if(ytext)
         p1 = p1 + theme(axis.text.y = element_text(color=rev(tps$col), size=7))
     else

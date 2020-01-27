@@ -333,9 +333,9 @@ write_tsv(to, fo, na='')
 #ev_ko = read_eval_ko('rf')
 #ev_bs = read_eval_bs('rf')
 #ev_go = read_eval_go('rf')
+gopt='RF'; ns=1e7; tagn='10m'
 gopt='RF'; ns=1e6; tagn='1m'
 gopt='RF'; ns=1e5; tagn='100k'
-gopt='RF'; ns=1e7; tagn='10m'
 evc = ev_bs %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
     filter(str_detect(ctag, '^REF'))
 evk = ev_ko %>% filter(net_size==ns, gopt==!!gopt) %>% select(-net_size,-gopt) %>%
@@ -365,8 +365,8 @@ p1a = plot_tile(tpc1, t_cfg, lgd.opt=1)
 p1b = plot_tile(tpk1, t_cfg, lgd.opt=1, ytext=F)
 p12a = plot_tile(tpc2, t_cfg, lgd.opt=2)
 p12b = plot_tile(tpk2, t_cfg, lgd.opt=2, ytext=F)
-p13a = plot_tile(tpc5, t_cfg, lgd.opt=5)
-p13b = plot_tile(tpk5, t_cfg, lgd.opt=5, ytext=F)
+p13a = plot_tile(tpc5, t_cfg, lgd.opt=5, xtext=T)
+p13b = plot_tile(tpk5, t_cfg, lgd.opt=5, ytext=F, xtext=T)
 
 p3a = plot_tile(tpc1, t_cfg, lgd.opt=1)
 p3b = plot_tile(tpc2, t_cfg, lgd.opt=2, ytext=F)
@@ -394,9 +394,22 @@ pa=p5a; pb=p5b; pc=p5c; pd=p5d; tag='dp'; wd=11; ht=10; wr=.75
 pa=p4a; pb=p4b; pc=p4c; pd=p4d; tag='ko'; wd=9; ht=10; wr=.75
 pa=p3a; pb=p3b; pc=p3c; pd=p3d; tag='cp'; wd=7; ht=10; wr=.67
 fo = sprintf('%s/05.%s.pdf', dirw, tag)
-ggarrange(pa, pb, pc, pd, align='h', common.legend = F,
+ggarrange(
+    ggarrange(pa, pb, pc, pd, align='h', common.legend = F,
     nrow=2, ncol=2, labels=LETTERS[1:5], widths=c(1,wr), heights=c(2,2)) %>%
     ggexport(filename = fo, width=wd, height=ht)
+
+#{{{ fig S2 - merged 100k and 1m TP numbers
+pa=p13a; pb=p13b
+pc=p13a; pd=p13b
+
+fo = sprintf('%s/05.tp.pdf', dirw)
+ggarrange(
+    ggarrange(pa, pb, nrow=1, ncol=2, labels=c("A",'B'), widths=c(3,4)),
+    ggarrange(pc, pd, align='h', nrow=1, ncol=2, labels=c("C",'D'), widths=c(3,4)),
+    nrow=2, ncol=1, heights=c(3,3.8)) %>%
+    ggexport(filename = fo, width=7, height=10)
+#}}}
 
 #{{{ P1 targets
 gopt = 'RF'

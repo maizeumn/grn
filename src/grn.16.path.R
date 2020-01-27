@@ -279,7 +279,7 @@ res = plotNets1(x, th, symb, 'circle')
 pt = plotTable(res$tbl, nr=2, size=8)
 fo = sprintf("%s/22.pdf", dirw)
 ggarrange(pm, res$pl$hy5, res$pl$aba, pt,
-        widths=c(1.2,1), heights=c(1,1), labels=c('A','C','B','D'),
+        widths=c(1.2,1), heights=c(1,1), labels=c('A','C','B'),
     nrow=2, ncol=2) %>%
     ggexport(filename = fo, width=8, height=7.3)
 #
