@@ -338,8 +338,8 @@ idxs = 1:5
 pn = list()
 for (i in idxs) {
     path = tp2$pathway[i]
-    extra_filt = str_split(tp$filt[i], ',') %>% unlist()
-    pn1 = plotNet_cc(path, cc9, symb, extra_filt, tp$lay[i], tp$angle[i])
+    extra_filt = str_split(tp2$filt[i], ',') %>% unlist()
+    pn1 = plotNet_cc(path, cc9, symb, extra_filt, tp2$lay[i], tp2$angle[i])
     pn[[tp2$path[i]]] = pn1
 fo = sprintf("%s/x.pdf", dirw)
 #ggsave(pn, file=fo, width=5, height=5)
@@ -383,7 +383,7 @@ ggarrange(
         pn$hb26, res$pl$hb26,
         widths=c(1,1.3), heights=c(1,1,1), labels=LETTERS[1:6],
         nrow=3, ncol=2),
-    pt, widths=c(4,1), nrow=1, ncol=2, labels=c('','G')) %>%
+    pt, widths=c(4,1), nrow=1, ncol=2) %>%
     ggexport(filename = fo, width=8.5, height=10)
 
 p2 = plotNets2(x, th, symb, 5)
