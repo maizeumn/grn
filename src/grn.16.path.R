@@ -36,6 +36,7 @@ make_cc_step <- function(reacs, prods, gids, spon, ta=symb, extra_filt=c()) {
             arrange(s2) %>% pull(symbol)
         sym_str = str_c(symbs, sep=' ')
     }
+    sym_str = str_to_upper(sym_str)
     if(length(reacs) == 0) reactants = 'None'
     if(length(prods) == 0) products = 'None'
     crossing(snode=reacs,enode=prods,lab=sym_str) %>% as_tibble() %>%
@@ -105,6 +106,7 @@ plotNets1 <- function(ti, th, ta=symb, lays='kk', angle='along') {
         mutate(reg = ifelse(is.na(reg), trim_gid(reg.gid), reg)) %>%
         left_join(ta, by=c('tgt.gid'='gid')) %>% rename(tgt=symbol) %>%
         mutate(tgt = ifelse(is.na(tgt), trim_gid(tgt.gid), tgt)) %>%
+        mutate(reg = str_to_sentence(reg), tgt = str_to_sentence(tgt)) %>%
         left_join(th, by='nid') %>%
         mutate(lgd = factor(lgd, levels=th$lgd))
     e0 = x %>% select(path, from=reg, to=tgt, lgd, score)
@@ -150,6 +152,7 @@ plotNets2 <- function(ti, th, ta=symb, nc=3, lay='kk', angle='along') {
         mutate(reg = ifelse(is.na(reg), trim_gid(reg.gid), reg)) %>%
         left_join(ta, by=c('tgt.gid'='gid')) %>% rename(tgt=symbol) %>%
         mutate(tgt = ifelse(is.na(tgt), trim_gid(tgt.gid), tgt)) %>%
+        mutate(reg = str_to_sentence(reg), tgt = str_to_sentence(tgt)) %>%
         inner_join(th, by='nid') %>%
         mutate(lgd = factor(lgd, levels=th$lgd))
     e0 = x %>% select(path, from=reg, to=tgt, lgd, score)

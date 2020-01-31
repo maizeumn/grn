@@ -46,7 +46,7 @@ dirw = '/home/springer/zhoux379/projects/grn/data/12_tables'
 
 ![]($grn/data/13_eval/15.go.heat.pdf){width=80%}
 
-Figure S1.  Comparison of GRNs built with different methods according to enrichment of functional annotations (Gene Ontology, CornCyc, etc).  For each network only the top 100,000 predicted TF-target associations were taken.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal).  Each GRN was built using three regression methods: RF (random forest), ET (extra trees) and XGB (gradient boosting).
+Figure S1.  Comparison of GRNs built with different methods according to enrichment of functional annotations (Gene Ontology, CornCyc, etc).  For each network only the top 100,000 predicted TF-target associations were taken.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation). The names for each of the networks are color-coded to indicate B73 developmental surveys (blue), genotype surveys (red), meta-networks (green) or previously generated GRNs (teal).  Each GRN was built using three regression methods: RF (random forest), ET (extra trees) and XGB (gradient boosting).
 
 \pagebreak
 ![]($grn/data/14_eval_sum/05.tp.pdf){width=100%}
@@ -113,12 +113,12 @@ Figure S13.  Different GRNs support different parts of the DIMBOA pathway.
 \pagebreak
 ![]($grn/data/16_pathways/25.hb26.pdf){width=100%}
 
-Figure S14.  Different GRNs support different parts of the chlorophyllide biosynthesis pathway regulated by a homeobox-transcription factor 26 (hb26, Zm00001d008612).
+Figure S14.  Different GRNs support different parts of the chlorophyllide biosynthesis pathway regulated by a homeobox-transcription factor 26 (HB26, Zm00001d008612).
 
 \pagebreak
 ![]($grn/data/16_pathways/26.pdf){width=100%}
 
-Figure S15.  Different coexpression-based GRNs capture distinct parts of classic and CornCyc metabolic pathways.  (A) The teosinte branched1 (tb1)-mediated pathway regulating bud dormancy and growth repression.  (B) The glycolysis pathway.  (C-D) The zealexin biosynthesis pathway (C) regulated by a WRKY-transcription factor 34 (wrky34, Zm00001d009939) (D).  (E-F) The methylerythritol phosphate pathway (E) regulated by a C2C2-CO-like-transcription factor 11 (col11, Zm00001d003162) (F).  
+Figure S15.  Different coexpression-based GRNs capture distinct parts of classic and CornCyc metabolic pathways.  (A) The teosinte branched1 (tb1)-mediated pathway regulating bud dormancy and growth repression.  (B) The glycolysis pathway.  (C-D) The zealexin biosynthesis pathway (C) regulated by a WRKY-transcription factor 34 (WRKY34, Zm00001d009939) (D).  (E-F) The methylerythritol phosphate pathway (E) regulated by a C2C2-CO-like-transcription factor 11 (COL11, Zm00001d003162) (F).  
 
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.1s.pdf){width=100%}

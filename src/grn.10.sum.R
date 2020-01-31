@@ -107,11 +107,13 @@ saveRDS(x, file=fo)
 #}}}
 
 #|{{{ trans hotspots
+fix_qtags <- function(qtags) str_c(unique(str_split(qtags, ',')[[1]]), collapse=', ')
 fi = file.path(dird, '14_eval_sum/33.hit.tsv')
 tp = read_tsv(fi) %>%
     replace_na(list(reg.note='',txt='')) %>%
     mutate(reg.note = str_replace(reg.note, " *\\[.*\\]", '')) %>%
     mutate(reg.note = str_replace(reg.note, ";.*$", '')) %>%
+    mutate(qtags = map_chr(qtags, fix_qtags)) %>%
     select(ID=reg.gid, `Support eQTL study`=qtags, `Support GRN`=studies, `TF Annotation`=reg.note, `Target enrichment`=txt)
 x = tp %>%
     kable(format='latex', escape=F, longtable=T, booktabs=T,

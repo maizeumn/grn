@@ -1865,7 +1865,7 @@ nids_hc = c("nc01", 'n13a','n15c','n15d','n18c',
     'n17a','n18a','n18e','n99a','n18g',
     'n13c','n13e','n15a','n19a','n18d')
 tz0 = ev_go %>% filter(nid %in% nids_hc) %>%
-    select(nid, enrich_reg) %>% unnest() %>%
+    select(nid, enrich_reg) %>% unnest(enrich_reg) %>%
     filter(ctag %in% qtags, n>=10, score==10, pval < .01) %>%
     select(ctag, nid, reg.gid, n, fc, grp=max.grp, max.grp.size) %>%
     inner_join(t_cfg, by = 'nid')
