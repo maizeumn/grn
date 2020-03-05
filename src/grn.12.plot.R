@@ -1111,8 +1111,9 @@ ev_nv = readRDS(fv)
 #
 fi = '~/projects/master.xlsx'
 t_cfg_rn = read_xlsx(fi, 'barn') %>% filter(libtype=='rnaseq') %>%
-    select(yid, author) %>%
-    mutate(author=ifelse(yid=='rn14f','waters2017',author))
+    select(yid, author, year) %>%
+    mutate(author = str_c(author,year,sep='')) %>% select(-year) %>%
+    mutate(author=ifelse(yid=='rn14f','Waters2017',author))
 #
 nv = nv %>% mutate(cond=ifelse(yid=='rn14f',str_replace(cond,'^seedling','leaf3'), cond))
 ev_nv = ev_nv %>% mutate(cond=ifelse(yid=='rn14f',str_replace(cond,'^seedling','leaf3'), cond))
@@ -1142,19 +1143,19 @@ p1 = ggplot(tp) +
     geom_hline(data=tps, aes(yintercept=bg.de), linetype='dotted', size=.5) +
     geom_point(aes(x=score,y=prop.de,color=reg.DE, shape=reg.DE), size=1) +
     geom_line(aes(x=score,y=prop.de,color=reg.DE), size=.5) +
-    geom_text_repel(aes(x=score,y=prop.de,label=txt), size=2) +
+    geom_text_repel(aes(x=score,y=prop.de,label=txt), size=2.5, direction='both', nudge_y=.02) +
     scale_x_continuous(breaks=seq(2,10,2), expand=c(.05,.05), name='Edge score') +
     scale_y_continuous(name='Proportion targets that are DE', expand=expand_scale(mult=c(.15,.15))) +
     facet_wrap(~pan, ncol=2, scale='free') +
     scale_color_d3(name = 'Level of DE in TF') +
     scale_shape_manual(values=0:5) +
     otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, xtick=T, ytick=T,
-           margin = c(1.5, .1, .1, .1),
+           margin = c(1.5, .15, .1, .1),
            legend.pos = 'top.center.out', legend.dir = 'h', legend.title=T) +
     theme(legend.position = c(.5,1), legend.justification = c(.5,-.3)) +
     guides(color = guide_legend(title.position='top', title.hjust=.5))
 fo = file.path(dirw, '11.nv.1.pdf')
-ggsave(p1, file=fo, width=4, height=5)
+ggsave(p1, file=fo, width=6, height=6)
 #}}}
 
 #{{{ nc01 [all]
@@ -1174,18 +1175,19 @@ p1 = ggplot(tp) +
     geom_hline(data=tps, aes(yintercept=bg.de), linetype='dotted', size=.5) +
     geom_point(aes(x=score,y=prop.de,color=reg.DE, shape=reg.DE), size=1) +
     geom_line(aes(x=score,y=prop.de,color=reg.DE), size=.5) +
-    geom_text_repel(aes(x=score,y=prop.de,label=txt), size=2) +
+    geom_text_repel(aes(x=score,y=prop.de,label=txt), size=2, nudge_y=.02) +
     scale_x_continuous(breaks=seq(2,10,2), expand=c(.05,.05), name='Edge score') +
     scale_y_continuous(name='Proportion targets that are DE', expand=expand_scale(mult=c(.15,.15))) +
     facet_wrap(~pan, ncol=5, scale='free') +
     scale_color_d3() +
     scale_shape_manual(values=0:5) +
     otheme(xtitle=T, ytitle=T, xtext=T, ytext=T, xtick=T,ytick=T,
+           margin = c(1.5, .15, .1, .1),
            legend.pos = 'top.center.out', legend.dir = 'h') +
     theme(strip.text.x = element_text(size=7)) +
     theme(legend.position = c(.5,1), legend.justification = c(.5,-.8))
 fo = file.path(dirw, '11.nv.1s.pdf')
-ggsave(p1, file=fo, width=8, height=10)
+ggsave(p1, file=fo, width=12, height=12)
 #}}}
 
 #{{{ DE enrichment
