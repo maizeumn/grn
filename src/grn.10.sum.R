@@ -124,6 +124,8 @@ x = tp %>%
     column_spec(5, width = "5cm")
 fo = file.path(dirw, 'st9.pdf')
 x %>% save_kable(fo)
+fo = file.path(dirw, 'st9.tsv')
+write_tsv(tp, fo)
 fo = file.path(dirw, 'st9.rds')
 saveRDS(x, file=fo)
 #}}}

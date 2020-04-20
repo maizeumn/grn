@@ -85,5 +85,20 @@ fo = file.path(dirw, 'tf_support.tsv')
 write_tsv(tp, fo, na='')
 #}}}
 
-
-
+#{{{ generate tables for download/share
+require(fs)
+to = crossing(opt = c("rf",'et','xgb'), size=c('1m','100k')) %>%
+    mutate(fi=sprintf("%s/%s.%s.rds", dirr, opt, size)) %>%
+    slice(5:6) %>%
+    mutate(x = map(fi, readRDS))
+#
+to1 = to %>% mutate(diro = sprintf("%s/%s_%s", dirw, opt, size)) %>%
+    mutate(y = map_chr(diro, dir_create)) %>%
+    select(opt,size,diro,x) %>%
+    unnest(x) %>%
+    mutate(fo = sprintf("%s/%s.tsv", diro, nid)) %>%
+    select(nid,fo, tn) %>% unnest(tn) %>%
+    select(nid,fo, regulator=reg.gid, target=tgt.gid, score) %>%
+    group_by(nid,fo) %>% nest() %>%
+    mutate(j = map2(data, fo, write_tsv))
+#}}}

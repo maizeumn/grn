@@ -386,7 +386,7 @@ ggarrange(
         pn$hb26, res$pl$hb26,
         widths=c(1,1.3), heights=c(1,1,1), labels=LETTERS[1:6],
         nrow=3, ncol=2),
-    pt, widths=c(4,1), nrow=1, ncol=2) %>%
+    pt, widths=c(4,1), nrow=1, ncol=2, labels=c('','G')) %>%
     ggexport(filename = fo, width=8.5, height=10)
 
 p2 = plotNets2(x, th, symb, 5)

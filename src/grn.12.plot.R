@@ -1145,7 +1145,7 @@ p1 = ggplot(tp) +
     geom_line(aes(x=score,y=prop.de,color=reg.DE), size=.5) +
     geom_text_repel(aes(x=score,y=prop.de,label=txt), size=2.5, direction='both', nudge_y=.02) +
     scale_x_continuous(breaks=seq(2,10,2), expand=c(.05,.05), name='Edge score') +
-    scale_y_continuous(name='Proportion targets that are DE', expand=expand_scale(mult=c(.15,.15))) +
+    scale_y_continuous(name='Proportion of Differntially Expressed Targets', expand=expand_scale(mult=c(.15,.15))) +
     facet_wrap(~pan, ncol=2, scale='free') +
     scale_color_d3(name = 'Level of DE in TF') +
     scale_shape_manual(values=0:5) +
@@ -1177,7 +1177,7 @@ p1 = ggplot(tp) +
     geom_line(aes(x=score,y=prop.de,color=reg.DE), size=.5) +
     geom_text_repel(aes(x=score,y=prop.de,label=txt), size=2, nudge_y=.02) +
     scale_x_continuous(breaks=seq(2,10,2), expand=c(.05,.05), name='Edge score') +
-    scale_y_continuous(name='Proportion targets that are DE', expand=expand_scale(mult=c(.15,.15))) +
+    scale_y_continuous(name='Proportion of Differentially Expressed Targets', expand=expand_scale(mult=c(.15,.15))) +
     facet_wrap(~pan, ncol=5, scale='free') +
     scale_color_d3() +
     scale_shape_manual(values=0:5) +

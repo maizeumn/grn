@@ -5,18 +5,18 @@ output:
     citation_package: natbib
     keep_tex: false
     fig_caption: true
-    latex_engine: pdflatex
-    template: rmd-latex-ms.tex
+    latex_engine: lualatex
 # author:
 # - name: Peng Zhou
 #  affiliation: University of Minnesota
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-geometry: margin=1in
-fontfamily: mathptmx
-fontsize: 11pt
+fontsize: 10pt
+geometry: "left=0.5in,right=0.5in,top=0.8in,bottom=0.5in"
 # spacing: double
 # biblio-style: apsr
 header-includes:
+- \usepackage{fontspec}
+- \setmainfont[Scale=MatchUppercase]{TeX Gyre Heros}
 - \usepackage{caption}
 - \usepackage{booktabs}
 - \usepackage{longtable}
@@ -44,42 +44,47 @@ header-includes:
 dirw = '/home/springer/zhoux379/projects/grn/data/12_tables'
 ```
 
-Table 1. GRNs built in this study.
 ```{r, message=FALSE, echo=FALSE}
 readRDS(file.path(dirw, 't1.rds'))
 ```
 
+\hfill
+\hfill
+
+Figure 1. Datasets and GRNs developed for this study.  Each of the co-expression based GRNs created for this study are listed.  These are separated into GRNs that utilize different tissues of B73 (blue), different genotypes (red), combinations of multiple tissues and genotypes (green) and recombinant inbred panels (purple).  For each GRN we describe the reference study, the tissue or genotype, the number of samples and the number of TFs and targets that are classified within the top 100,000 edges for the GRN.  The network labels from this figure are used for the remaining figures.
+
 \pagebreak
 ![]($grn/data/14_eval_sum/05.100k.pval.pdf){width=100%}
 
-Figure 1.  TF-target interactions predicted by GRNs are supported by (A) experimentally derived TF targets and (B) knockout mutant RNA-Seq experiments. (A) direct targets of published TF studies derived from ChIP-Seq and mutant RNA-Seq experiments; (B) For each one of the 17 maize TFs with knockout mutant RNA-Seq data available, differentially expressed genes between mutant and wildtype were identified using DESeq2 (p-value < 0.01).  Wilcox rank test were then performed using the predicted (TF-target) interaction scores (top 100k edges) between the group of true targets (DEGs) and non-targets (non-DEGs).  P-values were adjusted by the Benjamini-Hochberg method implemented in R.  Numbers in each cell show the adjusted test P-value (-log10 transformed) Figure S2 provides the actual number of true targets captured by each GRN during each evaluation.  Light yellow cells with no numbers indicate “not significant” (P > 0.05), while blank (white) cells indicate missing data where the TF being evaluated is not expressed or not variable (i.e., zero variance) in the corresponding GRN.  Y-axis labels correspond to the different networks listed in Table 1.  X-axis labels (e.g., "KN1_ear (272)" or "KN1_ear [1576] [7.0%]") represent the common name for each TF, the tissue in which the TF is expressed, followed by the number of direct targets (Panel A) or number and proportion of differentially expressed genes in TF mutant (Panel B).
+Figure 2.  TF-target interactions predicted by GRNs are supported by experimentally derived TF targets and knockout mutant RNA-Seq experiments. (A) Direct targets of published TF studies derived from ChIP-Seq and mutant RNA-Seq experiments; (B) For each of the 17 maize TFs with knockout mutant RNA-Seq data available, differentially expressed genes between mutant and wild type were identified using DESeq2 (p-value < 0.01).  Wilcox rank tests were then performed using the predicted (TF-target) interaction scores (top 100k edges) between the group of true targets (DEGs) and non-targets (non-DEGs).  P-values were adjusted by the Benjamini-Hochberg method implemented in R.  Numbers in each cell show the adjusted test P-value (-log10 transformed). Supplemental Figure 2 provides the actual number of true targets captured by each GRN during each evaluation.  Light yellow cells with no numbers indicate “not significant” (P > 0.05), while blank (white) cells indicate missing data where the TF being evaluated is not expressed or not variable (i.e., zero variance) in the corresponding GRN.  Y-axis labels correspond to the different networks listed in Figure 1.  X-axis labels (e.g., "KN1_ear (272)" or "KN1_ear [1576] [7.0%]") represent the common name for each TF, the tissue in which the TF is expressed, followed by the number of direct targets (Panel A) or number and proportion of differentially expressed genes in TF mutant (Panel B).
 
 \pagebreak
 ![]($grn/data/14_eval_sum/07.go.pdf){width=80%}
 
-Figure 2.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network the top one million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation).  (A) GO/CornCyc enrichment is shown for four selected networks.  (B) Heatmap showing enrichment of co-annotated GO/CornCyc terms in the first bin (i.e., top 100k) of edges in the GRNs.  See Figure S7 for the enrichment in all bins of all built GRNs.  A total of six sources of GO annotation were used but only three were shown here: GO_HC (high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_arabidopsis and GO_uniprot.plants (check Figure S6 for a complete list).
+Figure 3.  Enrichment of co-annotated GO/CornCyc terms in co-regulated network targets.  For each network, the top one million predicted TF-target associations were binned to 10 bins and assessed for enrichment of GO/CornCyc functional annotation.  Fold enrichment is calculated as the observed number of shared GO/CornCyc terms (by targets regulated by a common TF) divided by the expected number of shared annotation terms (determined by permutation).  (A) GO/CornCyc enrichment is shown for four selected networks.  (B) Heatmap showing enrichment of co-annotated GO/CornCyc terms in the first bin (i.e., top 100k) of edges in the GRNs.  See Supplemental Figure 7 for the enrichment in all bins of all newly built GRNs.  A total of six sources of GO annotation were used, but only three are shown here: GO_HC (high quality hand-curated terms transferred from maize AGP_v3 annotation), GO_arabidopsis and GO_uniprot.plants (see Supplemental Figure 6 for a complete list).
 
 \pagebreak
 ![]($grn/data/16_pathways/22.pdf){width=100%}
 
-Figure 3.  GRN predictions show enrichment of documented transcriptional regulations from Arabidopsis.  (A) Permutation analysis showing the number of random TF-target interactions supported by at least one of the 45 GRNs (histogram) as compared to the actual regulations (transferred from Arabidopsis) with GRN support (red dashed line).  (B) The abscisic acid (ABA) pathway transferred from Arabidopsis showed support for 12 out of the 20 edges.  (C) Six out of the 11 HY5 (Elongated Hypocotyl 5) targets transferred from Arabidopsis showed support in at least one GRN.  The letters along the edges of the networks in (B) and (C) indicate significant support from specific GRN as indicated in the key.
+Figure 4.  GRN predictions show enrichment of documented transcriptional regulation interactions from Arabidopsis.  (A) Permutation analysis showing the number of random TF-target interactions supported by at least one of the 45 GRNs (histogram) compared to the actual transcriptional regulation (transferred from Arabidopsis) with GRN support (red dashed line).  (B) The abscisic acid (ABA) pathway transferred from Arabidopsis showed support for 12 out of 20 edges.  (C) Six out of 11 HY5 (Elongated Hypocotyl 5) targets transferred from Arabidopsis showed support in at least one GRN.  The letters along the edges of the networks in (B) and (C) indicate significant support from a specific GRN, as indicated in the key.
 
 \pagebreak
 ![]($grn/data/16_pathways/m25.pdf){width=100%}
 
-Figure 4.  Different coexpression-based GRNs capture distinct aspects of classic and CornCyc metabolic pathways.  (A-B) The anthocyanin biosynthesis pathway (A) regulated by R1 (Zm00001d026147) and PL1 (Zm00001d037118).  (C-D) The DIMBOA biosynthesis pathway (C) and four potential regulators (D): G2 (Zm00001d039260), D8 (Zm00001d033680), NACTF21 (Zm00001d036050) and MYB112 (Zm00001d046632).  (E-F) The chlorophyllide biosynthesis pathway (E) potentially regulated by HB26 (Zm00001d008612) (F).  The letters along the edges of the networks in (B) (D) and (F) indicate significant support from specific GRN as indicated in the key.  Mappings of reference gene IDs to aliases were obtained from MaizeGDB (https://maizegdb.org/associated_genes?type=all&style=table).  For genes without aliases the reference gene ID were prefix-trimmed ("Zm00001d") before displaying.
+Figure 5.  Different coexpression-based GRNs capture distinct aspects of classic and CornCyc metabolic pathways.  (A-B) The anthocyanin biosynthesis pathway (A) regulated by R1 (Zm00001d026147) and PL1 (Zm00001d037118).  (C-D) The DIMBOA biosynthesis pathway (C) and four potential regulators (D): G2 (Zm00001d039260), D8 (Zm00001d033680), NACTF21 (Zm00001d036050) and MYB112 (Zm00001d046632).  (E-F) The chlorophyllide biosynthesis pathway (E) potentially regulated by HB26 (Zm00001d008612) (F).  (G) Network key mappings used in panels (B) (D) and (F).  Mappings of reference gene IDs to aliases were obtained from MaizeGDB (https://maizegdb.org/associated_genes?type=all&style=table).  For genes without aliases, the reference gene IDs were prefix-trimmed ("Zm00001d") before displaying.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.1.pdf){width=90%}
 
-Figure 5.  TF-target validation of the combined tissue network in three selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  For each network the top one million TF-target predictions were binned to 10 groups based on the interaction score in GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Within each panel the actual numbers of TF-target pairs falling into the “SPE” category (i.e., purple line) were labelled next to each point.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
+Figure 6.  TF-target validation of the combined tissue network in three selected natural variation datasets.  Each panel shows the proportion of differentially expressed targets regulated by TFs showing different DE levels between two genotypes in one tissue/treatment condition.  For each network, the top one million TF-target predictions were binned to 10 groups based on the interaction score in the GRN.  Each TF-target pair is classified according to the DE level of the TF (“non_DE”, “DE1-2”, “DE2-4”, “DE4+” or “SPE”) in each network.  The proportion of TF-target pairs with the target also showing DE was then determined for each category.  Within each panel, the actual numbers of TF-target pairs falling into the “SPE” category (i.e., purple line) are labelled next to each point.  Dashed line in each panel represents the genome-wide (background) proportion of DE genes in each tissue/treatment setting.
 
 \pagebreak
 ![]($grn/data/14_eval_sum/11.nv.3.pdf){width=100%}
 
-Figure 6.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  Color and number in each cell represents the enrichment P-value (-log10 transformed, Benjamini-Hochberg adjusted hypergeometric test p-value) of (SPE TF regulated) target DE proportions relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
+Figure 7.  Enrichment in differentially expressed targets regulated by TFs that show SPE patterns.  The color and number in each cell represent the enrichment P-value (-log10 transformed, Benjamini-Hochberg adjusted hypergeometric test p-value) of (SPE TF regulated) the proportion of the DE target relative to the genome-wide proportion of DEGs for each GRN (row-wise) evaluated against a tissue/treatment condition in a natural variation dataset (column-wise).  Only edges in the first bin (top 100k) of each network were taken.
 
 \pagebreak
-![]($grn/data/14_eval_sum/fig6.pdf){width=85%}
+![]($grn/data/14_eval_sum/fig8.pdf){width=85%}
 
-Figure 7.  Identification of acting transcription factors underlying trans-eQTL hotspots identified in previous studies.  (A) Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each dot represents a TF supported by at least two high quality networks to show significant co-regulation with at least one trans-eQTL hotspot, and are within 50-Mbp distance from the trans-eQTL hotspot location;  (B)-(D) Identification of R1 (Zm00001d026147), COL11 (Zm00001d003162) and MYC7 (Zm00001d030028) co-localizing previous trans-eQTL hotspots and acting as the master regulator of maize anthocyanin biosynthesis pathway, photosynthesis light reaction pathway and jasmonic acid biosynthesis pathway, respectively.
+Figure 8.  Identification of transcription factors underlying trans-eQTL hotspots identified in previous studies.  (A) Co-localization of TFs predicted by GRNs in this study and trans-eQTL hotspots identified in previous studies that regulate the same set of targets.  Each dot represents a TF that is supported by at least two high-quality networks to show significant co-regulation with at least one trans-eQTL hotspot and is within 50-Mbp distance from the trans-eQTL hotspot location;  (B)-(D) Identification of R1, COL11, and MYC7, which co-localize with previously identified trans-eQTL hotspots and act as master regulators of the maize anthocyanin biosynthesis pathway, photosynthesis light reaction pathway, and jasmonic acid biosynthesis pathway, respectively.
+
