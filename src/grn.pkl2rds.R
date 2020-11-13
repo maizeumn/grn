@@ -16,7 +16,7 @@ net_size = args$net_size
 if( file.access(f_net) == -1 )
     stop(sprintf("file ( %s ) cannot be accessed", f_net))
 
-source("~/projects/grn/src/functions.R")
+require(tidyverse)
 require(reticulate)
 x = py_load_object(normalizePath(f_net))
 rids = x[[1]]

@@ -26,7 +26,7 @@ to = tn %>% inner_join(tl, by=c('reg.gid'='gid')) %>%
     select(reg.gid, tgt.gid, tgt.is.TF, n_network, everything()) %>%
     arrange(desc(n_network))
 
-fo = file.path(dirw, '15.supported.supported.tsv')
+fo = file.path(dirw, '15.supported.tsv')
 write_tsv(to, fo)
 #}}}
 
@@ -102,3 +102,64 @@ to1 = to %>% mutate(diro = sprintf("%s/%s_%s", dirw, opt, size)) %>%
     group_by(nid,fo) %>% nest() %>%
     mutate(j = map2(data, fo, write_tsv))
 #}}}
+
+#{{{ sample meta tables after merging duplicates
+fc = file.path(dird, '10.dataset.xlsx')
+tc = read_xlsx(fc) %>% fill(mid, study) %>%
+    filter(!str_detect(nid, "_"))
+
+diri = '/home/springer/zhoux379/projects/rnaseq/data/11_qc'
+diri = '/home/springer/zhoux379/projects/rnaseq/data/raw'
+read_th_m <- function(fi) readRDS(fi)$th_m
+to = tc %>% select(-subid) %>%
+    mutate(fi = sprintf("%s/%s/cpm.rds", diri, mid)) %>%
+    mutate(x = map(fi, read_th_m)) %>%
+    mutate(fo = sprintf("%s/sample_meta/%s.tsv", dirw, nid)) %>%
+    mutate(y = map2(x, fo, write_tsv))
+
+#}}}
+
+
+#{{{ phenolic genes
+dirw = file.path(dird, '73_phenolic')
+fi = file.path(dirw, 'PhenolicGenes.xlsx')
+ti = read_xlsx(fi, col_names=c('gname','gid')) %>%
+    mutate(gname = str_replace(gname, 'not included', '')) %>%
+    group_by(gid) %>% summarise(gname=str_c(gname,collapse=',')) %>% ungroup()
+ta = read_symbol(opt='tibble')
+
+ft = file.path(dird, '09.tf.txt')
+tt = read_tsv(ft, col_names='gid')
+
+ncfg = t_cfg %>% select(nid, lgd)
+tn = res %>% select(nid, tn) %>% unnest()
+
+fn = file.path(dirr, 'rf.100k.rds')
+tn = readRDS(fn)
+
+to = tn %>% select(nid,study,tn) %>% unnest(tn) %>%
+    select(nid, study, tf.gid=reg.gid,target.gid=tgt.gid) %>%
+    group_by(tf.gid,target.gid) %>%
+    summarise(nSupport=n(), support=str_c(nid,collapse=',')) %>%
+    ungroup() %>%
+    left_join(ta, by=c('tf.gid'='gid')) %>% rename(tf=symbol) %>%
+    inner_join(ti, by=c('target.gid'='gid')) %>% rename(target=gname) %>%
+    select(tf.gid,target.gid, tf, target, nSupport, support)
+
+fo = file.path(dirw, '05.phenolic.supported.tsv')
+write_tsv(to, fo, na='')
+#}}}
+
+#{{{ widiv GRN predictions
+tag = 'widiv942'
+dirw = file.path(dird, '73_phenolic', tag)
+fi = file.path(dirw, '03.rds')
+ti = readRDS(fi)
+
+to = ti$tn
+diro = '/home/springer/zhoux379/projects/s3/zhoup-share/rnaseq'
+tago = 'rn19i'
+fo = sprintf("%s/%s/%s.grn.tsv.gz", diro, tago, tag)
+write_tsv(to, fo, na='')
+#}}}
+

@@ -26,7 +26,8 @@ subid = args$subid
 if( file.access(fi) == -1 )
     stop(sprintf("file ( %s ) cannot be accessed", fi))
 
-source("~/projects/grn/src/functions.R")
+#source("~/projects/grn/src/functions.R")
+require(tidyverse)
 x = readRDS(fi)
 tm = x$tm_m
 

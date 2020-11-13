@@ -5,9 +5,9 @@ require(ggforce)
 require(knitr)
 require(kableExtra)
 options(knitr.table.format = "latex")
-require(pROC)
-require(PRROC)
-dirg = '~/data/genome'
+#require(pROC)
+#require(PRROC)
+dirg = '~/projects/genome'
 dirp = '~/projects/grn'
 dird = file.path(dirp, 'data')
 dirr = file.path(dird, 'raw')
